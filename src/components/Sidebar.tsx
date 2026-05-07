@@ -5,8 +5,6 @@ import {
   ChevronRight,
   Folder,
   LayoutDashboard,
-  MapPin,
-  Stethoscope,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { NavLink } from 'react-router-dom'

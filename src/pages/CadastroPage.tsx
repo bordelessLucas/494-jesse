@@ -1,5 +1,6 @@
 import { Lock, Mail, UserRound } from 'lucide-react'
-import { FormEvent, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { supabase } from '../lib/supabase'
