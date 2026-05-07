@@ -5,13 +5,13 @@ import { Topbar } from '../components/Topbar'
 
 export function DashboardLayout() {
   return (
-    <div className="min-h-dvh bg-gray-50">
+    <div className="flex min-h-dvh bg-slate-50">
       <Sidebar />
 
-      <div className="md:pl-64">
+      <div className="min-w-0 flex-1">
         <Topbar />
 
-        <main className="px-4 py-6 md:px-6">
+        <main className="p-8">
           <Outlet />
         </main>
       </div>

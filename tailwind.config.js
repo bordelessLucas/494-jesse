@@ -5,6 +5,7 @@ export default {
     extend: {
       colors: {
         primary: {
+          DEFAULT: '#1E40AF',
           50: '#eff6ff',
           100: '#dbeafe',
           200: '#bfdbfe',
@@ -18,6 +19,7 @@ export default {
           950: '#172554',
         },
         success: {
+          DEFAULT: '#10B981',
           50: '#ecfdf5',
           100: '#d1fae5',
           200: '#a7f3d0',
@@ -31,6 +33,7 @@ export default {
           950: '#022c22',
         },
         warning: {
+          DEFAULT: '#F59E0B',
           50: '#fff7ed',
           100: '#ffedd5',
           200: '#fed7aa',
@@ -44,6 +47,7 @@ export default {
           950: '#431407',
         },
         danger: {
+          DEFAULT: '#EF4444',
           50: '#fef2f2',
           100: '#fee2e2',
           200: '#fecaca',
@@ -55,6 +59,9 @@ export default {
           800: '#991b1b',
           900: '#7f1d1d',
           950: '#450a0a',
+        },
+        background: {
+          DEFAULT: '#f8fafc',
         },
       },
     },
