@@ -6,7 +6,6 @@ import { RedirectIfAuthenticated, RequireAuth } from './lib/auth/RequireAuth'
 import { CadastroPage } from './pages/CadastroPage'
 import { CadastrosEspecialidadesPage } from './pages/CadastrosEspecialidadesPage'
 import { CadastrosLocaisPage } from './pages/CadastrosLocaisPage'
-import { CadastrosProfissionaisPage } from './pages/CadastrosProfissionaisPage'
 import { ConfiguracaoPage } from './pages/ConfiguracaoPage'
 import { EscalasPage } from './pages/EscalasPage'
 import { EscalasMensalPage } from './pages/EscalasMensalPage'
@@ -54,21 +53,38 @@ function App() {
             <Route path="escalas/semanal" element={<EscalasSemanalPage />} />
             <Route path="escalas/modelos" element={<EscalasModelosPage />} />
 
-            <Route path="profissionais" element={<ProfissionaisPage />} />
+            <Route
+              path="profissionais"
+              element={<Navigate to="/usuarios/profissionais" replace />}
+            />
             <Route path="locais" element={<LocaisPage />} />
 
             <Route
+              path="usuarios"
+              element={<Navigate to="/usuarios/profissionais" replace />}
+            />
+            <Route path="usuarios/profissionais" element={<ProfissionaisPage />} />
+            <Route path="usuarios/locais" element={<CadastrosLocaisPage />} />
+            <Route
+              path="usuarios/especialidades"
+              element={<CadastrosEspecialidadesPage />}
+            />
+
+            <Route
               path="cadastros"
-              element={<Navigate to="/cadastros/profissionais" replace />}
+              element={<Navigate to="/usuarios/profissionais" replace />}
             />
             <Route
               path="cadastros/profissionais"
-              element={<CadastrosProfissionaisPage />}
+              element={<Navigate to="/usuarios/profissionais" replace />}
             />
-            <Route path="cadastros/locais" element={<CadastrosLocaisPage />} />
+            <Route
+              path="cadastros/locais"
+              element={<Navigate to="/usuarios/locais" replace />}
+            />
             <Route
               path="cadastros/especialidades"
-              element={<CadastrosEspecialidadesPage />}
+              element={<Navigate to="/usuarios/especialidades" replace />}
             />
 
             <Route path="financeiro" element={<FinanceiroPage />} />

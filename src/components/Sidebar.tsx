@@ -3,8 +3,8 @@ import {
   Banknote,
   CalendarClock,
   ChevronRight,
-  Folder,
   LayoutDashboard,
+  Users,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { NavLink } from 'react-router-dom'
@@ -38,13 +38,13 @@ const navigationItems: NavigationItem[] = [
     ],
   },
   {
-    to: '/cadastros',
-    label: 'Cadastros',
-    icon: Folder,
+    to: '/usuarios',
+    label: 'Usuários',
+    icon: Users,
     subItems: [
-      { to: '/cadastros/profissionais', label: 'Profissionais' },
-      { to: '/cadastros/locais', label: 'Locais' },
-      { to: '/cadastros/especialidades', label: 'Especialidades' },
+      { to: '/usuarios/profissionais', label: 'Profissionais' },
+      { to: '/usuarios/locais', label: 'Locais' },
+      { to: '/usuarios/especialidades', label: 'Especialidades' },
     ],
   },
   {

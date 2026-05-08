@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 
 import { Sidebar } from '../components/Sidebar'
+import { SuporteChatWidget } from '../components/support/SuporteChatWidget'
 import { Topbar } from '../components/Topbar'
 
 export function DashboardLayout() {
@@ -15,6 +16,8 @@ export function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+
+      <SuporteChatWidget />
     </div>
   )
 }
