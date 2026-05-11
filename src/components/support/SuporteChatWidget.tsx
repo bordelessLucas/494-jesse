@@ -11,9 +11,8 @@ import {
   X,
 } from 'lucide-react'
 
+import { BrandedLogoOrInitial } from '../branding/BrandedLogoOrInitial'
 import { cn } from '../../lib/cn'
-
-const AZUL_CHAT = '#1e88e5'
 
 function TextoEstiloAjudaBot({ texto }: { texto: string }) {
   const partes = texto.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g)
@@ -164,7 +163,7 @@ export function SuporteChatWidget() {
   }
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-[50] flex flex-col items-end gap-3 sm:bottom-6 sm:right-6">
+    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6">
       {painelAberto ? (
         <div
           className="pointer-events-auto flex h-[min(520px,78dvh)] w-[min(380px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200/80"
@@ -173,10 +172,7 @@ export function SuporteChatWidget() {
         >
           {tela === 'inicio' ? (
             <>
-              <div
-                className="relative flex flex-1 flex-col px-4 pb-5 pt-3"
-                style={{ backgroundColor: AZUL_CHAT }}
-              >
+              <div className="relative flex flex-1 flex-col bg-primary-600 px-4 pb-5 pt-3">
                 <button
                   type="button"
                   onClick={fecharPainel}
@@ -204,8 +200,7 @@ export function SuporteChatWidget() {
                         <p className="mt-1 text-sm text-slate-500">Em que podemos te ajudar?</p>
                       </div>
                       <span
-                        className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white"
-                        style={{ backgroundColor: AZUL_CHAT }}
+                        className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white ring-2 ring-white/30"
                         aria-hidden
                       >
                         <Send className="h-4 w-4" />
@@ -224,10 +219,7 @@ export function SuporteChatWidget() {
 
           {tela === 'privacidade' ? (
             <>
-              <div
-                className="relative flex flex-1 flex-col px-3 pb-4 pt-2"
-                style={{ backgroundColor: AZUL_CHAT }}
-              >
+              <div className="relative flex flex-1 flex-col bg-primary-600 px-3 pb-4 pt-2">
                 <div className="flex items-center justify-between px-1 py-2 text-white">
                   <button
                     type="button"
@@ -256,11 +248,11 @@ export function SuporteChatWidget() {
                   <div className="rounded-xl bg-white p-4 shadow-sm">
                     <p className="text-center text-sm leading-relaxed text-slate-800">
                       Para mais informações, consulte a nossa{' '}
-                      <span className="cursor-pointer font-semibold text-[#1e88e5] underline">
+                      <span className="cursor-pointer font-semibold text-primary-600 underline">
                         Política de Privacidade
                       </span>{' '}
                       e os nossos{' '}
-                      <span className="cursor-pointer font-semibold text-[#1e88e5] underline">
+                      <span className="cursor-pointer font-semibold text-primary-600 underline">
                         Termos de Uso
                       </span>
                       .
@@ -270,8 +262,7 @@ export function SuporteChatWidget() {
                     <button
                       type="button"
                       onClick={iniciarChat}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white"
-                      style={{ backgroundColor: AZUL_CHAT }}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
                     >
                       <Send className="h-4 w-4" aria-hidden />
                       Iniciar chat
@@ -331,7 +322,7 @@ export function SuporteChatWidget() {
                         className={cn(
                           'max-w-[90%] rounded-2xl px-3 py-2 text-sm leading-relaxed shadow-sm',
                           m.de === 'usuario'
-                            ? 'rounded-br-md bg-[#1e88e5] text-white'
+                            ? 'rounded-br-md bg-primary-600 text-white'
                             : 'rounded-bl-md border border-slate-100 bg-slate-50 text-slate-800',
                         )}
                       >
@@ -347,7 +338,7 @@ export function SuporteChatWidget() {
                             key={opt.id}
                             type="button"
                             onClick={() => enviarOpcao(opt.texto)}
-                            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-left text-xs font-medium text-[#1e88e5] hover:bg-blue-50"
+                            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-left text-xs font-medium text-primary-600 hover:bg-primary-50"
                           >
                             {opt.texto}
                           </button>
@@ -378,7 +369,7 @@ export function SuporteChatWidget() {
                         enviarTexto()
                       }
                     }}
-                    className="max-h-24 min-h-[40px] flex-1 resize-none bg-transparent px-2 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                    className="max-h-24 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400"
                   />
                   <button
                     type="button"
@@ -416,7 +407,7 @@ export function SuporteChatWidget() {
             return !abertoAntes
           })
         }}
-        className="pointer-events-auto inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-medium tracking-tight text-white shadow-xl ring-2 ring-black/60 transition hover:bg-slate-900"
+        className="pointer-events-auto inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full bg-primary-950 px-4 py-2 text-sm font-medium tracking-tight text-white shadow-xl ring-2 ring-primary-700/50 transition hover:bg-primary-900"
         aria-expanded={painelAberto}
         aria-label={painelAberto ? 'Recolher chat de suporte' : 'Abrir chat de suporte'}
       >
@@ -440,10 +431,7 @@ function CabecalhoChat({
   mostrarMenu: boolean
 }) {
   return (
-    <div
-      className="flex shrink-0 items-center justify-between px-2 py-2 text-white"
-      style={{ backgroundColor: AZUL_CHAT }}
-    >
+    <div className="flex shrink-0 items-center justify-between bg-primary-600 px-2 py-2 text-white">
       <button
         type="button"
         onClick={aoVoltar}
@@ -492,7 +480,7 @@ function RodapeNavegacao({
           onClick={onHome}
           className={cn(
             'rounded-lg p-2 transition-colors',
-            telaAtiva === 'home' ? 'text-[#1e88e5]' : 'text-slate-400 hover:text-slate-600',
+            telaAtiva === 'home' ? 'text-primary-600' : 'text-slate-400 hover:text-slate-600',
           )}
           aria-label="Início"
         >
@@ -504,7 +492,7 @@ function RodapeNavegacao({
           className={cn(
             'rounded-lg p-2 transition-colors',
             telaAtiva === 'mensagens'
-              ? 'text-[#1e88e5]'
+              ? 'text-primary-600'
               : 'text-slate-400 hover:text-slate-600',
           )}
           aria-label="Mensagens"
@@ -519,11 +507,13 @@ function RodapeNavegacao({
 
 function Marcadagua() {
   return (
-    <div className="flex items-center justify-center gap-1.5 py-2 text-[10px] text-slate-400">
-      <span className="text-sm" aria-hidden>
-        🦜
-      </span>
-      <span>Demonstração · PlantãoCheck Suporte</span>
+    <div className="flex items-center justify-center gap-2 py-2 text-[10px] text-slate-400">
+      <BrandedLogoOrInitial
+        className="h-6 w-6 shrink-0 rounded-md"
+        surface="light"
+        alt=""
+      />
+      <span className="leading-tight">Demonstração · PlantãoCheck Suporte</span>
     </div>
   )
 }

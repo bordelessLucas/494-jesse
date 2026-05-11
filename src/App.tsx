@@ -3,10 +3,12 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthLayout } from './layouts/AuthLayout'
 import { DashboardLayout } from './layouts/DashboardLayout'
 import { RedirectIfAuthenticated, RequireAuth } from './lib/auth/RequireAuth'
+import { ThemeBrandingProvider } from './theme/ThemeBrandingProvider'
 import { CadastroPage } from './pages/CadastroPage'
 import { CadastrosEspecialidadesPage } from './pages/CadastrosEspecialidadesPage'
 import { CadastrosLocaisPage } from './pages/CadastrosLocaisPage'
 import { ConfiguracaoPage } from './pages/ConfiguracaoPage'
+import { MarcaPlataformaPage } from './pages/configuracao/MarcaPlataformaPage'
 import { EscalasPage } from './pages/EscalasPage'
 import { EscalasMensalPage } from './pages/EscalasMensalPage'
 import { EscalasModelosPage } from './pages/EscalasModelosPage'
@@ -20,12 +22,13 @@ import { MeusDadosPage } from './pages/MeusDadosPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { ProfissionaisPage } from './pages/ProfissionaisPage'
 import { CargaHorariaPage } from './pages/painel/CargaHorariaPage'
-import { RelatoriosPage } from './pages/painel/RelatoriosPage'
-import { ResumoPage } from './pages/painel/ResumoPage'
+import { RelatoriosPage } from './pages/Dashboard/RelatoriosPage'
+import { ResumoPage } from './pages/Dashboard/ResumoPage'
 
 function App() {
   return (
     <BrowserRouter>
+      <ThemeBrandingProvider>
       <Routes>
         <Route path="auth" element={<Navigate to="/login" replace />} />
 
@@ -91,11 +94,13 @@ function App() {
             <Route path="financeiro/extratos" element={<FinanceiroExtratosPage />} />
             <Route path="financeiro/repasses" element={<FinanceiroRepassesPage />} />
             <Route path="meus-dados" element={<MeusDadosPage />} />
+            <Route path="configuracao/marca" element={<MarcaPlataformaPage />} />
             <Route path="configuracao" element={<ConfiguracaoPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>
       </Routes>
+      </ThemeBrandingProvider>
     </BrowserRouter>
   )
 }

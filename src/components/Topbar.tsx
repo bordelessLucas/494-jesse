@@ -3,6 +3,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { Search } from 'lucide-react'
+import { BrandedLogoOrInitial } from './branding/BrandedLogoOrInitial'
 import { supabase } from '../lib/supabase'
 import { useSupabaseUser } from '../hooks/useSupabaseUser'
 
@@ -99,9 +100,11 @@ export function Topbar() {
       <div className="flex h-14 items-center justify-between px-6">
         <div className="flex min-w-0 items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary-600 text-white">
-              <span className="text-sm font-semibold leading-none">P</span>
-            </div>
+            <BrandedLogoOrInitial
+              className="h-8 w-8 rounded-lg"
+              surface="light"
+              alt=""
+            />
             <p className="hidden text-sm font-semibold text-slate-900 sm:block">
               PlantaoCheck
             </p>

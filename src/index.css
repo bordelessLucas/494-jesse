@@ -1,4 +1,21 @@
 @import "tailwindcss";
+/* Tailwind v4: carrega cores `primary` e demais extends do tailwind.config.js */
+@config "../tailwind.config.js";
+
+/* Paleta primary padrão (white label sobrescreve via ThemeBrandingProvider). */
+:root {
+  --pc-50: #eff6ff;
+  --pc-100: #dbeafe;
+  --pc-200: #bfdbfe;
+  --pc-300: #93c5fd;
+  --pc-400: #60a5fa;
+  --pc-500: #3b82f6;
+  --pc-600: #2563eb;
+  --pc-700: #1d4ed8;
+  --pc-800: #1e40af;
+  --pc-900: #1e3a8a;
+  --pc-950: #172554;
+}
 
 @layer base {
   html,

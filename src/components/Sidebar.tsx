@@ -1,9 +1,11 @@
+import { BrandedLogoOrInitial } from './branding/BrandedLogoOrInitial'
 import { cn } from '../lib/cn'
 import {
   Banknote,
   CalendarClock,
   ChevronRight,
   LayoutDashboard,
+  Palette,
   Users,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
@@ -60,17 +62,19 @@ const navigationItems: NavigationItem[] = [
 
 export function Sidebar() {
   return (
-    <aside className="sticky top-0 z-30 hidden h-screen w-64 border-r border-slate-800 bg-slate-900 md:flex md:flex-col">
+    <aside className="sticky top-0 z-30 hidden h-screen w-64 border-r border-black/15 bg-primary-950 text-white shadow-[inset_-1px_0_0_rgba(255,255,255,0.04)] md:flex md:flex-col">
       <div className="px-4 pb-3 pt-6">
         <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-600 text-white">
-            <span className="text-sm font-semibold leading-none">P</span>
-          </div>
-          <div className="leading-tight">
-            <p className="text-lg font-semibold tracking-tight text-white">
+          <BrandedLogoOrInitial
+            className="h-10 w-10 shrink-0 rounded-xl"
+            surface="dark"
+            alt=""
+          />
+          <div className="min-w-0 leading-tight">
+            <p className="truncate text-lg font-semibold tracking-tight text-white">
               PlantaoCheck
             </p>
-            <p className="text-xs text-slate-400">Gestão de Plantões</p>
+            <p className="truncate text-xs text-white/55">Gestão de Plantões</p>
           </div>
         </div>
       </div>
@@ -84,16 +88,16 @@ export function Sidebar() {
                   <div
                     className={cn(
                       'flex items-center justify-between gap-3 rounded-lg p-3 text-sm font-medium transition-colors',
-                      'text-slate-400 hover:bg-slate-800 hover:text-white',
+                      'text-white/75 hover:bg-white/10 hover:text-white',
                       isActive &&
-                        'rounded-l-none border-l-4 border-blue-400 bg-blue-800 text-white hover:bg-blue-800',
+                        'rounded-l-none border-l-4 border-primary-300 bg-black/25 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-black/25',
                     )}
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <Icon
                         className={cn(
                           'h-5 w-5 shrink-0',
-                          isActive ? 'text-white' : 'text-slate-400',
+                          isActive ? 'text-white' : 'text-white/55',
                         )}
                       />
                       <span className="truncate">{label}</span>
@@ -103,7 +107,7 @@ export function Sidebar() {
                       <ChevronRight
                         className={cn(
                           'h-4 w-4 shrink-0 transition-colors',
-                          isActive ? 'text-white' : 'text-slate-500',
+                          isActive ? 'text-white/90' : 'text-white/35',
                         )}
                       />
                     ) : null}
@@ -121,7 +125,7 @@ export function Sidebar() {
                     'group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100',
                   )}
                 >
-                  <div className="rounded-md bg-slate-800 p-2 shadow-lg ring-1 ring-slate-700/50">
+                  <div className="rounded-md bg-primary-900 p-2 shadow-xl ring-1 ring-white/10">
                     <ul className="space-y-1">
                       {subItems.map((subItem) => (
                         <li key={subItem.to}>
@@ -130,8 +134,8 @@ export function Sidebar() {
                             className={({ isActive }) =>
                               cn(
                                 'block rounded-md px-3 py-2 text-sm transition-colors',
-                                'text-slate-400 hover:bg-slate-700 hover:text-white',
-                                isActive && 'bg-slate-700 text-white',
+                                'text-white/80 hover:bg-primary-800 hover:text-white',
+                                isActive && 'bg-primary-700 text-white',
                               )
                             }
                           >
@@ -148,8 +152,25 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      <div className="border-t border-slate-800 p-4">
-        <p className="text-xs text-slate-400">Projeto 494 - PlantaoCheck</p>
+      <div className="border-t border-white/10 px-3 py-2">
+        <NavLink
+          to="/configuracao/marca"
+          className={({ isActive }) =>
+            cn(
+              'flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+              'text-white/75 hover:bg-white/10 hover:text-white',
+              isActive &&
+                'bg-white/15 text-white ring-1 ring-inset ring-white/25',
+            )
+          }
+        >
+          <Palette className="h-5 w-5 shrink-0" aria-hidden />
+          <span className="truncate">Marca da plataforma</span>
+        </NavLink>
+      </div>
+
+      <div className="border-t border-white/10 p-4">
+        <p className="text-xs text-white/45">Projeto 494 - PlantaoCheck</p>
       </div>
     </aside>
   )
