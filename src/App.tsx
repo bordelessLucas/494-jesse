@@ -22,8 +22,8 @@ import { MeusDadosPage } from './pages/MeusDadosPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { ProfissionaisPage } from './pages/ProfissionaisPage'
 import { CargaHorariaPage } from './pages/painel/CargaHorariaPage'
-import { RelatoriosPage } from './pages/Dashboard/RelatoriosPage'
 import { ResumoPage } from './pages/Dashboard/ResumoPage'
+import { EmissaoRelatoriosPage } from './pages/Relatorios/EmissaoRelatoriosPage'
 
 function App() {
   return (
@@ -48,8 +48,16 @@ function App() {
               element={<Navigate to="/painel/resumo" replace />}
             />
             <Route path="painel/resumo" element={<ResumoPage />} />
-            <Route path="painel/relatorios" element={<RelatoriosPage />} />
             <Route path="painel/carga-horaria" element={<CargaHorariaPage />} />
+
+            <Route
+              path="relatorios"
+              element={<Navigate to="/relatorios/emissao" replace />}
+            />
+            <Route
+              path="relatorios/emissao"
+              element={<EmissaoRelatoriosPage />}
+            />
 
             <Route path="escalas" element={<EscalasPage />} />
             <Route path="escalas/mensal" element={<EscalasMensalPage />} />

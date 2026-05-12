@@ -163,7 +163,7 @@ export function SuporteChatWidget() {
   }
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6">
+    <div className="no-print pointer-events-none fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3 print:hidden sm:bottom-6 sm:right-6">
       {painelAberto ? (
         <div
           className="pointer-events-auto flex h-[min(520px,78dvh)] w-[min(380px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200/80"

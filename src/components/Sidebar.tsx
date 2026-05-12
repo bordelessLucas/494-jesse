@@ -4,6 +4,7 @@ import {
   Banknote,
   CalendarClock,
   ChevronRight,
+  FileText,
   LayoutDashboard,
   Palette,
   Users,
@@ -25,8 +26,15 @@ const navigationItems: NavigationItem[] = [
     icon: LayoutDashboard,
     subItems: [
       { to: '/painel/resumo', label: 'Resumo' },
-      { to: '/painel/relatorios', label: 'Relatórios' },
       { to: '/painel/carga-horaria', label: 'Carga Horária' },
+    ],
+  },
+  {
+    to: '/relatorios',
+    label: 'Relatórios',
+    icon: FileText,
+    subItems: [
+      { to: '/relatorios/emissao', label: 'Emissão' },
     ],
   },
   {
@@ -60,9 +68,17 @@ const navigationItems: NavigationItem[] = [
   },
 ]
 
+const sidebarSurfaceStyle = {
+  backgroundColor: 'var(--pc-brand)',
+  color: 'var(--pc-brand-foreground)',
+} as const
+
 export function Sidebar() {
   return (
-    <aside className="sticky top-0 z-30 hidden h-screen w-64 border-r border-black/15 bg-primary-950 text-white shadow-[inset_-1px_0_0_rgba(255,255,255,0.04)] md:flex md:flex-col">
+    <aside
+      style={sidebarSurfaceStyle}
+      className="no-print sticky top-0 z-30 hidden h-screen w-64 border-r border-black/15 shadow-[inset_-1px_0_0_rgb(var(--pc-brand-foreground-rgb)/0.04)] md:flex md:flex-col print:hidden"
+    >
       <div className="px-4 pb-3 pt-6">
         <div className="flex items-center gap-3">
           <BrandedLogoOrInitial
@@ -71,10 +87,10 @@ export function Sidebar() {
             alt=""
           />
           <div className="min-w-0 leading-tight">
-            <p className="truncate text-lg font-semibold tracking-tight text-white">
+            <p className="truncate text-lg font-semibold tracking-tight text-current">
               PlantaoCheck
             </p>
-            <p className="truncate text-xs text-white/55">Gestão de Plantões</p>
+            <p className="truncate text-xs text-current/60">Gestão de Plantões</p>
           </div>
         </div>
       </div>
@@ -88,16 +104,16 @@ export function Sidebar() {
                   <div
                     className={cn(
                       'flex items-center justify-between gap-3 rounded-lg p-3 text-sm font-medium transition-colors',
-                      'text-white/75 hover:bg-white/10 hover:text-white',
+                      'text-current/80 hover:bg-current/10 hover:text-current',
                       isActive &&
-                        'rounded-l-none border-l-4 border-primary-300 bg-black/25 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-black/25',
+                        'rounded-l-none border-l-4 border-current/70 bg-black/25 text-current hover:bg-black/25',
                     )}
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <Icon
                         className={cn(
                           'h-5 w-5 shrink-0',
-                          isActive ? 'text-white' : 'text-white/55',
+                          isActive ? 'text-current' : 'text-current/60',
                         )}
                       />
                       <span className="truncate">{label}</span>
@@ -107,7 +123,7 @@ export function Sidebar() {
                       <ChevronRight
                         className={cn(
                           'h-4 w-4 shrink-0 transition-colors',
-                          isActive ? 'text-white/90' : 'text-white/35',
+                          isActive ? 'text-current' : 'text-current/40',
                         )}
                       />
                     ) : null}
@@ -125,7 +141,10 @@ export function Sidebar() {
                     'group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100',
                   )}
                 >
-                  <div className="rounded-md bg-primary-900 p-2 shadow-xl ring-1 ring-white/10">
+                  <div
+                    style={sidebarSurfaceStyle}
+                    className="rounded-md p-2 shadow-xl ring-1 ring-current/10"
+                  >
                     <ul className="space-y-1">
                       {subItems.map((subItem) => (
                         <li key={subItem.to}>
@@ -134,8 +153,8 @@ export function Sidebar() {
                             className={({ isActive }) =>
                               cn(
                                 'block rounded-md px-3 py-2 text-sm transition-colors',
-                                'text-white/80 hover:bg-primary-800 hover:text-white',
-                                isActive && 'bg-primary-700 text-white',
+                                'text-current/85 hover:bg-black/15 hover:text-current',
+                                isActive && 'bg-black/25 text-current',
                               )
                             }
                           >
@@ -152,15 +171,15 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      <div className="border-t border-white/10 px-3 py-2">
+      <div className="border-t border-current/10 px-3 py-2">
         <NavLink
           to="/configuracao/marca"
           className={({ isActive }) =>
             cn(
               'flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-              'text-white/75 hover:bg-white/10 hover:text-white',
+              'text-current/80 hover:bg-current/10 hover:text-current',
               isActive &&
-                'bg-white/15 text-white ring-1 ring-inset ring-white/25',
+                'bg-current/15 text-current ring-1 ring-inset ring-current/25',
             )
           }
         >
@@ -169,8 +188,8 @@ export function Sidebar() {
         </NavLink>
       </div>
 
-      <div className="border-t border-white/10 p-4">
-        <p className="text-xs text-white/45">Projeto 494 - PlantaoCheck</p>
+      <div className="border-t border-current/10 p-4">
+        <p className="text-xs text-current/55">Projeto 494 - PlantaoCheck</p>
       </div>
     </aside>
   )

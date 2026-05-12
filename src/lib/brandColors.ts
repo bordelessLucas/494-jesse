@@ -192,11 +192,49 @@ const CSS_VAR_BY_SHADE: Record<PrimaryShade, string> = {
   '950': '--pc-950',
 }
 
+/**
+ * Luminância relativa segundo WCAG. Valores próximos de 1 indicam cor clara
+ * (texto escuro fica melhor); próximos de 0, cor escura (texto branco).
+ */
+function relativeLuminance([r, g, b]: [number, number, number]): number {
+  const channel = (c: number) => {
+    const v = c / 255
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+  }
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+}
+
+type BrandForeground = {
+  color: string
+  rgb: [number, number, number]
+  /** `true` quando a cor escolhida é clara e exige texto escuro. */
+  isLightBrand: boolean
+}
+
+/**
+ * Determina a melhor cor de texto a ser colocada sobre a cor escolhida pelo
+ * usuário, retornando o triplet RGB para permitir uso com opacidade via CSS.
+ */
+export function getReadableForeground(baseHex: string): BrandForeground {
+  const normalized = normalizeBrandHex(baseHex) ?? DEFAULT_PRIMARY_HEX
+  const rgb = hexToRgb(normalized) ?? [37, 99, 235]
+  const isLightBrand = relativeLuminance(rgb) > 0.55
+  return isLightBrand
+    ? { color: '#0f172a', rgb: [15, 23, 42], isLightBrand: true }
+    : { color: '#ffffff', rgb: [255, 255, 255], isLightBrand: false }
+}
+
 export function applyPrimaryCssVariables(baseHex: string, root: HTMLElement = document.documentElement) {
-  const scale = buildPrimaryScale(baseHex)
+  const normalized = normalizeBrandHex(baseHex) ?? DEFAULT_PRIMARY_HEX
+  const scale = buildPrimaryScale(normalized)
   for (const shade of SHADE_KEYS) {
     root.style.setProperty(CSS_VAR_BY_SHADE[shade], scale[shade])
   }
+
+  const fg = getReadableForeground(normalized)
+  root.style.setProperty('--pc-brand', normalized)
+  root.style.setProperty('--pc-brand-foreground', fg.color)
+  root.style.setProperty('--pc-brand-foreground-rgb', fg.rgb.join(' '))
 }
 
 export function resetPrimaryCssVariables(root: HTMLElement = document.documentElement) {

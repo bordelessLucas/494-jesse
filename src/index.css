@@ -15,6 +15,12 @@
   --pc-800: #1e40af;
   --pc-900: #1e3a8a;
   --pc-950: #172554;
+
+  /* Cor escolhida pelo usuário aplicada de forma exata em superfícies de marca
+     (ex.: barra lateral), sem passar pela escala 50→950. */
+  --pc-brand: #2563eb;
+  --pc-brand-foreground: #ffffff;
+  --pc-brand-foreground-rgb: 255 255 255;
 }
 
 @layer base {
@@ -27,3 +33,75 @@
     @apply bg-slate-50 text-slate-900 antialiased;
   }
 }
+
+/* ============================================================
+   Regras de impressão (módulo de relatórios A4)
+   ------------------------------------------------------------
+   Aplicadas globalmente. Templates oficiais foram desenhados
+   para esta configuração — não altere medidas sem revisar
+   os arquivos em src/features/relatorios/templates/*.
+   ============================================================ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+
+  /* Garante folha branca/texto preto independente do tema da plataforma. */
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Preserva bordas pretas, cores e fundos exatos ao imprimir. */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Utilitário explícito para esconder qualquer elemento no PDF/impressão. */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Evita quebrar a página no meio de linhas/blocos críticos. */
+  tr,
+  td,
+  th,
+  thead,
+  tfoot,
+  .pagina-a4 footer,
+  .break-inside-avoid {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Blocos do construtor do Relatório de Atividades (SCIRAS).
+     Se um bloco (texto ou imagem) não couber no final de uma página A4,
+     ele é movido inteiro para a página seguinte em vez de ser cortado. */
+  .bloco-impressao {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Reaproveita cabeçalho da tabela em quebras de página automáticas. */
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  /* Bordas e títulos das tabelas oficiais sempre em preto. */
+  .pagina-a4 table,
+  .pagina-a4 th,
+  .pagina-a4 td {
+    border-color: #000000 !important;
+    color: #000000 !important;
+  }
+}
+

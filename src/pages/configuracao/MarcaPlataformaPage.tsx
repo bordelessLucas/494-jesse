@@ -143,7 +143,10 @@ export function MarcaPlataformaPage() {
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                 Barra lateral
               </p>
-              <div className="mt-2 inline-flex rounded-xl bg-primary-950 p-4 ring-1 ring-black/10">
+              <div
+                className="mt-2 inline-flex rounded-xl p-4 ring-1 ring-black/10"
+                style={{ backgroundColor: 'var(--pc-brand)' }}
+              >
                 <BrandedLogoOrInitial
                   className="h-14 w-14 rounded-xl"
                   surface="dark"
