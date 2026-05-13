@@ -12,7 +12,7 @@ import { MarcaPlataformaPage } from './pages/configuracao/MarcaPlataformaPage'
 import { EscalasPage } from './pages/EscalasPage'
 import { EscalasMensalPage } from './pages/EscalasMensalPage'
 import { EscalasModelosPage } from './pages/EscalasModelosPage'
-import { EscalasSemanalPage } from './pages/EscalasSemanalPage'
+import { EscalaSemanalPage } from './pages/Escalas/EscalaSemanalPage'
 import { FinanceiroPage } from './pages/FinanceiroPage'
 import { FinanceiroExtratosPage } from './pages/FinanceiroExtratosPage'
 import { FinanceiroRepassesPage } from './pages/FinanceiroRepassesPage'
@@ -24,6 +24,7 @@ import { ProfissionaisPage } from './pages/ProfissionaisPage'
 import { CargaHorariaPage } from './pages/painel/CargaHorariaPage'
 import { ResumoPage } from './pages/Dashboard/ResumoPage'
 import { EmissaoRelatoriosPage } from './pages/Relatorios/EmissaoRelatoriosPage'
+import { IndicadoresScirasPage } from './pages/Relatorios/IndicadoresScirasPage'
 
 function App() {
   return (
@@ -58,10 +59,14 @@ function App() {
               path="relatorios/emissao"
               element={<EmissaoRelatoriosPage />}
             />
+            <Route
+              path="relatorios/indicadores-sciras"
+              element={<IndicadoresScirasPage />}
+            />
 
             <Route path="escalas" element={<EscalasPage />} />
             <Route path="escalas/mensal" element={<EscalasMensalPage />} />
-            <Route path="escalas/semanal" element={<EscalasSemanalPage />} />
+            <Route path="escalas/semanal" element={<EscalaSemanalPage />} />
             <Route path="escalas/modelos" element={<EscalasModelosPage />} />
 
             <Route

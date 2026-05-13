@@ -1,5 +1,11 @@
-import { useMemo, useState, type ChangeEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Printer } from 'lucide-react'
+
+import { carregarIndicadoresParaRelatorio } from '../../features/sciras/carregarIndicadoresRelatorio'
+import type {
+  IndicadorCirurgico,
+  IndicadorUti,
+} from '../../features/sciras/types'
 
 import { EditorBlocosRelatorio } from '../../features/relatorios/components/EditorBlocosRelatorio'
 import { useBlocosRelatorio } from '../../features/relatorios/hooks/useBlocosRelatorio'
@@ -163,33 +169,45 @@ function montarCabecalho(
   }
 }
 
-/** Mock de escala — preencherá dias iniciais para tornar o preview ilustrativo. */
-function montarEscalaSetorMock(
-  turnos: TurnoFrequencia[],
-): EscalaFrequenciaSetorEntrada[] {
-  const profissionaisExemplo = [
-    'Dra. Ana Souza',
-    'Dr. Bruno Lima',
-    'Dra. Clara Mendes',
-    'Dr. Diego Ferreira',
-  ]
-  const entradas: EscalaFrequenciaSetorEntrada[] = []
-  for (let dia = 1; dia <= 5; dia += 1) {
-    turnos.forEach((turno, indice) => {
-      const profissionalNome =
-        profissionaisExemplo[(dia + indice) % profissionaisExemplo.length]
-      entradas.push({ dia, turno, profissionalNome })
-    })
-  }
-  return entradas
+/** Campos textuais do cabeçalho (o logo vem da marca da plataforma). */
+type CabecalhoTextoEditavel = Omit<CabecalhoContratualData, 'logoUrl'>
+
+function extrairTextoCabecalho(
+  dados: CabecalhoContratualData,
+): CabecalhoTextoEditavel {
+  const { logoUrl: _logo, ...texto } = dados
+  return texto
 }
 
-function montarEscalaCoordenacaoMock(): EscalaCoordenacaoEntrada[] {
-  return Array.from({ length: 5 }, (_, indice) => ({
-    dia: indice + 1,
-    coordenadorNome: 'Dr. Fulano de Tal',
-  }))
+const CAMPOS_CABECALHO_FORMULARIO: {
+  chave: keyof CabecalhoTextoEditavel
+  label: string
+}[] = [
+  { chave: 'contratoGestao', label: 'Contrato de Gestão' },
+  { chave: 'contratoPrestacao', label: 'Contrato de Prestação de Serviços' },
+  { chave: 'local', label: 'Local' },
+  { chave: 'servico', label: 'Serviço' },
+  { chave: 'tomador', label: 'Tomador' },
+  { chave: 'empresa', label: 'Empresa' },
+  { chave: 'cnpj', label: 'CNPJ' },
+  { chave: 'coordenador', label: 'Coordenador' },
+  { chave: 'competencia', label: 'Competência (texto no relatório)' },
+]
+
+function montarAssinaturaAPartirDoCabecalho(
+  cab: CabecalhoContratualData,
+): AssinaturaResponsavel {
+  return {
+    nomeProfissional: cab.coordenador,
+    crmRqe: 'CRM/SP 123456 — RQE 7890',
+    nomeEmpresa: cab.empresa,
+    cnpjEmpresa: cab.cnpj,
+  }
 }
+
+/** Listas de presença (modelos) — sem lançamentos; células vazias para preenchimento manual. */
+const ESCALA_SETOR_VAZIA: EscalaFrequenciaSetorEntrada[] = []
+const ESCALA_COORDENACAO_VAZIA: EscalaCoordenacaoEntrada[] = []
 
 /**
  * Estrutura inicial sugerida pelo cliente para o relatório SCIRAS.
@@ -227,17 +245,6 @@ const BLOCOS_INICIAIS_SCIRAS: RelatorioAtividadesBloco[] = [
   },
 ]
 
-function montarAssinaturaSCIRASMock(
-  detalhe: LocalContratoDetalhe,
-): AssinaturaResponsavel {
-  return {
-    nomeProfissional: detalhe.coordenador,
-    crmRqe: 'CRM/SP 123456 — RQE 7890',
-    nomeEmpresa: detalhe.empresa,
-    cnpjEmpresa: detalhe.cnpj,
-  }
-}
-
 function formatarDataEmissao(competenciaCabecalho: string): string {
   const hoje = new Date()
   const dia = String(hoje.getDate()).padStart(2, '0')
@@ -264,6 +271,29 @@ export function EmissaoRelatoriosPage() {
 
   const blocosRelatorio = useBlocosRelatorio(BLOCOS_INICIAIS_SCIRAS)
 
+  const [rotulosTurnosFrequenciaSetor, setRotulosTurnosFrequenciaSetor] =
+    useState<TurnoFrequencia[]>(() =>
+      LOCAIS_DETALHE[LOCAIS_OPCOES[0].id].turnosFrequencia.slice(),
+    )
+
+  const [cabecalhoTexto, setCabecalhoTexto] = useState<CabecalhoTextoEditavel>(
+    () =>
+      extrairTextoCabecalho(
+        montarCabecalho(
+          LOCAIS_DETALHE[LOCAIS_OPCOES[0].id],
+          competencias[0]?.cabecalho ?? '',
+          null,
+        ),
+      ),
+  )
+
+  const [indicadorUtiRelatorio, setIndicadorUtiRelatorio] =
+    useState<IndicadorUti | null>(null)
+  const [indicadorCirurgicoRelatorio, setIndicadorCirurgicoRelatorio] =
+    useState<IndicadorCirurgico | null>(null)
+  const [indicadoresRelatorioCarregando, setIndicadoresRelatorioCarregando] =
+    useState(false)
+
   const competencia = useMemo(
     () =>
       competencias.find((opcao) => opcao.id === competenciaId) ??
@@ -272,18 +302,97 @@ export function EmissaoRelatoriosPage() {
   )
 
   const detalhe = LOCAIS_DETALHE[localId]
+
+  useEffect(() => {
+    const detalheContrato = LOCAIS_DETALHE[localId]
+    setCabecalhoTexto(
+      extrairTextoCabecalho(
+        montarCabecalho(
+          detalheContrato,
+          competencia?.cabecalho ?? '',
+          null,
+        ),
+      ),
+    )
+  }, [localId, competenciaId, competencia?.cabecalho])
+
   const cabecalho = useMemo(
-    () => montarCabecalho(detalhe, competencia?.cabecalho ?? '', logoUrl),
-    [detalhe, competencia, logoUrl],
+    (): CabecalhoContratualData => ({ ...cabecalhoTexto, logoUrl }),
+    [cabecalhoTexto, logoUrl],
   )
+
+  useEffect(() => {
+    if (tipoSelecionado !== 'FrequenciaSetor') return
+    setRotulosTurnosFrequenciaSetor(
+      LOCAIS_DETALHE[localId].turnosFrequencia.slice(),
+    )
+  }, [tipoSelecionado, localId])
+
+  useEffect(() => {
+    if (tipoSelecionado !== 'RelatorioSCIRAS') {
+      setIndicadorUtiRelatorio(null)
+      setIndicadorCirurgicoRelatorio(null)
+      setIndicadoresRelatorioCarregando(false)
+      return
+    }
+
+    let cancelado = false
+    setIndicadoresRelatorioCarregando(true)
+
+    void carregarIndicadoresParaRelatorio(
+      competenciaId,
+      cabecalhoTexto.servico,
+    ).then(
+      (resultado) => {
+        if (cancelado) return
+        setIndicadorUtiRelatorio(resultado.indicadorUti)
+        setIndicadorCirurgicoRelatorio(resultado.indicadorCirurgico)
+      },
+    ).finally(() => {
+      if (!cancelado) setIndicadoresRelatorioCarregando(false)
+    })
+
+    return () => {
+      cancelado = true
+    }
+  }, [tipoSelecionado, competenciaId, cabecalhoTexto.servico])
 
   const totalDias = useMemo(
     () => (competencia ? obterDiasNoMes(competencia.id) : 31),
     [competencia],
   )
 
+  const restaurarCabecalhoDoContrato = () => {
+    setCabecalhoTexto(
+      extrairTextoCabecalho(
+        montarCabecalho(detalhe, competencia?.cabecalho ?? '', null),
+      ),
+    )
+  }
+
+  const alterarCampoCabecalho = (
+    chave: keyof CabecalhoTextoEditavel,
+    valor: string,
+  ) => {
+    setCabecalhoTexto((atual) => ({ ...atual, [chave]: valor }))
+  }
+
   const handleImprimir = () => {
     window.print()
+  }
+
+  const alterarRotuloTurnoFrequencia = (indice: number, valor: string) => {
+    setRotulosTurnosFrequenciaSetor((atuais) => {
+      const copia = atuais.slice()
+      copia[indice] = valor
+      return copia
+    })
+  }
+
+  const restaurarRotulosTurnosPadrao = () => {
+    setRotulosTurnosFrequenciaSetor(
+      LOCAIS_DETALHE[localId].turnosFrequencia.slice(),
+    )
   }
 
   const mostrarEditorBlocos = tipoSelecionado === 'RelatorioSCIRAS'
@@ -299,6 +408,16 @@ export function EmissaoRelatoriosPage() {
         localId={localId}
         onChangeLocal={setLocalId}
         onImprimir={handleImprimir}
+        cabecalhoTexto={cabecalhoTexto}
+        onAlterarCampoCabecalho={alterarCampoCabecalho}
+        onRestaurarCabecalhoContrato={restaurarCabecalhoDoContrato}
+        rotulosTurnosFrequenciaSetor={
+          tipoSelecionado === 'FrequenciaSetor'
+            ? rotulosTurnosFrequenciaSetor
+            : undefined
+        }
+        onAlterarRotuloTurnoFrequencia={alterarRotuloTurnoFrequencia}
+        onRestaurarRotulosTurnosPadrao={restaurarRotulosTurnosPadrao}
       >
         {mostrarEditorBlocos ? (
           <EditorBlocosRelatorio {...blocosRelatorio} />
@@ -309,10 +428,12 @@ export function EmissaoRelatoriosPage() {
         <PreviewRelatorioSelecionado
           tipoSelecionado={tipoSelecionado}
           cabecalho={cabecalho}
-          competenciaCabecalho={competencia?.cabecalho ?? ''}
-          detalhe={detalhe}
           totalDias={totalDias}
+          turnosFrequenciaSetor={rotulosTurnosFrequenciaSetor}
           blocosSCIRAS={blocosRelatorio.blocos}
+          indicadorUtiRelatorio={indicadorUtiRelatorio}
+          indicadorCirurgicoRelatorio={indicadorCirurgicoRelatorio}
+          indicadoresRelatorioCarregando={indicadoresRelatorioCarregando}
         />
       </PainelPreview>
     </div>
@@ -332,6 +453,16 @@ type PainelConfiguracaoProps = {
   localId: LocalContratoId
   onChangeLocal: (valor: LocalContratoId) => void
   onImprimir: () => void
+  cabecalhoTexto: CabecalhoTextoEditavel
+  onAlterarCampoCabecalho: (
+    chave: keyof CabecalhoTextoEditavel,
+    valor: string,
+  ) => void
+  onRestaurarCabecalhoContrato: () => void
+  /** Só preenchido para «Lista de Frequência — Setor»: rótulos editáveis das colunas de turno. */
+  rotulosTurnosFrequenciaSetor?: TurnoFrequencia[]
+  onAlterarRotuloTurnoFrequencia?: (indice: number, valor: string) => void
+  onRestaurarRotulosTurnosPadrao?: () => void
   /** Slot opcional para conteúdo específico do tipo selecionado (ex.: editor de blocos). */
   children?: ReactNode
 }
@@ -345,6 +476,12 @@ function PainelConfiguracao({
   localId,
   onChangeLocal,
   onImprimir,
+  cabecalhoTexto,
+  onAlterarCampoCabecalho,
+  onRestaurarCabecalhoContrato,
+  rotulosTurnosFrequenciaSetor,
+  onAlterarRotuloTurnoFrequencia,
+  onRestaurarRotulosTurnosPadrao,
   children,
 }: PainelConfiguracaoProps) {
   return (
@@ -379,6 +516,80 @@ function PainelConfiguracao({
           onChange={(valor) => onChangeLocal(valor as LocalContratoId)}
           opcoes={LOCAIS_OPCOES}
         />
+
+        <div className="max-h-[min(380px,52vh)] overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+          <p className="text-sm font-semibold text-slate-900">
+            Dados do cabeçalho
+          </p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Aparecem no relatório impresso. O logotipo vem da marca da
+            plataforma (configuração).
+          </p>
+          <div className="mt-3 space-y-2.5">
+            {CAMPOS_CABECALHO_FORMULARIO.map(({ chave, label }) => (
+              <label
+                key={chave}
+                className="flex flex-col gap-0.5 text-xs font-medium text-slate-700"
+              >
+                {label}
+                <input
+                  type="text"
+                  value={cabecalhoTexto[chave]}
+                  onChange={(e) =>
+                    onAlterarCampoCabecalho(chave, e.target.value)
+                  }
+                  className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm font-normal text-slate-900 shadow-sm outline-none transition-colors focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+                />
+              </label>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={onRestaurarCabecalhoContrato}
+            className="mt-3 text-xs font-medium text-primary-700 underline-offset-2 hover:underline"
+          >
+            Restaurar texto do contrato e competência seleccionados
+          </button>
+        </div>
+
+        {tipoSelecionado === 'FrequenciaSetor' &&
+        rotulosTurnosFrequenciaSetor &&
+        onAlterarRotuloTurnoFrequencia &&
+        onRestaurarRotulosTurnosPadrao ? (
+          <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+            <p className="text-sm font-medium text-slate-800">
+              Horários dos turnos
+            </p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Estes textos aparecem no cabeçalho da tabela da lista de presença.
+            </p>
+            <ul className="mt-3 space-y-2">
+              {rotulosTurnosFrequenciaSetor.map((rotulo, indice) => (
+                <li key={indice}>
+                  <label className="flex flex-col gap-0.5 text-xs font-medium text-slate-700">
+                    <span>Coluna {indice + 1}</span>
+                    <input
+                      type="text"
+                      value={rotulo}
+                      onChange={(e) =>
+                        onAlterarRotuloTurnoFrequencia(indice, e.target.value)
+                      }
+                      placeholder="ex.: 07-13H"
+                      className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm font-normal text-slate-900 shadow-sm outline-none transition-colors focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+                    />
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={onRestaurarRotulosTurnosPadrao}
+              className="mt-3 text-xs font-medium text-primary-700 underline-offset-2 hover:underline"
+            >
+              Restaurar horários do contrato
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {children ? (
@@ -429,27 +640,31 @@ function PainelPreview({ children }: PainelPreviewProps) {
 type PreviewRelatorioSelecionadoProps = {
   tipoSelecionado: TipoRelatorio
   cabecalho: CabecalhoContratualData
-  competenciaCabecalho: string
-  detalhe: LocalContratoDetalhe
   totalDias: number
+  turnosFrequenciaSetor: TurnoFrequencia[]
   blocosSCIRAS: RelatorioAtividadesBloco[]
+  indicadorUtiRelatorio: IndicadorUti | null
+  indicadorCirurgicoRelatorio: IndicadorCirurgico | null
+  indicadoresRelatorioCarregando: boolean
 }
 
 function PreviewRelatorioSelecionado({
   tipoSelecionado,
   cabecalho,
-  competenciaCabecalho,
-  detalhe,
   totalDias,
+  turnosFrequenciaSetor,
   blocosSCIRAS,
+  indicadorUtiRelatorio,
+  indicadorCirurgicoRelatorio,
+  indicadoresRelatorioCarregando,
 }: PreviewRelatorioSelecionadoProps) {
   switch (tipoSelecionado) {
     case 'FrequenciaSetor':
       return (
         <FrequenciaSetorTemplate
           cabecalho={cabecalho}
-          turnos={detalhe.turnosFrequencia}
-          escala={montarEscalaSetorMock(detalhe.turnosFrequencia)}
+          turnos={turnosFrequenciaSetor}
+          escala={ESCALA_SETOR_VAZIA}
           totalDias={totalDias}
         />
       )
@@ -458,7 +673,7 @@ function PreviewRelatorioSelecionado({
       return (
         <FrequenciaCoordenacaoTemplate
           cabecalho={cabecalho}
-          escala={montarEscalaCoordenacaoMock()}
+          escala={ESCALA_COORDENACAO_VAZIA}
           totalDias={totalDias}
         />
       )
@@ -467,9 +682,13 @@ function PreviewRelatorioSelecionado({
       return (
         <RelatorioAtividadesTemplate
           cabecalho={cabecalho}
-          dataEmissao={formatarDataEmissao(competenciaCabecalho)}
+          dataEmissao={formatarDataEmissao(cabecalho.competencia)}
           conteudo={blocosSCIRAS}
-          assinatura={montarAssinaturaSCIRASMock(detalhe)}
+          competenciaRotulo={cabecalho.competencia}
+          indicadorUti={indicadorUtiRelatorio}
+          indicadorCirurgico={indicadorCirurgicoRelatorio}
+          indicadoresCarregando={indicadoresRelatorioCarregando}
+          assinatura={montarAssinaturaAPartirDoCabecalho(cabecalho)}
         />
       )
 

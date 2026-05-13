@@ -13,6 +13,7 @@ import type {
   BlocosRelatorioOperacoes,
 } from '../hooks/useBlocosRelatorio'
 import type { RelatorioAtividadesBloco } from '../types'
+import { UploadImagemBloco } from './UploadImagemBloco'
 
 type EditorBlocosRelatorioProps = BlocosRelatorioOperacoes
 
@@ -203,12 +204,9 @@ function EditorBlocoImagem({
 }: EditorBlocoImagemProps) {
   return (
     <div className="flex flex-col gap-2">
-      <CampoTextoCompacto
-        label="URL da imagem"
-        type="url"
-        value={url}
-        placeholder="https://…"
-        onChange={(valor) => onChange({ url: valor })}
+      <UploadImagemBloco
+        urlAtual={url}
+        onUploadCompleto={(publicUrl) => onChange({ url: publicUrl })}
       />
 
       <CampoTextoCompacto

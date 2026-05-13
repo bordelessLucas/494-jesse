@@ -5,6 +5,7 @@ import type {
   CabecalhoContratualData,
   RelatorioAtividadesBloco,
 } from '../types'
+import type { IndicadorCirurgico, IndicadorUti } from '../../sciras/types'
 
 type RelatorioAtividadesTemplateProps = {
   cabecalho: CabecalhoContratualData
@@ -12,6 +13,14 @@ type RelatorioAtividadesTemplateProps = {
   dataEmissao: string
   /** Blocos digitados pelo coordenador no formulário do sistema. */
   conteudo: RelatorioAtividadesBloco[]
+  /** Rótulo da competência no relatório (ex.: cabeçalho MAIO/2026). */
+  competenciaRotulo: string
+  /** Indicadores UTI guardados para o período; `null` se inexistente. */
+  indicadorUti: IndicadorUti | null
+  /** Indicadores cirúrgicos guardados para o período; `null` se inexistente. */
+  indicadorCirurgico: IndicadorCirurgico | null
+  /** Quando verdadeiro, os dados ainda estão a ser obtidos do servidor. */
+  indicadoresCarregando?: boolean
   assinatura: AssinaturaResponsavel
 }
 
@@ -33,6 +42,10 @@ export function RelatorioAtividadesTemplate({
   cabecalho,
   dataEmissao,
   conteudo,
+  competenciaRotulo,
+  indicadorUti,
+  indicadorCirurgico,
+  indicadoresCarregando = false,
   assinatura,
 }: RelatorioAtividadesTemplateProps) {
   return (
@@ -50,6 +63,13 @@ export function RelatorioAtividadesTemplate({
           <BlocoConteudoRelatorio key={index} bloco={bloco} />
         ))}
       </section>
+
+      <SecaoIndicadoresPeriodo
+        competenciaRotulo={competenciaRotulo}
+        indicadorUti={indicadorUti}
+        indicadorCirurgico={indicadorCirurgico}
+        carregando={indicadoresCarregando}
+      />
 
       <RodapeAssinatura assinatura={assinatura} />
     </PaginaA4>
@@ -99,6 +119,196 @@ function BlocoImagemRelatorio({ url, caption }: BlocoImagemRelatorioProps) {
         </figcaption>
       ) : null}
     </figure>
+  )
+}
+
+type SecaoIndicadoresPeriodoProps = {
+  competenciaRotulo: string
+  indicadorUti: IndicadorUti | null
+  indicadorCirurgico: IndicadorCirurgico | null
+  carregando: boolean
+}
+
+function fmtPercentualRelatorio(valor: number): string {
+  return `${valor.toLocaleString('pt-PT', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} %`
+}
+
+function fmtDecimalRelatorio(valor: number): string {
+  return valor.toLocaleString('pt-PT', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 4,
+  })
+}
+
+function fmtInteiroRelatorio(valor: number): string {
+  return valor.toLocaleString('pt-PT', { maximumFractionDigits: 0 })
+}
+
+const tabelaIndicadoresClasse =
+  'bloco-impressao w-full border-collapse border-2 border-black text-left text-xs'
+
+const celulaIndicadoresClasse = 'border border-black px-2 py-1 align-top text-black'
+const celulaEtiquetaClasse = `${celulaIndicadoresClasse} w-[44%] font-semibold`
+const celulaValorClasse = celulaIndicadoresClasse
+
+function SecaoIndicadoresPeriodo({
+  competenciaRotulo,
+  indicadorUti,
+  indicadorCirurgico,
+  carregando,
+}: SecaoIndicadoresPeriodoProps) {
+  return (
+    <section className="bloco-impressao mt-8 space-y-4">
+      <header>
+        <h3 className="text-center text-sm font-bold uppercase tracking-wide text-black">
+          Indicadores do período
+        </h3>
+        <p className="mt-1 text-center text-xs text-black">
+          Competência {competenciaRotulo}
+          {carregando ? ' — A carregar dados…' : null}
+        </p>
+      </header>
+
+      <div className="space-y-5">
+        <div>
+          <p className="mb-1.5 text-xs font-bold uppercase text-black">
+            Unidade de terapia intensiva — busca activa
+          </p>
+          <table className={tabelaIndicadoresClasse}>
+            <thead>
+              <tr>
+                <th
+                  className={`${celulaEtiquetaClasse} bg-slate-100 print:bg-white`}
+                >
+                  Indicador
+                </th>
+                <th
+                  className={`${celulaValorClasse} bg-slate-100 print:bg-white`}
+                >
+                  Valor
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className={celulaEtiquetaClasse}>Setor</td>
+                <td className={celulaValorClasse}>
+                  {carregando ? '…' : indicadorUti?.setor ?? '—'}
+                </td>
+              </tr>
+              <tr>
+                <td className={celulaEtiquetaClasse}>
+                  Pacientes / dia (média)
+                </td>
+                <td className={celulaValorClasse}>
+                  {carregando
+                    ? '…'
+                    : indicadorUti
+                      ? fmtDecimalRelatorio(indicadorUti.totalPacientesDia)
+                      : '—'}
+                </td>
+              </tr>
+              <tr>
+                <td className={celulaEtiquetaClasse}>
+                  Usuários acompanhados (busca activa)
+                </td>
+                <td className={celulaValorClasse}>
+                  {carregando
+                    ? '…'
+                    : indicadorUti
+                      ? fmtInteiroRelatorio(
+                          indicadorUti.usuariosAcompanhadosBuscaAtiva,
+                        )
+                      : '—'}
+                </td>
+              </tr>
+              <tr>
+                <td className={celulaEtiquetaClasse}>Taxa de busca activa</td>
+                <td className={celulaValorClasse}>
+                  {carregando
+                    ? '…'
+                    : indicadorUti
+                      ? fmtPercentualRelatorio(indicadorUti.taxaBuscaAtiva)
+                      : '—'}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          <p className="mb-1.5 text-xs font-bold uppercase text-black">
+            Centro cirúrgico — infecção em cirurgias limpas
+          </p>
+          <table className={tabelaIndicadoresClasse}>
+            <thead>
+              <tr>
+                <th
+                  className={`${celulaEtiquetaClasse} bg-slate-100 print:bg-white`}
+                >
+                  Indicador
+                </th>
+                <th
+                  className={`${celulaValorClasse} bg-slate-100 print:bg-white`}
+                >
+                  Valor
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className={celulaEtiquetaClasse}>Total de cirurgias</td>
+                <td className={celulaValorClasse}>
+                  {carregando
+                    ? '…'
+                    : indicadorCirurgico
+                      ? fmtInteiroRelatorio(indicadorCirurgico.totalCirurgias)
+                      : '—'}
+                </td>
+              </tr>
+              <tr>
+                <td className={celulaEtiquetaClasse}>Cirurgias limpas</td>
+                <td className={celulaValorClasse}>
+                  {carregando
+                    ? '…'
+                    : indicadorCirurgico
+                      ? fmtInteiroRelatorio(
+                          indicadorCirurgico.totalCirurgiasLimpas,
+                        )
+                      : '—'}
+                </td>
+              </tr>
+              <tr>
+                <td className={celulaEtiquetaClasse}>
+                  Infecções em cirurgias limpas
+                </td>
+                <td className={celulaValorClasse}>
+                  {carregando
+                    ? '…'
+                    : indicadorCirurgico
+                      ? fmtInteiroRelatorio(
+                          indicadorCirurgico.numInfeccoesCirurgiasLimpas,
+                        )
+                      : '—'}
+                </td>
+              </tr>
+              <tr>
+                <td className={celulaEtiquetaClasse}>
+                  Taxa de infecção (cirurgias limpas)
+                </td>
+                <td className={celulaValorClasse}>
+                  {carregando
+                    ? '…'
+                    : indicadorCirurgico
+                      ? fmtPercentualRelatorio(indicadorCirurgico.taxaInfeccao)
+                      : '—'}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   )
 }
 
