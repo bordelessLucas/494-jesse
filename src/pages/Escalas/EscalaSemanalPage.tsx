@@ -66,9 +66,9 @@ const SETORES_MOCK: SetorEscala[] = [
 ]
 
 /** Barra lateral do cartão: verde dias úteis, laranja fim de semana. */
-type TomCartao = 'util' | 'fds'
+export type TomCartao = 'util' | 'fds'
 
-type PlantaoCartao = {
+export type PlantaoCartao = {
   id: string
   nome: string
   horaInicio: string
@@ -246,7 +246,7 @@ type AbaPlantaoModal =
   | 'trocas'
   | 'anunciar'
 
-type ContextoModalPlantao = {
+export type ContextoModalPlantao = {
   dia: Date
   cartao: PlantaoCartao
   localId: string
@@ -271,7 +271,7 @@ const ABAS_PLANTAO: {
   { id: 'anunciar', rotulo: 'Anunciar', Icone: Megaphone },
 ]
 
-function ModalAlterarPlantao({
+export function ModalAlterarPlantao({
   aberto,
   contexto,
   onFechar,

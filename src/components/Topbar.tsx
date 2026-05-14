@@ -1,4 +1,4 @@
-import { Bell, ChevronDown, LogOut, Settings, User } from 'lucide-react'
+import { Bell, CalendarClock, ChevronDown, LogOut, Settings, User } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -182,6 +182,16 @@ export function Topbar() {
               >
                 <Settings className="h-4 w-4 text-slate-500" />
                 <span className="font-medium">Configuração</span>
+              </Link>
+
+              <Link
+                to="/minha-agenda"
+                role="menuitem"
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-slate-700 outline-none transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:bg-slate-50 focus-visible:text-slate-900"
+                onClick={closeUserMenu}
+              >
+                <CalendarClock className="h-4 w-4 text-slate-500" />
+                <span className="font-medium">Minha agenda</span>
               </Link>
 
               <div className="my-2 h-px bg-gray-100" />

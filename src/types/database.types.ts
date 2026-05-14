@@ -9,6 +9,122 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      locais: {
+        Row: {
+          id: string
+          user_id: string
+          codigo: string
+          ativo: boolean
+          nome_fantasia: string
+          razao_social: string | null
+          cnpj: string | null
+          telefone: string | null
+          cep: string | null
+          rua: string | null
+          numero: string | null
+          complemento: string | null
+          bairro: string | null
+          cidade: string
+          uf: string
+          anotacoes: string | null
+          fuso_horario: string | null
+          latitude: string | null
+          longitude: string | null
+          logo_url: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          codigo: string
+          ativo?: boolean
+          nome_fantasia: string
+          razao_social?: string | null
+          cnpj?: string | null
+          telefone?: string | null
+          cep?: string | null
+          rua?: string | null
+          numero?: string | null
+          complemento?: string | null
+          bairro?: string | null
+          cidade: string
+          uf: string
+          anotacoes?: string | null
+          fuso_horario?: string | null
+          latitude?: string | null
+          longitude?: string | null
+          logo_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          codigo?: string
+          ativo?: boolean
+          nome_fantasia?: string
+          razao_social?: string | null
+          cnpj?: string | null
+          telefone?: string | null
+          cep?: string | null
+          rua?: string | null
+          numero?: string | null
+          complemento?: string | null
+          bairro?: string | null
+          cidade?: string
+          uf?: string
+          anotacoes?: string | null
+          fuso_horario?: string | null
+          latitude?: string | null
+          longitude?: string | null
+          logo_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      setores: {
+        Row: {
+          id: string
+          user_id: string
+          local_id: string
+          codigo: string
+          nome: string
+          ativo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          local_id: string
+          codigo: string
+          nome: string
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          local_id?: string
+          codigo?: string
+          nome?: string
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'setores_local_id_fkey'
+            columns: ['local_id']
+            isOneToOne: false
+            referencedRelation: 'locais'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       sciras_indicadores_cirurgicos: {
         Row: {
           id: string

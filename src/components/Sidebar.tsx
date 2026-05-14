@@ -7,16 +7,24 @@ import {
   FileText,
   LayoutDashboard,
   Palette,
+  Settings2,
+  MapPin,
+  Award,
+  ShieldAlert,
   Users,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 
 type NavigationItem = {
   to: string
   label: string
   icon: ComponentType<{ className?: string }>
-  subItems?: { to: string; label: string }[]
+  subItems?: {
+    to: string
+    label: string
+    icon?: ComponentType<{ className?: string }>
+  }[]
 }
 
 const navigationItems: NavigationItem[] = [
@@ -54,8 +62,30 @@ const navigationItems: NavigationItem[] = [
     icon: Users,
     subItems: [
       { to: '/usuarios/profissionais', label: 'Profissionais' },
-      { to: '/usuarios/locais', label: 'Locais' },
       { to: '/usuarios/especialidades', label: 'Especialidades' },
+    ],
+  },
+  {
+    to: '/configuracao',
+    label: 'Configurações',
+    icon: Settings2,
+    subItems: [
+      { to: '/configuracao/locais', label: 'Locais & Setores', icon: MapPin },
+      { to: '/configuracao/grupos', label: 'Grupos', icon: Users },
+      { to: '/configuracao/tipos-plantao', label: 'Tipos de Plantão', icon: CalendarClock },
+      {
+        to: '/configuracao/situacoes-plantao',
+        label: 'Situações do Plantão',
+        icon: ShieldAlert,
+      },
+      { to: '/configuracao/valores', label: 'Valores', icon: Banknote },
+      { to: '/configuracao/auto-ajustes', label: 'Auto-Ajustes', icon: Settings2 },
+      {
+        to: '/configuracao/tipos-contratacao',
+        label: 'Tipos de Contratação',
+        icon: FileText,
+      },
+      { to: '/configuracao/habilidades', label: 'Habilidades', icon: Award },
     ],
   },
   {
@@ -75,6 +105,8 @@ const sidebarSurfaceStyle = {
 } as const
 
 export function Sidebar() {
+  const { pathname } = useLocation()
+
   return (
     <aside
       style={sidebarSurfaceStyle}
@@ -98,77 +130,74 @@ export function Sidebar() {
 
       <nav className="flex-1 px-3 py-4">
         <ul className="space-y-1">
-          {navigationItems.map(({ to, label, icon: Icon, subItems }) => (
-            <li key={to} className="group relative">
-              <NavLink to={to}>
-                {({ isActive }) => (
-                  <div
-                    className={cn(
-                      'flex items-center justify-between gap-3 rounded-lg p-3 text-sm font-medium transition-colors',
-                      'text-current/80 hover:bg-current/10 hover:text-current',
-                      isActive &&
-                        'rounded-l-none border-l-4 border-current/70 bg-black/25 text-current hover:bg-black/25',
-                    )}
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <Icon
-                        className={cn(
-                          'h-5 w-5 shrink-0',
-                          isActive ? 'text-current' : 'text-current/60',
-                        )}
-                      />
-                      <span className="truncate">{label}</span>
-                    </div>
+          {navigationItems.map(({ to, label, icon: Icon, subItems }) => {
+            const isActive = pathname === to || pathname.startsWith(`${to}/`)
 
-                    {subItems?.length ? (
-                      <ChevronRight
-                        className={cn(
-                          'h-4 w-4 shrink-0 transition-colors',
-                          isActive ? 'text-current' : 'text-current/40',
-                        )}
-                      />
-                    ) : null}
-                  </div>
+            return (
+            <li key={to} className="group relative">
+              <Link
+                to={to}
+                className={cn(
+                  'flex items-center justify-between gap-3 rounded-lg p-3 text-sm font-medium transition-colors',
+                  'text-current/80 hover:bg-current/10 hover:text-current',
+                  isActive &&
+                    'rounded-l-none border-l-4 border-current/70 bg-black/25 text-current hover:bg-black/25',
                 )}
-              </NavLink>
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <Icon
+                    className={cn(
+                      'h-5 w-5 shrink-0',
+                      isActive ? 'text-current' : 'text-current/60',
+                    )}
+                  />
+                  <span className="truncate">{label}</span>
+                </div>
+
+                {subItems?.length ? (
+                  <ChevronRight
+                    className={cn(
+                      'h-4 w-4 shrink-0 transition-colors',
+                      isActive ? 'text-current' : 'text-current/40',
+                    )}
+                  />
+                ) : null}
+              </Link>
 
               {subItems?.length ? (
                 <div
                   className={cn(
-                    // Use `pl-2` instead of `ml-2` to avoid a hover “gap” between
-                    // the parent item and the floating submenu panel.
-                    'pointer-events-none absolute left-full top-0 z-50 w-56 pl-2',
-                    'invisible opacity-0 transition',
-                    'group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100',
+                    'ml-4 mt-1 overflow-hidden rounded-md border border-current/10 bg-black/10',
+                    'max-h-0 opacity-0 transition-all duration-200',
+                    'group-hover:max-h-112 group-hover:opacity-100',
+                    isActive && 'max-h-112 opacity-100',
                   )}
                 >
-                  <div
-                    style={sidebarSurfaceStyle}
-                    className="rounded-md p-2 shadow-xl ring-1 ring-current/10"
-                  >
-                    <ul className="space-y-1">
-                      {subItems.map((subItem) => (
-                        <li key={subItem.to}>
-                          <NavLink
-                            to={subItem.to}
-                            className={({ isActive }) =>
-                              cn(
-                                'block rounded-md px-3 py-2 text-sm transition-colors',
-                                'text-current/85 hover:bg-black/15 hover:text-current',
-                                isActive && 'bg-black/25 text-current',
-                              )
-                            }
-                          >
-                            {subItem.label}
-                          </NavLink>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  <ul className="space-y-1 p-2">
+                    {subItems.map((subItem) => (
+                      <li key={subItem.to}>
+                        <NavLink
+                          to={subItem.to}
+                          className={({ isActive: isSubItemActive }) =>
+                            cn(
+                              'flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors',
+                              'text-current/85 hover:bg-black/15 hover:text-current',
+                              isSubItemActive && 'bg-black/25 text-current',
+                            )
+                          }
+                        >
+                          {subItem.icon ? (
+                            <subItem.icon className="h-4 w-4 shrink-0 text-current/70" />
+                          ) : null}
+                          <span className="leading-tight">{subItem.label}</span>
+                        </NavLink>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ) : null}
             </li>
-          ))}
+          )})}
         </ul>
       </nav>
 

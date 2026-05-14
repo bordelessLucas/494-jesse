@@ -9,8 +9,10 @@ import { CadastrosEspecialidadesPage } from './pages/CadastrosEspecialidadesPage
 import { CadastrosLocaisPage } from './pages/CadastrosLocaisPage'
 import { ConfiguracaoPage } from './pages/ConfiguracaoPage'
 import { MarcaPlataformaPage } from './pages/configuracao/MarcaPlataformaPage'
+import { ConfiguracaoSecaoPage } from './pages/configuracao/ConfiguracaoSecaoPage'
 import { EscalasPage } from './pages/EscalasPage'
-import { EscalasMensalPage } from './pages/EscalasMensalPage'
+import { EscalaMensalPage } from './pages/Escalas/EscalaMensalPage'
+import { MinhaAgendaPage } from './pages/Escalas/MinhaAgendaPage'
 import { EscalasModelosPage } from './pages/EscalasModelosPage'
 import { EscalaSemanalPage } from './pages/Escalas/EscalaSemanalPage'
 import { FinanceiroPage } from './pages/FinanceiroPage'
@@ -65,15 +67,16 @@ function App() {
             />
 
             <Route path="escalas" element={<EscalasPage />} />
-            <Route path="escalas/mensal" element={<EscalasMensalPage />} />
+            <Route path="escalas/mensal" element={<EscalaMensalPage />} />
             <Route path="escalas/semanal" element={<EscalaSemanalPage />} />
             <Route path="escalas/modelos" element={<EscalasModelosPage />} />
+            <Route path="minha-agenda" element={<MinhaAgendaPage />} />
 
             <Route
               path="profissionais"
               element={<Navigate to="/usuarios/profissionais" replace />}
             />
-            <Route path="locais" element={<LocaisPage />} />
+            <Route path="locais" element={<Navigate to="/configuracao/locais" replace />} />
 
             <Route
               path="usuarios"
@@ -109,6 +112,8 @@ function App() {
             <Route path="meus-dados" element={<MeusDadosPage />} />
             <Route path="configuracao/marca" element={<MarcaPlataformaPage />} />
             <Route path="configuracao" element={<ConfiguracaoPage />} />
+            <Route path="configuracao/locais" element={<LocaisPage />} />
+            <Route path="configuracao/:secao" element={<ConfiguracaoSecaoPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>
