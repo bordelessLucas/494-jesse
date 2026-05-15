@@ -1,11 +1,15 @@
 import { Lock, Mail } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../lib/supabase'
+import { useThemeBranding } from '../theme/ThemeBrandingProvider'
 
 export function LoginPage() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { reloadBranding } = useThemeBranding()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -32,7 +36,13 @@ export function LoginPage() {
       }
 
       if (data.session) {
-        window.location.assign('/')
+        await reloadBranding()
+        const from =
+          (location.state as { from?: { pathname?: string } } | null)?.from
+            ?.pathname ?? '/'
+        const target = from.startsWith('/') ? from : '/'
+        navigate(target, { replace: true })
+        return
       }
     } finally {
       setIsSubmitting(false)
@@ -124,7 +134,7 @@ export function LoginPage() {
           className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:ring-offset-2 focus:ring-offset-white disabled:cursor-not-allowed disabled:opacity-60"
           disabled={!canSubmit}
         >
-          {isSubmitting ? 'Entrando...' : 'Entrar'}
+          {isSubmitting ? 'Preparando sua área...' : 'Entrar'}
         </button>
       </form>
     </div>

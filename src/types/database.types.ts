@@ -125,6 +125,104 @@ export type Database = {
           },
         ]
       }
+      profissionais: {
+        Row: {
+          id: string
+          user_id: string
+          nome: string
+          profissao: string
+          sigla_conselho: string
+          conselho_numero: string
+          registro_uf: string
+          email: string | null
+          telefone: string | null
+          cpf: string | null
+          local_id: string | null
+          detalhes: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          nome: string
+          profissao: string
+          sigla_conselho?: string
+          conselho_numero?: string
+          registro_uf?: string
+          email?: string | null
+          telefone?: string | null
+          cpf?: string | null
+          local_id?: string | null
+          detalhes?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          nome?: string
+          profissao?: string
+          sigla_conselho?: string
+          conselho_numero?: string
+          registro_uf?: string
+          email?: string | null
+          telefone?: string | null
+          cpf?: string | null
+          local_id?: string | null
+          detalhes?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'profissionais_local_id_fkey'
+            columns: ['local_id']
+            isOneToOne: false
+            referencedRelation: 'locais'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      profissional_setores: {
+        Row: {
+          id: string
+          user_id: string
+          profissional_id: string
+          setor_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          profissional_id: string
+          setor_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          profissional_id?: string
+          setor_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'profissional_setores_profissional_id_fkey'
+            columns: ['profissional_id']
+            isOneToOne: false
+            referencedRelation: 'profissionais'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'profissional_setores_setor_id_fkey'
+            columns: ['setor_id']
+            isOneToOne: false
+            referencedRelation: 'setores'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       sciras_indicadores_cirurgicos: {
         Row: {
           id: string

@@ -3,6 +3,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 
 import { supabase } from '../supabase'
+import { useThemeBranding } from '../../theme/ThemeBrandingProvider'
 
 type AuthGateProps = {
   children?: React.ReactNode
@@ -10,6 +11,7 @@ type AuthGateProps = {
 
 export function RequireAuth({ children }: AuthGateProps) {
   const location = useLocation()
+  const { isReady: isBrandingReady } = useThemeBranding()
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -58,6 +60,16 @@ export function RequireAuth({ children }: AuthGateProps) {
 
   if (!session) {
     return <Navigate to="/login" replace state={{ from: location }} />
+  }
+
+  if (!isBrandingReady) {
+    return (
+      <div className="grid min-h-dvh place-items-center bg-slate-50 px-4">
+        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-700 shadow-sm">
+          Carregando personalização...
+        </div>
+      </div>
+    )
   }
 
   return children ? <>{children}</> : <Outlet />

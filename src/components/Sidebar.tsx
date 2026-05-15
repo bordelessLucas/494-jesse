@@ -17,6 +17,7 @@ import type { ComponentType } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 
 type NavigationItem = {
+  /** Prefixo da rota: mantém o item ativo para todas as URLs que começam com `to` ou `to/`. */
   to: string
   label: string
   icon: ComponentType<{ className?: string }>
@@ -132,11 +133,12 @@ export function Sidebar() {
         <ul className="space-y-1">
           {navigationItems.map(({ to, label, icon: Icon, subItems }) => {
             const isActive = pathname === to || pathname.startsWith(`${to}/`)
+            const parentHref = subItems?.[0]?.to ?? to
 
             return (
             <li key={to} className="group relative">
               <Link
-                to={to}
+                to={parentHref}
                 className={cn(
                   'flex items-center justify-between gap-3 rounded-lg p-3 text-sm font-medium transition-colors',
                   'text-current/80 hover:bg-current/10 hover:text-current',

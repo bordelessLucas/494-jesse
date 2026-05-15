@@ -3,7 +3,11 @@ import { Link } from 'react-router-dom'
 import { ChevronLeft, ImagePlus, Loader2 } from 'lucide-react'
 
 import { BrandedLogoOrInitial } from '../../components/branding/BrandedLogoOrInitial'
-import { DEFAULT_PRIMARY_HEX, normalizeBrandHex } from '../../lib/brandColors'
+import {
+  DEFAULT_PRIMARY_HEX,
+  normalizeBrandHex,
+  persistThemeColorForEarlyPaint,
+} from '../../lib/brandColors'
 import { useThemeBranding } from '../../theme/ThemeBrandingProvider'
 
 export function MarcaPlataformaPage() {
@@ -91,6 +95,7 @@ export function MarcaPlataformaPage() {
       setFormError(error)
       return
     }
+    persistThemeColorForEarlyPaint(hex)
     setLogoFile(null)
     setRemoveLogo(false)
     setSavedOk(true)

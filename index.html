@@ -5,6 +5,16 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>494-jesse</title>
+    <script>
+      try {
+        const themeColor = localStorage.getItem('plantaoCheck_themeColor')
+        if (themeColor) {
+          document.documentElement.style.setProperty('--pc-brand', themeColor)
+        }
+      } catch (e) {
+        console.error('Erro ao injetar tema do localStorage', e)
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

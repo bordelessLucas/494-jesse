@@ -1,6 +1,26 @@
 /** Cor primária padrão da plataforma (Tailwind primary-600 original). */
 export const DEFAULT_PRIMARY_HEX = '#2563eb'
 
+/** Chave usada no `index.html` e aqui para pintar a marca antes do React (evita FOUT). */
+export const THEME_COLOR_STORAGE_KEY = 'plantaoCheck_themeColor'
+
+export function persistThemeColorForEarlyPaint(hex: string) {
+  try {
+    const normalized = normalizeBrandHex(hex) ?? DEFAULT_PRIMARY_HEX
+    localStorage.setItem(THEME_COLOR_STORAGE_KEY, normalized)
+  } catch {
+    // modo privado / storage bloqueado
+  }
+}
+
+export function clearStoredThemeColorForEarlyPaint() {
+  try {
+    localStorage.removeItem(THEME_COLOR_STORAGE_KEY)
+  } catch {
+    // ignore
+  }
+}
+
 const SHADE_KEYS = [
   '50',
   '100',

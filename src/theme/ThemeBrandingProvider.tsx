@@ -11,8 +11,10 @@ import type { Session } from '@supabase/supabase-js'
 
 import {
   applyPrimaryCssVariables,
+  clearStoredThemeColorForEarlyPaint,
   DEFAULT_PRIMARY_HEX,
   normalizeBrandHex,
+  persistThemeColorForEarlyPaint,
   resetPrimaryCssVariables,
 } from '../lib/brandColors'
 import { supabase } from '../lib/supabase'
@@ -65,6 +67,7 @@ export function ThemeBrandingProvider({ children }: { children: ReactNode }) {
       const hex =
         normalizeBrandHex(row?.primary_color ?? '') ?? DEFAULT_PRIMARY_HEX
       applyPrimaryCssVariables(hex)
+      persistThemeColorForEarlyPaint(hex)
       setPrimaryColor(hex)
       setLogoUrl(row?.logo_url ?? null)
       setPreviewPrimaryColor(null)
@@ -74,6 +77,7 @@ export function ThemeBrandingProvider({ children }: { children: ReactNode }) {
 
   const clearBranding = useCallback(() => {
     resetPrimaryCssVariables()
+    clearStoredThemeColorForEarlyPaint()
     setPrimaryColor(DEFAULT_PRIMARY_HEX)
     setLogoUrl(null)
     setPreviewPrimaryColor(null)
@@ -173,6 +177,7 @@ export function ThemeBrandingProvider({ children }: { children: ReactNode }) {
         return { error: error.message }
       }
 
+      persistThemeColorForEarlyPaint(hex)
       applyPrimaryCssVariables(hex)
       setPrimaryColor(hex)
       setLogoUrl(nextLogo)

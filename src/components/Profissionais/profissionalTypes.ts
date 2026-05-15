@@ -16,6 +16,13 @@ export interface ProfissionalDadosBancarios {
   pix: string
 }
 
+/** Conta bancária nova (seção 2 — aba Dados bancários). */
+export interface ProfissionalContaBancaria {
+  id: string
+  tipo: string
+  tornarPrincipal: 'Sim' | 'Não'
+}
+
 export interface ProfissionalGrupoParticipacao {
   id: string
   nome: string
@@ -23,15 +30,26 @@ export interface ProfissionalGrupoParticipacao {
 }
 
 export interface ProfissionalAfastamento {
+  id: string
   inicio: string
   fim: string
-  motivo: string
+  tipo: string
+  comentario: string
 }
 
 export interface ProfissionalAnexo {
   nome: string
   tipo: string
   enviadoEm: string
+}
+
+/** Período de contratação (aba Contratação). */
+export interface ProfissionalPeriodoContratacao {
+  id: string
+  tipo: string
+  inicio: string
+  fim: string
+  comentario: string
 }
 
 export interface ProfissionalDetalhes {
@@ -50,16 +68,26 @@ export interface ProfissionalDetalhes {
   endereco: ProfissionalEndereco
   grupos: ProfissionalGrupoParticipacao[]
   dadosBancarios: ProfissionalDadosBancarios
+  /** Contas adicionadas na seção «Contas bancárias». */
+  contasBancarias: ProfissionalContaBancaria[]
   resumoFaturamento: string
+  /** Faturamento / dados de PJ (aba Faturamento). */
+  faturamentoCnpj?: string
+  faturamentoRazaoSocial?: string
+  faturamentoNomeFantasia?: string
   contratacao: {
     regime: string
     dataAdmissao: string
     cargaHorariaSemanal: string
     numeroContrato: string
   }
+  /** Períodos de contratação exibidos na aba Contratação. */
+  periodosContratacao: ProfissionalPeriodoContratacao[]
   afastamentos: ProfissionalAfastamento[]
   habilidades: string[]
   anexos: ProfissionalAnexo[]
+  /** Observações internas (coordenação); não exibidas ao profissional. */
+  observacaoInterna?: string
 }
 
 export interface ProfissionalCompleto {
@@ -67,7 +95,11 @@ export interface ProfissionalCompleto {
   nome: string
   profissao: string
   registroProfissional: string
+  /** Id do local principal em `locais`, quando vinculado no Supabase. */
+  localId?: string | null
   localNome: string
   setores: string[]
+  /** Ids em `setores` vindos de `profissional_setores` (aba Grupos). */
+  setorIdsVinculados?: string[]
   detalhes: ProfissionalDetalhes
 }
