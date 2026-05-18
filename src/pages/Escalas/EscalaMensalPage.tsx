@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react'
 import {
   addMonths,
   eachDayOfInterval,
@@ -6,30 +6,27 @@ import {
   endOfWeek,
   format,
   isSameMonth,
+  isToday,
   startOfMonth,
   startOfWeek,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { cn } from '../../lib/cn'
+import { useSupabaseUser } from '../../hooks/useSupabaseUser'
+import type { StatusPlantaoEscala } from '../../lib/escalas/escalaTypes'
 import {
-  ModalAlterarPlantao,
-  type ContextoModalPlantao,
-  type PlantaoCartao,
-} from './EscalaSemanalPage'
-
-type LocalMensal = {
-  id: string
-  nome: string
-}
-
-type SetorMensal = {
-  id: string
-  nome: string
-}
-
-type StatusPlantaoMensal = 'vago' | 'confirmado' | 'pendente'
+  buscarLocaisEscala,
+  buscarPlantoesIntervalo,
+  buscarProfissionaisEscala,
+  buscarSetoresEscala,
+  dataLocalAPartirDeIsoData,
+  plantaoRowParaCartao,
+  tomParaData,
+  type PlantaoRowDb,
+} from '../../lib/escalas/plantoesDb'
+import { ModalAlterarPlantao, type ContextoModalPlantao } from './EscalaSemanalPage'
 
 type PlantaoMensal = {
   id: string
@@ -39,39 +36,17 @@ type PlantaoMensal = {
   profissional: string
   horaInicio: string
   horaFim: string
-  status: StatusPlantaoMensal
+  status: StatusPlantaoEscala
+  profissionalId: string | null
 }
 
-const LOCAIS_MOCK: LocalMensal[] = [
-  { id: 'amazonas', nome: 'Hospital Regional Amazonas' },
-  { id: 'central', nome: 'Hospital Municipal Central' },
-  { id: 'norte', nome: 'UPA Norte' },
-]
-
-const SETORES_MOCK: SetorMensal[] = [
-  { id: 'uti-ped', nome: 'UTI Pediátrica' },
-  { id: 'enfermaria', nome: 'Enfermaria' },
-  { id: 'ps-adulto', nome: 'PS Adulto' },
-  { id: 'centro-cirurgico', nome: 'Centro Cirúrgico' },
-  { id: 'uti-adulto', nome: 'UTI Adulto' },
-]
-
-const PROFISSIONAIS_MOCK = [
-  'Dr. João Silva',
-  'Dra. Carla Mendes',
-  'Enf. Ana Paula',
-  'Dr. Bruno Lima',
-  'Dra. Fernanda Rocha',
-  'Enf. Marina Costa',
-] as const
-
-const STATUS_LABELS: Record<StatusPlantaoMensal, string> = {
+const STATUS_LABELS: Record<StatusPlantaoEscala, string> = {
   vago: 'Vago',
   confirmado: 'Confirmado',
   pendente: 'Pendente',
 }
 
-const STATUS_STYLES: Record<StatusPlantaoMensal, string> = {
+const STATUS_STYLES: Record<StatusPlantaoEscala, string> = {
   vago: 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100',
   confirmado:
     'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
@@ -94,70 +69,22 @@ function formatarPeriodoBadge(horaInicio: string, horaFim: string): string {
   return `[${horaInicio.slice(0, 2)}h-${horaFim.slice(0, 2)}h]`
 }
 
-function gerarMockPlantaoMensal(dias: Date[]): PlantaoMensal[] {
-  const diasComMaisPlantao = new Set([2, 4, 5, 8, 10, 12, 15, 18, 20, 22, 24, 27, 29])
-
-  return dias.flatMap((dia, indice) => {
-    if (!isSameMonth(dia, dias[Math.floor(dias.length / 2)])) return []
-
-    const numeroDia = dia.getDate()
-    if (numeroDia % 2 !== 0 && !diasComMaisPlantao.has(numeroDia)) return []
-
-    const baseLocal = LOCAIS_MOCK[(numeroDia + indice) % LOCAIS_MOCK.length]
-    const baseSetor = SETORES_MOCK[(numeroDia + 2) % SETORES_MOCK.length]
-
-    const plantoes: PlantaoMensal[] = [
-      {
-        id: `${numeroDia}-a`,
-        dia: new Date(dia),
-        localId: baseLocal.id,
-        setorId: baseSetor.id,
-        profissional:
-          PROFISSIONAIS_MOCK[(numeroDia + indice) % PROFISSIONAIS_MOCK.length],
-        horaInicio: '07:00',
-        horaFim: '19:00',
-        status:
-          numeroDia % 3 === 0
-            ? 'vago'
-            : numeroDia % 2 === 0
-              ? 'confirmado'
-              : 'pendente',
-      },
-    ]
-
-    if (numeroDia % 4 === 0 || numeroDia % 5 === 0) {
-      plantoes.push({
-        id: `${numeroDia}-b`,
-        dia: new Date(dia),
-        localId: LOCAIS_MOCK[(numeroDia + 1) % LOCAIS_MOCK.length].id,
-        setorId: SETORES_MOCK[(numeroDia + 3) % SETORES_MOCK.length].id,
-        profissional: PROFISSIONAIS_MOCK[(numeroDia + 1) % PROFISSIONAIS_MOCK.length],
-        horaInicio: '13:00',
-        horaFim: '19:00',
-        status: numeroDia % 5 === 0 ? 'vago' : 'confirmado',
-      })
-    }
-
-    if (numeroDia % 7 === 0) {
-      plantoes.push({
-        id: `${numeroDia}-c`,
-        dia: new Date(dia),
-        localId: LOCAIS_MOCK[(numeroDia + 2) % LOCAIS_MOCK.length].id,
-        setorId: SETORES_MOCK[(numeroDia + 4) % SETORES_MOCK.length].id,
-        profissional: PROFISSIONAIS_MOCK[(numeroDia + 2) % PROFISSIONAIS_MOCK.length],
-        horaInicio: '19:00',
-        horaFim: '07:00',
-        status: 'pendente',
-      })
-    }
-
-    return plantoes
-  })
+function rowParaPlantaoMensal(row: PlantaoRowDb): PlantaoMensal {
+  const cartao = plantaoRowParaCartao(row)
+  return {
+    id: row.id,
+    dia: dataLocalAPartirDeIsoData(row.data_plantao),
+    localId: row.local_id,
+    setorId: row.setor_id,
+    profissional: cartao.nome,
+    horaInicio: cartao.horaInicio,
+    horaFim: cartao.horaFim,
+    status: row.status,
+    profissionalId: row.profissional_id,
+  }
 }
 
-function contextoParaPlantao(
-  plantao: PlantaoMensal,
-): ContextoModalPlantao {
+function contextoParaPlantao(plantao: PlantaoMensal): ContextoModalPlantao {
   return {
     dia: new Date(plantao.dia),
     cartao: {
@@ -165,22 +92,39 @@ function contextoParaPlantao(
       nome: plantao.profissional,
       horaInicio: plantao.horaInicio,
       horaFim: plantao.horaFim,
-      tom: plantao.status === 'vago' ? 'fds' : 'util',
-    } satisfies PlantaoCartao,
+      tom: tomParaData(plantao.dia),
+      status: plantao.status,
+      profissionalId: plantao.profissionalId,
+    },
     localId: plantao.localId,
     setorId: plantao.setorId,
+    plantaoId: plantao.id,
+    profissionalId: plantao.profissionalId,
   }
 }
 
-function statusClassName(status: StatusPlantaoMensal): string {
+function statusClassName(status: StatusPlantaoEscala): string {
   return STATUS_STYLES[status]
 }
 
 export function EscalaMensalPage() {
+  const { user, isLoading: authLoading } = useSupabaseUser()
   const [dataReferencia, setDataReferencia] = useState(() => new Date())
   const [localSelecionado, setLocalSelecionado] = useState(TODOS_LOCAIS)
   const [setorSelecionado, setSetorSelecionado] = useState(TODOS_SETORES)
   const [plantaoModal, setPlantaoModal] = useState<ContextoModalPlantao | null>(null)
+
+  const [locais, setLocais] = useState<{ id: string; nome: string }[]>([])
+  const [setores, setSetores] = useState<
+    { id: string; nome: string; local_id: string }[]
+  >([])
+  const [profissionais, setProfissionais] = useState<{ id: string; nome: string }[]>(
+    [],
+  )
+  const [plantoesRows, setPlantoesRows] = useState<PlantaoRowDb[]>([])
+  const [carregando, setCarregando] = useState(true)
+  const [carregandoPlantoes, setCarregandoPlantoes] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
 
   const inicioMes = useMemo(() => startOfMonth(dataReferencia), [dataReferencia])
   const fimMes = useMemo(() => endOfMonth(dataReferencia), [dataReferencia])
@@ -194,7 +138,98 @@ export function EscalaMensalPage() {
     [fimMes, inicioMes],
   )
 
-  const plantoes = useMemo(() => gerarMockPlantaoMensal(diasCalendario), [diasCalendario])
+  const dataMinGrade = useMemo(
+    () => format(diasCalendario[0], 'yyyy-MM-dd'),
+    [diasCalendario],
+  )
+  const dataMaxGrade = useMemo(
+    () => format(diasCalendario[diasCalendario.length - 1], 'yyyy-MM-dd'),
+    [diasCalendario],
+  )
+
+  const nomesLocais = useMemo(
+    () => new Map(locais.map((l) => [l.id, l.nome] as const)),
+    [locais],
+  )
+  const nomesSetores = useMemo(
+    () => new Map(setores.map((s) => [s.id, s.nome] as const)),
+    [setores],
+  )
+
+  const setoresFiltradosSelect = useMemo(() => {
+    if (localSelecionado === TODOS_LOCAIS) return setores
+    return setores.filter((s) => s.local_id === localSelecionado)
+  }, [localSelecionado, setores])
+
+  const carregarCatalogo = useCallback(async () => {
+    if (authLoading) return
+    const uid = user?.id
+    if (!uid) {
+      setLocais([])
+      setSetores([])
+      setProfissionais([])
+      setCarregando(false)
+      return
+    }
+    setCarregando(true)
+    setErro(null)
+    try {
+      const [L, S, P] = await Promise.all([
+        buscarLocaisEscala(uid),
+        buscarSetoresEscala(uid),
+        buscarProfissionaisEscala(uid),
+      ])
+      setLocais(L)
+      setSetores(
+        S.map((s) => ({ id: s.id, nome: s.nome, local_id: s.local_id })),
+      )
+      setProfissionais(P)
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao carregar')
+    } finally {
+      setCarregando(false)
+    }
+  }, [authLoading, user?.id])
+
+  useEffect(() => {
+    void carregarCatalogo()
+  }, [carregarCatalogo])
+
+  const carregarPlantoesGrade = useCallback(async () => {
+    if (!user?.id) {
+      setPlantoesRows([])
+      return
+    }
+    setCarregandoPlantoes(true)
+    try {
+      const rows = await buscarPlantoesIntervalo(
+        user.id,
+        dataMinGrade,
+        dataMaxGrade,
+      )
+      setPlantoesRows(rows)
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao carregar plantões')
+    } finally {
+      setCarregandoPlantoes(false)
+    }
+  }, [dataMaxGrade, dataMinGrade, user?.id])
+
+  useEffect(() => {
+    void carregarPlantoesGrade()
+  }, [carregarPlantoesGrade])
+
+  useEffect(() => {
+    if (setorSelecionado === TODOS_SETORES) return
+    if (!setoresFiltradosSelect.some((s) => s.id === setorSelecionado)) {
+      setSetorSelecionado(TODOS_SETORES)
+    }
+  }, [setorSelecionado, setoresFiltradosSelect])
+
+  const plantoes = useMemo(
+    () => plantoesRows.map(rowParaPlantaoMensal),
+    [plantoesRows],
+  )
 
   const mesAnoLabel = useMemo(() => formatarMesAno(dataReferencia), [dataReferencia])
 
@@ -206,21 +241,43 @@ export function EscalaMensalPage() {
     setDataReferencia((atual) => addMonths(atual, 1))
   }, [])
 
+  const primeiroLocalId = locais[0]?.id ?? ''
+  const primeiroSetorDoLocal =
+    setores.find((s) => s.local_id === primeiroLocalId)?.id ?? setores[0]?.id ?? ''
+
   const abrirNovoPlantao = useCallback(() => {
     const diaBase = startOfMonth(dataReferencia)
+    const localIni =
+      localSelecionado !== TODOS_LOCAIS ? localSelecionado : primeiroLocalId
+    const setoresLoc = setores.filter((s) => s.local_id === localIni)
+    const setorIni =
+      setorSelecionado !== TODOS_SETORES && setoresLoc.some((s) => s.id === setorSelecionado)
+        ? setorSelecionado
+        : setoresLoc[0]?.id ?? primeiroSetorDoLocal
+
     setPlantaoModal({
       dia: diaBase,
       cartao: {
-        id: `novo-${diaBase.toISOString()}`,
+        id: 'rascunho',
         nome: 'Novo plantão',
         horaInicio: '07:00',
         horaFim: '19:00',
-        tom: 'util',
+        tom: tomParaData(diaBase),
+        status: 'pendente',
       },
-      localId: LOCAIS_MOCK[0].id,
-      setorId: SETORES_MOCK[0].id,
+      localId: localIni || primeiroLocalId,
+      setorId: setorIni || primeiroSetorDoLocal,
+      plantaoId: undefined,
+      profissionalId: null,
     })
-  }, [dataReferencia])
+  }, [
+    dataReferencia,
+    localSelecionado,
+    primeiroLocalId,
+    primeiroSetorDoLocal,
+    setorSelecionado,
+    setores,
+  ])
 
   const plantoesFiltrados = useMemo(() => {
     return plantoes.filter((plantao) => {
@@ -243,8 +300,24 @@ export function EscalaMensalPage() {
     return mapa
   }, [plantoesFiltrados])
 
+  const setoresModal = useMemo(
+    () =>
+      setores.map((s) => ({
+        id: s.id,
+        nome: s.nome,
+        local_id: s.local_id,
+      })),
+    [setores],
+  )
+
   return (
     <div className="space-y-4">
+      {erro ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {erro}
+        </div>
+      ) : null}
+
       <header className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-3">
@@ -271,6 +344,9 @@ export function EscalaMensalPage() {
               >
                 <ChevronRight className="h-5 w-5" aria-hidden />
               </button>
+              {carregandoPlantoes ? (
+                <Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden />
+              ) : null}
             </div>
           </div>
 
@@ -281,9 +357,10 @@ export function EscalaMensalPage() {
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition-colors focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
                 value={localSelecionado}
                 onChange={(e) => setLocalSelecionado(e.target.value)}
+                disabled={carregando || locais.length === 0}
               >
                 <option value={TODOS_LOCAIS}>Todos os locais</option>
-                {LOCAIS_MOCK.map((local) => (
+                {locais.map((local) => (
                   <option key={local.id} value={local.id}>
                     {local.nome}
                   </option>
@@ -297,9 +374,10 @@ export function EscalaMensalPage() {
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition-colors focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
                 value={setorSelecionado}
                 onChange={(e) => setSetorSelecionado(e.target.value)}
+                disabled={carregando}
               >
                 <option value={TODOS_SETORES}>Todos os setores</option>
-                {SETORES_MOCK.map((setor) => (
+                {setoresFiltradosSelect.map((setor) => (
                   <option key={setor.id} value={setor.id}>
                     {setor.nome}
                   </option>
@@ -310,7 +388,8 @@ export function EscalaMensalPage() {
             <button
               type="button"
               onClick={abrirNovoPlantao}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
+              disabled={carregando || !user?.id || !primeiroLocalId}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:opacity-50"
             >
               <Plus className="h-4 w-4" aria-hidden />
               Novo Plantão
@@ -336,15 +415,19 @@ export function EscalaMensalPage() {
             <div className="grid grid-cols-7 divide-x divide-y divide-slate-200">
               {diasCalendario.map((dia) => {
                 const foraDoMes = !isSameMonth(dia, dataReferencia)
+                const ehHoje = isToday(dia)
                 const chave = format(dia, 'yyyy-MM-dd')
                 const listaDia = plantoesPorDia.get(chave) ?? []
 
                 return (
                   <article
                     key={chave}
+                    aria-current={ehHoje ? 'date' : undefined}
                     className={cn(
                       'min-h-30 bg-white p-3 transition-colors',
                       foraDoMes && 'bg-slate-50 text-slate-400',
+                      ehHoje &&
+                        'relative z-[1] ring-2 ring-inset ring-primary-600 bg-primary-50/80 shadow-[inset_0_0_0_1px] shadow-primary-500/30',
                     )}
                   >
                     <div className="mb-2 flex items-start justify-between gap-2">
@@ -352,7 +435,8 @@ export function EscalaMensalPage() {
                         <p
                           className={cn(
                             'text-xs font-semibold uppercase tracking-wide',
-                            foraDoMes ? 'text-slate-400' : 'text-slate-500',
+                            foraDoMes && !ehHoje ? 'text-slate-400' : 'text-slate-500',
+                            ehHoje && 'text-primary-700',
                           )}
                         >
                           {format(dia, 'EEE', { locale: ptBR })}
@@ -360,8 +444,10 @@ export function EscalaMensalPage() {
                       </div>
                       <span
                         className={cn(
-                          'text-lg font-semibold tabular-nums leading-none',
-                          foraDoMes ? 'text-slate-300' : 'text-slate-900',
+                          'grid h-8 min-w-8 place-items-center rounded-full text-lg font-semibold tabular-nums leading-none',
+                          foraDoMes && !ehHoje ? 'text-slate-300' : 'text-slate-900',
+                          ehHoje &&
+                            'bg-primary-600 text-white shadow-sm ring-2 ring-primary-400 ring-offset-1 ring-offset-primary-50',
                         )}
                       >
                         {dia.getDate()}
@@ -377,23 +463,25 @@ export function EscalaMensalPage() {
                       )}
                     >
                       {listaDia.map((plantao) => {
-                        const local = LOCAIS_MOCK.find((item) => item.id === plantao.localId)
-                        const setor = SETORES_MOCK.find((item) => item.id === plantao.setorId)
+                        const localNome = nomesLocais.get(plantao.localId) ?? 'Local'
+                        const setorNome = nomesSetores.get(plantao.setorId) ?? 'Setor'
                         const textoBadge = `${formatarPeriodoBadge(
                           plantao.horaInicio,
                           plantao.horaFim,
-                        )} ${setor?.nome ?? 'Setor'} - ${plantao.profissional}`
+                        )} ${setorNome} - ${plantao.profissional}`
 
                         return (
                           <button
                             key={plantao.id}
                             type="button"
-                            onClick={() => setPlantaoModal(contextoParaPlantao(plantao))}
+                            onClick={() =>
+                              setPlantaoModal(contextoParaPlantao(plantao))
+                            }
                             className={cn(
                               'group flex w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-left text-[11px] font-medium shadow-sm transition-colors',
                               statusClassName(plantao.status),
                             )}
-                            title={`${local?.nome ?? 'Local'} · ${STATUS_LABELS[plantao.status]}`}
+                            title={`${localNome} · ${STATUS_LABELS[plantao.status]}`}
                           >
                             <span className="min-w-0 flex-1 truncate">{textoBadge}</span>
                             <span className="shrink-0 rounded-full bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
@@ -436,6 +524,11 @@ export function EscalaMensalPage() {
         aberto={plantaoModal !== null}
         contexto={plantaoModal}
         onFechar={() => setPlantaoModal(null)}
+        userId={user?.id ?? null}
+        locais={locais}
+        setores={setoresModal}
+        profissionais={profissionais}
+        onPlantaoMutado={() => void carregarPlantoesGrade()}
       />
     </div>
   )

@@ -223,6 +223,73 @@ export type Database = {
           },
         ]
       }
+      plantoes: {
+        Row: {
+          id: string
+          user_id: string
+          local_id: string
+          setor_id: string
+          profissional_id: string | null
+          data_plantao: string
+          hora_inicio: string
+          hora_fim: string
+          status: string
+          observacoes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          local_id: string
+          setor_id: string
+          profissional_id?: string | null
+          data_plantao: string
+          hora_inicio: string
+          hora_fim: string
+          status?: string
+          observacoes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          local_id?: string
+          setor_id?: string
+          profissional_id?: string | null
+          data_plantao?: string
+          hora_inicio?: string
+          hora_fim?: string
+          status?: string
+          observacoes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'plantoes_local_id_fkey'
+            columns: ['local_id']
+            isOneToOne: false
+            referencedRelation: 'locais'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'plantoes_setor_id_fkey'
+            columns: ['setor_id']
+            isOneToOne: false
+            referencedRelation: 'setores'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'plantoes_profissional_id_fkey'
+            columns: ['profissional_id']
+            isOneToOne: false
+            referencedRelation: 'profissionais'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       sciras_indicadores_cirurgicos: {
         Row: {
           id: string

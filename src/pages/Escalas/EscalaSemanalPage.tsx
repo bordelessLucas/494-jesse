@@ -1,4 +1,5 @@
 import {
+  Loader2,
   ArrowLeftRight,
   Calendar,
   Check,
@@ -19,9 +20,30 @@ import {
   UserCog,
   X,
 } from 'lucide-react'
+import { format, isToday, parseISO } from 'date-fns'
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 
 import { cn } from '../../lib/cn'
+import {
+  buscarLocaisEscala,
+  buscarPlantoesIntervalo,
+  buscarProfissionaisEscala,
+  buscarSetoresEscala,
+  chaveDataPlantaoDb,
+  formatarHoraDb,
+  plantaoRowParaCartao,
+  tomParaData,
+  type PlantaoRowDb,
+  type SetorEscalaDb,
+} from '../../lib/escalas/plantoesDb'
+import type {
+  ContextoModalPlantao,
+  PlantaoCartao,
+  StatusPlantaoEscala,
+  TomCartao,
+} from '../../lib/escalas/escalaTypes'
+import { supabase } from '../../lib/supabase'
+import { useSupabaseUser } from '../../hooks/useSupabaseUser'
 
 const MESES_PT_MAIUSC = [
   'JANEIRO',
@@ -40,41 +62,15 @@ const MESES_PT_MAIUSC = [
 
 const DIAS_SEMANA_SIGLA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'] as const
 
-type LocalEscala = { id: string; nome: string }
+/** Mesmo valor que em EscalaMensalPage: combina com todos os setores do local. */
+const TODOS_SETORES = 'todos-setores'
 
-const LOCAIS_MOCK: LocalEscala[] = [
-  { id: 'amazonas', nome: 'Hospital Regional Amazonas' },
-  { id: 'central', nome: 'Hospital Municipal Central' },
-  { id: 'norte', nome: 'UPA Norte' },
-]
-
-/** Rótulo institucional no modal (referência UI). */
-const LOCAIS_ROTULO_MODAL: Record<string, string> = {
-  amazonas: 'HOSPITAL AMAZÔNIA',
-  central: 'HOSPITAL MUNICIPAL CENTRAL',
-  norte: 'UPA NORTE',
-}
-
-type SetorEscala = { id: string; nome: string }
-
-const SETORES_MOCK: SetorEscala[] = [
-  { id: 'enfermaria', nome: 'ENFERMARIA' },
-  { id: 'uti-amazonia', nome: 'UTI AMAZÔNIA' },
-  { id: 'ps-adulto', nome: 'PS ADULTO' },
-  { id: 'centro-cirurgico', nome: 'CENTRO CIRÚRGICO' },
-  { id: 'uti-neo', nome: 'UTI NEONATAL' },
-]
-
-/** Barra lateral do cartão: verde dias úteis, laranja fim de semana. */
-export type TomCartao = 'util' | 'fds'
-
-export type PlantaoCartao = {
-  id: string
-  nome: string
-  horaInicio: string
-  horaFim: string
-  tom: TomCartao
-}
+export type {
+  ContextoModalPlantao,
+  PlantaoCartao,
+  StatusPlantaoEscala,
+  TomCartao,
+} from '../../lib/escalas/escalaTypes'
 
 function inicioSemanaISO(ref: Date): Date {
   const d = new Date(ref)
@@ -114,17 +110,6 @@ function rotuloMesAnoRefSemana(inicioSegunda: Date): string {
   return `${MESES_PT_MAIUSC[m0]} – ${MESES_PT_MAIUSC[m1]} / ${y1}`
 }
 
-const NOMES_PLANTONISTAS = [
-  'Nayana Mota Carvalho',
-  'Dra. Ana Paula Ferreira',
-  'Dr. Carlos Mendes Silva',
-  'Enf. Mariana Costa',
-  'Dr. Roberto Lima',
-  'Dra. Juliana Rocha',
-  'Enf. Fernanda Duarte',
-  'Dr. Paulo Henrique Alves',
-] as const
-
 /** Habilidades de demonstração para a aba «Habilidades» (por índice do profissional). */
 const HABILIDADES_DEMO: string[][] = [
   ['ACLS', 'PALS', 'Ventilação mecânica', 'Intercorrências em UTI'],
@@ -137,61 +122,11 @@ const HABILIDADES_DEMO: string[][] = [
   ['Nefrologia', 'Diálise', 'Controle eletrolítico'],
 ]
 
-function gerarCartoesPorDia(
-  dias: Date[],
-  _setorId: string,
-  seed: number,
-): Map<string, PlantaoCartao[]> {
-  const mapa = new Map<string, PlantaoCartao[]>()
-
-  dias.forEach((dia, di) => {
-    const dow = dia.getDay()
-    const fds = dow === 0 || dow === 6
-    const tom: TomCartao = fds ? 'fds' : 'util'
-    const key = chaveData(dia)
-    const n = (di + seed * 2) % 4
-    const cartoes: PlantaoCartao[] = []
-
-    if (n === 0) {
-      mapa.set(key, [])
-    } else {
-      const inicio = fds ? '19:00' : '07:00'
-      const fim = fds ? '07:00' : di % 3 === 0 ? '13:00' : '14:00'
-      cartoes.push({
-        id: `${key}-a`,
-        nome: NOMES_PLANTONISTAS[(di + seed) % NOMES_PLANTONISTAS.length],
-        horaInicio: inicio,
-        horaFim: fim,
-        tom,
-      })
-      if (n >= 2) {
-        cartoes.push({
-          id: `${key}-b`,
-          nome: NOMES_PLANTONISTAS[(di + seed + 3) % NOMES_PLANTONISTAS.length],
-          horaInicio: fds ? '07:00' : '13:00',
-          horaFim: fds ? '13:00' : '19:00',
-          tom: 'util',
-        })
-      }
-      if (n >= 3) {
-        cartoes.push({
-          id: `${key}-c`,
-          nome: NOMES_PLANTONISTAS[(di + seed + 5) % NOMES_PLANTONISTAS.length],
-          horaInicio: '19:00',
-          horaFim: '07:00',
-          tom: 'fds',
-        })
-      }
-      mapa.set(key, cartoes)
-    }
-  })
-
-  return mapa
-}
-
 type CartaoPlantaoProps = {
   cartao: PlantaoCartao
   onClick?: () => void
+  /** Ex.: nome do setor quando o filtro da grelha é «Todos os setores». */
+  linhaAuxiliar?: string
 }
 
 function formatarDataBrasileira(d: Date): string {
@@ -234,9 +169,9 @@ function plantaoCruzaMeiaNoite(horaInicio: string, horaFim: string): boolean {
 }
 
 function habilidadesDemoParaNome(nome: string): string[] {
-  const idx = NOMES_PLANTONISTAS.indexOf(nome as (typeof NOMES_PLANTONISTAS)[number])
-  const i = idx >= 0 ? idx : 0
-  return HABILIDADES_DEMO[i % HABILIDADES_DEMO.length]
+  let s = 0
+  for (let i = 0; i < nome.length; i++) s += nome.charCodeAt(i)
+  return HABILIDADES_DEMO[s % HABILIDADES_DEMO.length]
 }
 
 type AbaPlantaoModal =
@@ -246,17 +181,19 @@ type AbaPlantaoModal =
   | 'trocas'
   | 'anunciar'
 
-export type ContextoModalPlantao = {
-  dia: Date
-  cartao: PlantaoCartao
-  localId: string
-  setorId: string
-}
+type ItemLocalModal = { id: string; nome: string }
+type ItemSetorModal = { id: string; nome: string; local_id: string }
+type ItemProfModal = { id: string; nome: string }
 
 type ModalAlterarPlantaoProps = {
   aberto: boolean
   contexto: ContextoModalPlantao | null
   onFechar: () => void
+  userId: string | null
+  locais: ItemLocalModal[]
+  setores: ItemSetorModal[]
+  profissionais: ItemProfModal[]
+  onPlantaoMutado: () => void
 }
 
 const ABAS_PLANTAO: {
@@ -275,6 +212,11 @@ export function ModalAlterarPlantao({
   aberto,
   contexto,
   onFechar,
+  userId,
+  locais,
+  setores,
+  profissionais,
+  onPlantaoMutado,
 }: ModalAlterarPlantaoProps) {
   const tituloModalId = useId()
   const [aba, setAba] = useState<AbaPlantaoModal>('informacoes')
@@ -283,6 +225,17 @@ export function ModalAlterarPlantao({
   const [listarTodosPlantao, setListarTodosPlantao] = useState(false)
   const [precisaCobertura, setPrecisaCobertura] = useState(false)
 
+  const [localSel, setLocalSel] = useState('')
+  const [setorSel, setSetorSel] = useState('')
+  const [profissionalSel, setProfissionalSel] = useState('')
+  const [horaInicioForm, setHoraInicioForm] = useState('07:00')
+  const [horaFimForm, setHoraFimForm] = useState('19:00')
+  const [situacao, setSituacao] = useState<StatusPlantaoEscala>('pendente')
+  const [salvando, setSalvando] = useState(false)
+  const [erroSalvar, setErroSalvar] = useState<string | null>(null)
+  /** yyyy-MM-dd para input type="date" */
+  const [dataPlantaoIso, setDataPlantaoIso] = useState('')
+
   const [entradaData, setEntradaData] = useState('')
   const [entradaHora, setEntradaHora] = useState('')
   const [saidaData, setSaidaData] = useState('')
@@ -290,27 +243,68 @@ export function ModalAlterarPlantao({
   const [outrasInformacoes, setOutrasInformacoes] = useState('')
   const [observacaoInterna, setObservacaoInterna] = useState('')
 
-  const aplicarDatasRegistroAPartirDoPlantao = useCallback(() => {
-    if (!contexto) return
-    const { dia, cartao } = contexto
-    setEntradaData(formatarDataBrasileira(dia))
-    setEntradaHora(cartao.horaInicio)
-    const diaSaida =
-      plantaoCruzaMeiaNoite(cartao.horaInicio, cartao.horaFim)
-        ? adicionarDias(dia, 1)
-        : dia
-    setSaidaData(formatarDataBrasileira(diaSaida))
-    setSaidaHora(cartao.horaFim)
-  }, [contexto])
+  const setoresDoLocal = useMemo(
+    () => setores.filter((s) => s.local_id === localSel),
+    [localSel, setores],
+  )
 
   useEffect(() => {
-    if (!aberto) return
+    if (!aberto || !contexto) return
+    setLocalSel(contexto.localId)
+    setSetorSel(contexto.setorId)
+    setProfissionalSel(contexto.profissionalId ?? '')
+    setHoraInicioForm(contexto.cartao.horaInicio)
+    setHoraFimForm(contexto.cartao.horaFim)
+    const st =
+      contexto.cartao.status ??
+      (contexto.profissionalId ? 'confirmado' : 'pendente')
+    setSituacao(st === 'vago' ? 'vago' : st)
+    setErroSalvar(null)
+
+    const { dia, cartao } = contexto
+    setDataPlantaoIso(format(dia, 'yyyy-MM-dd'))
+    setEntradaData(formatarDataBrasileira(dia))
+    setEntradaHora(cartao.horaInicio)
+    const diaSaida = plantaoCruzaMeiaNoite(cartao.horaInicio, cartao.horaFim)
+      ? adicionarDias(dia, 1)
+      : dia
+    setSaidaData(formatarDataBrasileira(diaSaida))
+    setSaidaHora(cartao.horaFim)
+  }, [aberto, contexto])
+
+  useEffect(() => {
+    if (!aberto || !contexto || !dataPlantaoIso) return
+    setEntradaHora(horaInicioForm)
+    const diaBase = parseISO(dataPlantaoIso)
+    setEntradaData(formatarDataBrasileira(diaBase))
+    const diaSaida = plantaoCruzaMeiaNoite(horaInicioForm, horaFimForm)
+      ? adicionarDias(diaBase, 1)
+      : diaBase
+    setSaidaData(formatarDataBrasileira(diaSaida))
+    setSaidaHora(horaFimForm)
+  }, [aberto, contexto, dataPlantaoIso, horaFimForm, horaInicioForm])
+
+  useEffect(() => {
+    if (!aberto || !contexto) return
+    const validos = setores.filter((s) => s.local_id === localSel)
+    if (validos.length === 0) return
+    if (!validos.some((s) => s.id === setorSel)) {
+      setSetorSel(validos[0].id)
+    }
+  }, [aberto, contexto, localSel, setorSel, setores])
+
+  useEffect(() => {
+    if (situacao === 'vago') setProfissionalSel('')
+  }, [situacao])
+
+  useEffect(() => {
+    if (!aberto || !contexto) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onFechar()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [aberto, onFechar])
+  }, [aberto, contexto, onFechar])
 
   useEffect(() => {
     if (aberto) {
@@ -324,17 +318,131 @@ export function ModalAlterarPlantao({
     }
   }, [aberto, contexto?.cartao.id, contexto?.dia])
 
-  useEffect(() => {
-    if (!aberto || !contexto) return
-    aplicarDatasRegistroAPartirDoPlantao()
-  }, [aberto, contexto, aplicarDatasRegistroAPartirDoPlantao])
+  const reaplicarDatasDetalhes = useCallback(() => {
+    if (!contexto || !dataPlantaoIso) return
+    const diaBase = parseISO(dataPlantaoIso)
+    setEntradaData(formatarDataBrasileira(diaBase))
+    setEntradaHora(horaInicioForm)
+    const diaSaida = plantaoCruzaMeiaNoite(horaInicioForm, horaFimForm)
+      ? adicionarDias(diaBase, 1)
+      : diaBase
+    setSaidaData(formatarDataBrasileira(diaSaida))
+    setSaidaHora(horaFimForm)
+  }, [contexto, dataPlantaoIso, horaFimForm, horaInicioForm])
 
   if (!aberto || !contexto) return null
 
-  const { dia, cartao, localId, setorId } = contexto
+  const plantaoIdReal = contexto.plantaoId ?? null
+  const isNovo = !plantaoIdReal
+
+  const { cartao } = contexto
+  const diaPlantaoExibicao =
+    dataPlantaoIso && /^\d{4}-\d{2}-\d{2}$/.test(dataPlantaoIso)
+      ? parseISO(dataPlantaoIso)
+      : contexto.dia
   const hospitalRotulo =
-    LOCAIS_ROTULO_MODAL[localId] ?? LOCAIS_MOCK.find((l) => l.id === localId)?.nome.toUpperCase() ?? '—'
-  const duracao = diferencaHoras(cartao.horaInicio, cartao.horaFim)
+    locais.find((l) => l.id === localSel)?.nome.toUpperCase() ?? 'LOCAL'
+  const duracao = diferencaHoras(horaInicioForm, horaFimForm)
+
+  async function salvarPlantao() {
+    if (!userId) {
+      setErroSalvar('Sessão inválida.')
+      return
+    }
+    if (!localSel || !setorSel) {
+      setErroSalvar('Selecione local e setor.')
+      return
+    }
+    const setorOk = setores.some((s) => s.id === setorSel && s.local_id === localSel)
+    if (!setorOk) {
+      setErroSalvar('Setor inválido para o local.')
+      return
+    }
+
+    let statusFinal: StatusPlantaoEscala = situacao
+    let profId: string | null = profissionalSel || null
+    if (situacao === 'vago') {
+      profId = null
+      statusFinal = 'vago'
+    } else if (situacao === 'confirmado' && !profId) {
+      setErroSalvar('Selecione um profissional para situação confirmada.')
+      return
+    }
+
+    if (!dataPlantaoIso || !/^\d{4}-\d{2}-\d{2}$/.test(dataPlantaoIso)) {
+      setErroSalvar('Informe a data do plantão.')
+      return
+    }
+    const dataIso = dataPlantaoIso
+    const agora = new Date().toISOString()
+
+    setSalvando(true)
+    setErroSalvar(null)
+    try {
+      if (isNovo) {
+        const { error } = await supabase.from('plantoes').insert({
+          user_id: userId,
+          local_id: localSel,
+          setor_id: setorSel,
+          profissional_id: profId,
+          data_plantao: dataIso,
+          hora_inicio: horaInicioForm,
+          hora_fim: horaFimForm,
+          status: statusFinal,
+          updated_at: agora,
+        })
+        if (error) {
+          setErroSalvar(error.message)
+          return
+        }
+      } else {
+        const { error } = await supabase
+          .from('plantoes')
+          .update({
+            local_id: localSel,
+            setor_id: setorSel,
+            profissional_id: profId,
+            data_plantao: dataIso,
+            hora_inicio: horaInicioForm,
+            hora_fim: horaFimForm,
+            status: statusFinal,
+            updated_at: agora,
+          })
+          .eq('id', plantaoIdReal)
+          .eq('user_id', userId)
+        if (error) {
+          setErroSalvar(error.message)
+          return
+        }
+      }
+      onPlantaoMutado()
+      onFechar()
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  async function excluirPlantao() {
+    if (!userId || !plantaoIdReal) return
+    if (!window.confirm('Excluir este plantão?')) return
+    setSalvando(true)
+    setErroSalvar(null)
+    try {
+      const { error } = await supabase
+        .from('plantoes')
+        .delete()
+        .eq('id', plantaoIdReal)
+        .eq('user_id', userId)
+      if (error) {
+        setErroSalvar(error.message)
+        return
+      }
+      onPlantaoMutado()
+      onFechar()
+    } finally {
+      setSalvando(false)
+    }
+  }
 
   return (
     <div
@@ -355,6 +463,14 @@ export function ModalAlterarPlantao({
         className="relative flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-slate-200/80"
         onClick={(e) => e.stopPropagation()}
       >
+        {erroSalvar ? (
+          <div
+            className="border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            role="alert"
+          >
+            {erroSalvar}
+          </div>
+        ) : null}
         <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-5">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <Plus className="h-5 w-5 shrink-0 text-primary-600" aria-hidden />
@@ -362,7 +478,7 @@ export function ModalAlterarPlantao({
               id={tituloModalId}
               className="text-base font-bold uppercase tracking-wide text-primary-600"
             >
-              Alterar plantão
+              {isNovo ? 'Novo plantão' : 'Alterar plantão'}
             </h2>
             <History
               className="h-4 w-4 shrink-0 text-slate-400"
@@ -384,19 +500,22 @@ export function ModalAlterarPlantao({
           <div className="ml-auto flex items-center gap-2">
             <button
               type="button"
-              className="rounded-lg p-2 text-danger-600 transition-colors hover:bg-danger-50"
+              disabled={salvando || isNovo}
+              className="rounded-lg p-2 text-danger-600 transition-colors hover:bg-danger-50 disabled:opacity-40"
               title="Eliminar"
               aria-label="Eliminar plantão"
+              onClick={() => void excluirPlantao()}
             >
               <Trash2 className="h-5 w-5" aria-hidden />
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
-              onClick={onFechar}
+              disabled={salvando}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:opacity-50"
+              onClick={() => void salvarPlantao()}
             >
               <Check className="h-4 w-4" aria-hidden />
-              Atualizar
+              {isNovo ? 'Salvar' : 'Atualizar'}
             </button>
             <button
               type="button"
@@ -448,31 +567,53 @@ export function ModalAlterarPlantao({
               <div className="space-y-0 p-5 sm:p-6">
                 <section className="border-b border-slate-200 pb-6">
                   <h3 className="mb-4 text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Configure o setor e tipo
+                    Local e setor
                   </h3>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label className="mb-1 block text-xs font-medium uppercase text-slate-500">
                         {hospitalRotulo}
                       </label>
-                      <select className={INPUT_MODAL} defaultValue={setorId}>
-                        {SETORES_MOCK.map((s) => (
+                      <select
+                        className={INPUT_MODAL}
+                        value={localSel}
+                        onChange={(e) => setLocalSel(e.target.value)}
+                        disabled={salvando || locais.length === 0}
+                      >
+                        {locais.map((l) => (
+                          <option key={l.id} value={l.id}>
+                            {l.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium uppercase text-slate-500">
+                        Setor
+                      </label>
+                      <select
+                        className={INPUT_MODAL}
+                        value={setorSel}
+                        onChange={(e) => setSetorSel(e.target.value)}
+                        disabled={salvando || setoresDoLocal.length === 0}
+                      >
+                        {setoresDoLocal.map((s) => (
                           <option key={s.id} value={s.id}>
                             {s.nome}
                           </option>
                         ))}
                       </select>
                     </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
-                        Tipo
-                      </label>
-                      <select className={INPUT_MODAL} defaultValue="normal">
-                        <option value="normal">Normal</option>
-                        <option value="fds">Fim de semana</option>
-                        <option value="noturno">Noturno</option>
-                      </select>
-                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <label className="mb-1 block text-xs font-medium text-slate-600">
+                      Tipo (visual)
+                    </label>
+                    <select className={INPUT_MODAL} defaultValue="normal">
+                      <option value="normal">Normal</option>
+                      <option value="fds">Fim de semana</option>
+                      <option value="noturno">Noturno</option>
+                    </select>
                   </div>
                 </section>
 
@@ -500,7 +641,9 @@ export function ModalAlterarPlantao({
                       <input
                         type="text"
                         className={INPUT_MODAL}
-                        defaultValue={cartao.horaInicio}
+                        value={horaInicioForm}
+                        onChange={(e) => setHoraInicioForm(e.target.value)}
+                        disabled={salvando}
                       />
                     </div>
                     <div>
@@ -510,8 +653,9 @@ export function ModalAlterarPlantao({
                       <input
                         type="text"
                         className={INPUT_MODAL}
-                        readOnly
-                        value={cartao.horaFim}
+                        value={horaFimForm}
+                        onChange={(e) => setHoraFimForm(e.target.value)}
+                        disabled={salvando}
                       />
                     </div>
                     <div>
@@ -529,15 +673,16 @@ export function ModalAlterarPlantao({
                       <label className="mb-1 block text-xs font-medium text-slate-600">
                         Data
                       </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          className={cn(INPUT_MODAL, 'pr-10')}
-                          readOnly
-                          value={formatarDataBrasileira(dia)}
-                        />
-                        <Calendar className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      </div>
+                      <input
+                        type="date"
+                        className={INPUT_MODAL}
+                        value={dataPlantaoIso}
+                        onChange={(e) => setDataPlantaoIso(e.target.value)}
+                        disabled={salvando}
+                      />
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        {formatarDataBrasileira(diaPlantaoExibicao)}
+                      </p>
                     </div>
                   </div>
                 </section>
@@ -560,11 +705,14 @@ export function ModalAlterarPlantao({
                       <div className="relative">
                         <select
                           className={cn(INPUT_MODAL, 'pr-20')}
-                          defaultValue={cartao.nome}
+                          value={profissionalSel}
+                          onChange={(e) => setProfissionalSel(e.target.value)}
+                          disabled={salvando || situacao === 'vago'}
                         >
-                          {NOMES_PLANTONISTAS.map((n) => (
-                            <option key={n} value={n}>
-                              {n}
+                          <option value="">—</option>
+                          {profissionais.map((n) => (
+                            <option key={n.id} value={n.id}>
+                              {n.nome}
                             </option>
                           ))}
                         </select>
@@ -590,10 +738,17 @@ export function ModalAlterarPlantao({
                       <label className="mb-1 block text-xs font-medium text-slate-600">
                         Situação
                       </label>
-                      <select className={cn(INPUT_MODAL, 'mb-4')} defaultValue="designado">
-                        <option value="designado">DESIGNADO</option>
-                        <option value="pendente">PENDENTE</option>
-                        <option value="trocado">TROCADO</option>
+                      <select
+                        className={cn(INPUT_MODAL, 'mb-4')}
+                        value={situacao}
+                        onChange={(e) =>
+                          setSituacao(e.target.value as StatusPlantaoEscala)
+                        }
+                        disabled={salvando}
+                      >
+                        <option value="vago">Vago</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="confirmado">Confirmado</option>
                       </select>
                       <label className="mb-2 flex items-center gap-2 text-xs text-slate-600">
                         <input
@@ -609,11 +764,14 @@ export function ModalAlterarPlantao({
                       <div className="relative">
                         <select
                           className={cn(INPUT_MODAL, 'pr-20')}
-                          defaultValue={cartao.nome}
+                          value={profissionalSel}
+                          onChange={(e) => setProfissionalSel(e.target.value)}
+                          disabled={salvando || situacao === 'vago'}
                         >
-                          {NOMES_PLANTONISTAS.map((n) => (
-                            <option key={`p-${n}`} value={n}>
-                              {n}
+                          <option value="">—</option>
+                          {profissionais.map((n) => (
+                            <option key={`p-${n.id}`} value={n.id}>
+                              {n.nome}
                             </option>
                           ))}
                         </select>
@@ -707,7 +865,7 @@ export function ModalAlterarPlantao({
                   </div>
                   <button
                     type="button"
-                    onClick={aplicarDatasRegistroAPartirDoPlantao}
+                    onClick={reaplicarDatasDetalhes}
                     className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
                   >
                     <FileText className="h-4 w-4 shrink-0" aria-hidden />
@@ -850,7 +1008,18 @@ export function ModalAlterarPlantao({
   )
 }
 
-function CartaoPlantao({ cartao, onClick }: CartaoPlantaoProps) {
+function CartaoPlantao({ cartao, onClick, linhaAuxiliar }: CartaoPlantaoProps) {
+  const barraStatus =
+    cartao.status === 'vago'
+      ? 'bg-rose-500'
+      : cartao.status === 'pendente'
+        ? 'bg-amber-500'
+        : cartao.status === 'confirmado'
+          ? 'bg-emerald-600'
+          : cartao.tom === 'util'
+            ? 'bg-emerald-500'
+            : 'bg-orange-500'
+
   return (
     <button
       type="button"
@@ -860,21 +1029,22 @@ function CartaoPlantao({ cartao, onClick }: CartaoPlantaoProps) {
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1',
       )}
     >
-      <span
-        className={cn(
-          'w-1.5 shrink-0 self-stretch',
-          cartao.tom === 'util' ? 'bg-emerald-500' : 'bg-orange-500',
-        )}
-        aria-hidden
-      />
-      <div className="flex min-w-0 flex-1 items-center justify-between gap-2 px-2.5 py-2">
-        <span className="truncate text-sm font-medium text-slate-800">
-          {cartao.nome}
-        </span>
-        <div className="shrink-0 text-right text-[11px] tabular-nums leading-tight text-slate-500">
-          <div>{cartao.horaInicio}</div>
-          <div>{cartao.horaFim}</div>
+      <span className={cn('w-1.5 shrink-0 self-stretch', barraStatus)} aria-hidden />
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-2.5 py-2">
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <span className="truncate text-sm font-medium text-slate-800">
+            {cartao.nome}
+          </span>
+          <div className="shrink-0 text-right text-[11px] tabular-nums leading-tight text-slate-500">
+            <div>{cartao.horaInicio}</div>
+            <div>{cartao.horaFim}</div>
+          </div>
         </div>
+        {linhaAuxiliar ? (
+          <span className="truncate text-[11px] font-medium uppercase tracking-wide text-slate-500">
+            {linhaAuxiliar}
+          </span>
+        ) : null}
       </div>
       <span
         className="pointer-events-none absolute bottom-0.5 right-0.5 h-2 w-2 border-b border-r border-slate-300/80 opacity-40"
@@ -885,12 +1055,22 @@ function CartaoPlantao({ cartao, onClick }: CartaoPlantaoProps) {
 }
 
 export function EscalaSemanalPage() {
-  const [versaoMock, setVersaoMock] = useState(0)
+  const { user, isLoading: authLoading } = useSupabaseUser()
   const [inicioSemana, setInicioSemana] = useState(() =>
     inicioSemanaISO(new Date()),
   )
-  const [localId, setLocalId] = useState(LOCAIS_MOCK[0].id)
-  const [setorId, setSetorId] = useState(SETORES_MOCK[0].id)
+  const [locais, setLocais] = useState<{ id: string; nome: string }[]>([])
+  const [setores, setSetores] = useState<SetorEscalaDb[]>([])
+  const [profissionais, setProfissionais] = useState<{ id: string; nome: string }[]>(
+    [],
+  )
+  const [plantoes, setPlantoes] = useState<PlantaoRowDb[]>([])
+  const [localId, setLocalId] = useState('')
+  const [setorId, setSetorId] = useState('')
+  const [carregandoCatalogo, setCarregandoCatalogo] = useState(true)
+  const [carregandoPlantoes, setCarregandoPlantoes] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const [replicando, setReplicando] = useState(false)
 
   const [diaDestaque, setDiaDestaque] = useState<Date | null>(() => {
     const hoje = new Date()
@@ -911,23 +1091,78 @@ export function EscalaSemanalPage() {
     [inicioSemana],
   )
 
-  const cartoesBase = useMemo(
-    () => gerarCartoesPorDia(dias, setorId, versaoMock),
-    [dias, setorId, versaoMock],
-  )
-
-  const [cartoesPersonalizados, setCartoesPersonalizados] = useState<Map<
-    string,
-    PlantaoCartao[]
-  > | null>(null)
-
   const [plantaoModal, setPlantaoModal] = useState<ContextoModalPlantao | null>(
     null,
   )
 
+  const carregarCatalogo = useCallback(async () => {
+    if (authLoading) return
+    const uid = user?.id
+    if (!uid) {
+      setLocais([])
+      setSetores([])
+      setProfissionais([])
+      setLocalId('')
+      setSetorId('')
+      setCarregandoCatalogo(false)
+      return
+    }
+    setCarregandoCatalogo(true)
+    setErro(null)
+    try {
+      const [L, S, P] = await Promise.all([
+        buscarLocaisEscala(uid),
+        buscarSetoresEscala(uid),
+        buscarProfissionaisEscala(uid),
+      ])
+      setLocais(L)
+      setSetores(S)
+      setProfissionais(P)
+      setLocalId((prev) => {
+        if (prev && L.some((l) => l.id === prev)) return prev
+        return L[0]?.id ?? ''
+      })
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao carregar dados')
+    } finally {
+      setCarregandoCatalogo(false)
+    }
+  }, [authLoading, user?.id])
+
   useEffect(() => {
-    setCartoesPersonalizados(null)
-  }, [inicioSemana, setorId, versaoMock])
+    void carregarCatalogo()
+  }, [carregarCatalogo])
+
+  useEffect(() => {
+    const primeiros = setores.filter((s) => s.local_id === localId)
+    setSetorId((prev) => {
+      if (prev === TODOS_SETORES) return TODOS_SETORES
+      if (prev && primeiros.some((s) => s.id === prev)) return prev
+      return TODOS_SETORES
+    })
+  }, [localId, setores])
+
+  const carregarPlantoesSemana = useCallback(async () => {
+    if (authLoading || !user?.id) {
+      setPlantoes([])
+      return
+    }
+    const ini = chaveData(dias[0])
+    const fim = chaveData(dias[6])
+    setCarregandoPlantoes(true)
+    try {
+      const rows = await buscarPlantoesIntervalo(user.id, ini, fim)
+      setPlantoes(rows)
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao carregar plantões')
+    } finally {
+      setCarregandoPlantoes(false)
+    }
+  }, [authLoading, dias, user?.id])
+
+  useEffect(() => {
+    void carregarPlantoesSemana()
+  }, [carregarPlantoesSemana])
 
   useEffect(() => {
     if (diaDestaque === null) return
@@ -938,7 +1173,38 @@ export function EscalaSemanalPage() {
     }
   }, [dias, diaDestaque, inicioSemana])
 
-  const cartoesPorDia = cartoesPersonalizados ?? cartoesBase
+  const cartoesPorDia = useMemo(() => {
+    const mapa = new Map<
+      string,
+      { cartao: PlantaoCartao; linhaAuxiliar?: string }[]
+    >()
+    const filtraSetor = (p: PlantaoRowDb) =>
+      setorId === TODOS_SETORES || p.setor_id === setorId
+    for (const dia of dias) {
+      const k = chaveData(dia)
+      const lista = plantoes
+        .filter(
+          (p) =>
+            chaveDataPlantaoDb(p.data_plantao) === k &&
+            p.local_id === localId &&
+            filtraSetor(p),
+        )
+        .map((p) => ({
+          cartao: plantaoRowParaCartao(p),
+          linhaAuxiliar:
+            setorId === TODOS_SETORES
+              ? setores.find((s) => s.id === p.setor_id)?.nome
+              : undefined,
+        }))
+        .sort(
+          (a, b) =>
+            minutosDesdeMeiaNoite(a.cartao.horaInicio) -
+            minutosDesdeMeiaNoite(b.cartao.horaInicio),
+        )
+      mapa.set(k, lista)
+    }
+    return mapa
+  }, [dias, localId, plantoes, setorId, setores])
 
   const mesAnoCabecalho = useMemo(
     () => rotuloMesAnoRefSemana(inicioSemana),
@@ -953,24 +1219,93 @@ export function EscalaSemanalPage() {
     setInicioSemana((a) => adicionarDias(a, 7))
   }, [])
 
-  const replicarSemana = useCallback(() => {
-    const modelo = cartoesPorDia.get(chaveData(dias[0])) ?? []
-    const novo = new Map<string, PlantaoCartao[]>()
-    dias.forEach((dia) => {
-      const k = chaveData(dia)
-      novo.set(
-        k,
-        modelo.map((c, idx) => ({
-          ...c,
-          id: `${k}-rep-${idx}-${c.id}`,
-        })),
-      )
-    })
-    setCartoesPersonalizados(novo)
-  }, [cartoesPorDia, dias])
+  const setoresDoLocal = useMemo(
+    () => setores.filter((s) => s.local_id === localId),
+    [localId, setores],
+  )
+
+  const replicarSemana = useCallback(async () => {
+    const uid = user?.id
+    if (!uid || !localId) return
+    if (setorId === TODOS_SETORES) {
+      window.alert('Selecione um setor específico para replicar a semana.')
+      return
+    }
+    if (!setorId) return
+    const segunda = dias[0]
+    const chaveSeg = chaveData(segunda)
+    const modelo = plantoes.filter(
+      (p) =>
+        chaveDataPlantaoDb(p.data_plantao) === chaveSeg &&
+        p.local_id === localId &&
+        p.setor_id === setorId,
+    )
+    if (modelo.length === 0) {
+      window.alert('Não há plantões na segunda-feira para replicar.')
+      return
+    }
+    const agora = new Date().toISOString()
+    const inserts = []
+    for (let i = 1; i < 7; i++) {
+      const dataIso = chaveData(dias[i])
+      for (const p of modelo) {
+        inserts.push({
+          user_id: uid,
+          local_id: localId,
+          setor_id: setorId,
+          profissional_id: p.profissional_id,
+          data_plantao: dataIso,
+          hora_inicio: formatarHoraDb(p.hora_inicio),
+          hora_fim: formatarHoraDb(p.hora_fim),
+          status: p.status,
+          updated_at: agora,
+        })
+      }
+    }
+    setReplicando(true)
+    try {
+      const { error } = await supabase.from('plantoes').insert(inserts)
+      if (error) {
+        setErro(error.message)
+        return
+      }
+      await carregarPlantoesSemana()
+    } finally {
+      setReplicando(false)
+    }
+  }, [
+    carregarPlantoesSemana,
+    dias,
+    localId,
+    plantoes,
+    setorId,
+    user?.id,
+  ])
+
+  const setoresModal = useMemo(
+    () =>
+      setores.map((s) => ({
+        id: s.id,
+        nome: s.nome,
+        local_id: s.local_id,
+      })),
+    [setores],
+  )
+
+  const setorIdParaNovoPlantao = useMemo(
+    () =>
+      setorId === TODOS_SETORES ? setoresDoLocal[0]?.id ?? '' : setorId,
+    [setorId, setoresDoLocal],
+  )
 
   return (
     <div className="min-h-full bg-slate-50 pb-8">
+      {erro ? (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+          {erro}
+        </div>
+      ) : null}
+
       <div className="mb-4 flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <label className="flex max-w-md flex-col gap-1 text-sm font-medium text-slate-700">
           Unidade
@@ -978,8 +1313,9 @@ export function EscalaSemanalPage() {
             className="rounded-lg border border-slate-200 bg-white py-2.5 pl-3 pr-8 text-sm text-slate-900 shadow-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
             value={localId}
             onChange={(e) => setLocalId(e.target.value)}
+            disabled={carregandoCatalogo || locais.length === 0}
           >
-            {LOCAIS_MOCK.map((l) => (
+            {locais.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.nome}
               </option>
@@ -1006,12 +1342,17 @@ export function EscalaSemanalPage() {
           </button>
           <button
             type="button"
-            onClick={() => setVersaoMock((v) => v + 1)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50"
+            onClick={() => void carregarPlantoesSemana()}
+            disabled={carregandoPlantoes}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-50"
             title="Recarregar"
             aria-label="Recarregar"
           >
-            <RefreshCw className="h-5 w-5" aria-hidden />
+            {carregandoPlantoes ? (
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw className="h-5 w-5" aria-hidden />
+            )}
           </button>
         </div>
       </div>
@@ -1053,20 +1394,24 @@ export function EscalaSemanalPage() {
 
           {dias.map((dia, i) => {
             const destaque = diaDestaque !== null && mesmoDia(dia, diaDestaque)
+            const ehHoje = isToday(dia)
             return (
               <button
                 key={chaveData(dia)}
                 type="button"
                 onClick={() => setDiaDestaque(new Date(dia))}
+                aria-current={ehHoje ? 'date' : undefined}
                 className={cn(
-                  'border-r border-white/10 px-1 py-3 text-center transition-colors last:border-r-0 hover:bg-white/5',
+                  'relative border-r border-white/10 px-1 py-3 text-center transition-colors last:border-r-0 hover:bg-white/5',
                   destaque && 'bg-white/10',
+                  ehHoje &&
+                    'z-[1] ring-2 ring-inset ring-amber-400 shadow-[inset_0_-3px_0_0] shadow-amber-400/90',
                 )}
               >
                 <span
                   className={cn(
                     'block text-lg font-bold tabular-nums leading-none',
-                    destaque ? 'text-primary-400' : 'text-white',
+                    destaque ? 'text-primary-400' : ehHoje ? 'text-amber-200' : 'text-white',
                   )}
                 >
                   {dia.getDate()}
@@ -1074,7 +1419,7 @@ export function EscalaSemanalPage() {
                 <span
                   className={cn(
                     'mt-1 block text-[11px] font-semibold uppercase tracking-wider',
-                    destaque ? 'text-primary-300' : 'text-white/80',
+                    destaque ? 'text-primary-300' : ehHoje ? 'text-amber-200/90' : 'text-white/80',
                   )}
                 >
                   {DIAS_SEMANA_SIGLA[i]}
@@ -1101,7 +1446,8 @@ export function EscalaSemanalPage() {
               onChange={(e) => setSetorId(e.target.value)}
               className="mb-3 w-full rounded-md border border-slate-300 bg-white px-2 py-2 text-xs font-bold uppercase tracking-wide text-slate-800 shadow-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-400"
             >
-              {SETORES_MOCK.map((s) => (
+              <option value={TODOS_SETORES}>Todos os setores</option>
+              {setoresDoLocal.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.nome}
                 </option>
@@ -1109,40 +1455,78 @@ export function EscalaSemanalPage() {
             </select>
             <button
               type="button"
-              onClick={replicarSemana}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-primary-600 bg-white px-3 py-2.5 text-xs font-semibold text-primary-700 shadow-sm transition-colors hover:bg-primary-50"
+              disabled={
+                replicando ||
+                !user?.id ||
+                setorId === TODOS_SETORES ||
+                !localId ||
+                !setorId
+              }
+              onClick={() => void replicarSemana()}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-primary-600 bg-white px-3 py-2.5 text-xs font-semibold text-primary-700 shadow-sm transition-colors hover:bg-primary-50 disabled:opacity-50"
             >
-              <Copy className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              {replicando ? (
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+              ) : (
+                <Copy className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              )}
               Replicar semana
             </button>
           </aside>
 
           {dias.map((dia) => {
             const lista = cartoesPorDia.get(chaveData(dia)) ?? []
+            const ehHoje = isToday(dia)
             return (
               <div
                 key={chaveData(dia)}
-                className="flex flex-col gap-2 border-r border-slate-200/80 p-2 last:border-r-0"
+                aria-current={ehHoje ? 'date' : undefined}
+                className={cn(
+                  'flex flex-col gap-2 border-r border-slate-200/80 p-2 last:border-r-0',
+                  ehHoje && 'relative z-[1] bg-primary-50/90 ring-2 ring-inset ring-primary-500/50',
+                )}
               >
                 <div className="flex min-h-0 flex-1 flex-col gap-2">
-                  {lista.map((c) => (
+                  {lista.map(({ cartao: c, linhaAuxiliar }) => (
                     <CartaoPlantao
                       key={c.id}
                       cartao={c}
-                      onClick={() =>
+                      linhaAuxiliar={linhaAuxiliar}
+                      onClick={() => {
+                        const row = plantoes.find((p) => p.id === c.id)
                         setPlantaoModal({
                           dia: new Date(dia),
                           cartao: c,
-                          localId,
-                          setorId,
+                          localId: row?.local_id ?? localId,
+                          setorId: row?.setor_id ?? setorIdParaNovoPlantao,
+                          plantaoId: c.id,
+                          profissionalId: c.profissionalId ?? null,
                         })
-                      }
+                      }}
                     />
                   ))}
                 </div>
                 <button
                   type="button"
-                  className="flex min-h-[3.25rem] w-full items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-white/50 text-slate-400 transition-colors hover:border-primary-400 hover:bg-primary-50/50 hover:text-primary-600"
+                  onClick={() =>
+                    setPlantaoModal({
+                      dia: new Date(dia),
+                      cartao: {
+                        id: 'rascunho',
+                        nome: 'Novo plantão',
+                        horaInicio: '07:00',
+                        horaFim: '19:00',
+                        tom: tomParaData(dia),
+                        status: 'pendente',
+                      },
+                      localId,
+                      setorId: setorIdParaNovoPlantao,
+                      plantaoId: undefined,
+                      profissionalId: null,
+                    })
+                  }
+                  disabled={!localId || !setorIdParaNovoPlantao}
+                  className="flex min-h-[3.25rem] w-full items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-white/50 text-slate-400 transition-colors hover:border-primary-400 hover:bg-primary-50/50 hover:text-primary-600 disabled:opacity-40"
                   aria-label={`Adicionar profissional em ${chaveData(dia)}`}
                 >
                   <Plus className="h-6 w-6" strokeWidth={1.5} aria-hidden />
@@ -1155,14 +1539,19 @@ export function EscalaSemanalPage() {
       </div>
 
       <p className="mt-4 text-center text-xs text-slate-500">
-        Cabeçalho escuro: seleccione o dia em destaque (azul). Cartões com barra
-        verde (dia útil) ou laranja (fim de semana). Dados de demonstração.
+        Dados carregados do Supabase. Barra do cartão: cor por situação (vago /
+        pendente / confirmado) ou por tipo de dia quando não houver situação.
       </p>
 
       <ModalAlterarPlantao
         aberto={plantaoModal !== null}
         contexto={plantaoModal}
         onFechar={() => setPlantaoModal(null)}
+        userId={user?.id ?? null}
+        locais={locais}
+        setores={setoresModal}
+        profissionais={profissionais}
+        onPlantaoMutado={() => void carregarPlantoesSemana()}
       />
     </div>
   )
