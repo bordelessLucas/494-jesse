@@ -646,6 +646,8 @@ function SetorFormModal({ contexto, userId, onFechar, onSalvo }: SetorFormModalP
     contexto.tipo === 'editar' ? 'Editar setor' : 'Novo setor'
 
   async function salvar() {
+    const ctx = contexto
+    if (!ctx) return
     if (!userId) {
       setErro('Sessão inválida. Faça login novamente.')
       return
@@ -661,10 +663,10 @@ function SetorFormModal({ contexto, userId, onFechar, onSalvo }: SetorFormModalP
     setSalvando(true)
     setErro(null)
     try {
-      if (contexto.tipo === 'novo') {
+      if (ctx.tipo === 'novo') {
         const { error: errInsert } = await supabase.from('setores').insert({
           user_id: userId,
-          local_id: contexto.localId,
+          local_id: ctx.localId,
           codigo: codigoFinal,
           nome: nomeLimpo,
           ativo: true,
@@ -675,6 +677,7 @@ function SetorFormModal({ contexto, userId, onFechar, onSalvo }: SetorFormModalP
           return
         }
       } else {
+        if (ctx.tipo !== 'editar') return
         const { error: errUpdate } = await supabase
           .from('setores')
           .update({
@@ -682,9 +685,9 @@ function SetorFormModal({ contexto, userId, onFechar, onSalvo }: SetorFormModalP
             nome: nomeLimpo,
             updated_at: agora,
           })
-          .eq('id', contexto.setor.id)
+          .eq('id', ctx.setor.id)
           .eq('user_id', userId)
-          .eq('local_id', contexto.localId)
+          .eq('local_id', ctx.localId)
         if (errUpdate) {
           setErro(errUpdate.message)
           return

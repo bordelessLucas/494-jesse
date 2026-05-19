@@ -55,6 +55,12 @@ export interface ProfissionalPeriodoContratacao {
 export interface ProfissionalDetalhes {
   fotoUrl: string | null
   siglaConselho: string
+  /** Registro especialista / qualificação (aba Informações). */
+  rqe?: string
+  /** Cartão nacional de saúde (aba Informações). */
+  cns?: string
+  /** Número ou referência CFM quando distinto do CRM (aba Informações). */
+  numeroRegistroCfm?: string
   email: string
   cpf: string
   telefone: string
@@ -99,6 +105,11 @@ export interface ProfissionalCompleto {
   localId?: string | null
   localNome: string
   setores: string[]
+  /**
+   * Rótulos da coluna «Grupo» na listagem — metadatos em `detalhes.grupos`
+   * ou, se vazio, nomes únicos dos setores vinculados (mesa com a aba «Grupos»).
+   */
+  nomesGruposLista: string[]
   /** Ids em `setores` vindos de `profissional_setores` (aba Grupos). */
   setorIdsVinculados?: string[]
   detalhes: ProfissionalDetalhes

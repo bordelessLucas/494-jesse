@@ -223,6 +223,92 @@ export type Database = {
           },
         ]
       }
+      coordenadores: {
+        Row: {
+          id: string
+          user_id: string
+          nome: string
+          email: string | null
+          telefone: string | null
+          telefone2: string | null
+          local_id: string | null
+          detalhes: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          nome: string
+          email?: string | null
+          telefone?: string | null
+          telefone2?: string | null
+          local_id?: string | null
+          detalhes?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          nome?: string
+          email?: string | null
+          telefone?: string | null
+          telefone2?: string | null
+          local_id?: string | null
+          detalhes?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'coordenadores_local_id_fkey'
+            columns: ['local_id']
+            isOneToOne: false
+            referencedRelation: 'locais'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      coordenador_setores: {
+        Row: {
+          id: string
+          user_id: string
+          coordenador_id: string
+          setor_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          coordenador_id: string
+          setor_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          coordenador_id?: string
+          setor_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'coordenador_setores_coordenador_id_fkey'
+            columns: ['coordenador_id']
+            isOneToOne: false
+            referencedRelation: 'coordenadores'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'coordenador_setores_setor_id_fkey'
+            columns: ['setor_id']
+            isOneToOne: false
+            referencedRelation: 'setores'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       plantoes: {
         Row: {
           id: string

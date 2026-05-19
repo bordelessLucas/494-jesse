@@ -1,16 +1,18 @@
 import { BrandedLogoOrInitial } from './branding/BrandedLogoOrInitial'
 import { cn } from '../lib/cn'
 import {
+  Award,
   Banknote,
   CalendarClock,
   ChevronRight,
+  Eye,
   FileText,
   LayoutDashboard,
+  MapPin,
   Palette,
   Settings2,
-  MapPin,
-  Award,
   ShieldAlert,
+  UserCog,
   Users,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
@@ -62,8 +64,19 @@ const navigationItems: NavigationItem[] = [
     label: 'Usuários',
     icon: Users,
     subItems: [
-      { to: '/usuarios/profissionais', label: 'Profissionais' },
-      { to: '/usuarios/especialidades', label: 'Especialidades' },
+      { to: '/usuarios/profissionais', label: 'Profissionais', icon: Users },
+      {
+        to: '/usuarios/coordenadores',
+        label: 'Coordenadores',
+        icon: UserCog,
+      },
+      { to: '/usuarios/visualizadores', label: 'Visualizadores', icon: Eye },
+      {
+        to: '/usuarios/documentos',
+        label: 'Documentos · NOVO',
+        icon: FileText,
+      },
+      { to: '/usuarios/especialidades', label: 'Especialidades', icon: Award },
     ],
   },
   {

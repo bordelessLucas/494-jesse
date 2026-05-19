@@ -106,7 +106,7 @@ export function ProfissionaisPage() {
           locais ( nome_fantasia ),
           profissional_setores (
             setor_id,
-            setores ( nome )
+            setores ( nome, locais ( nome_fantasia ) )
           )
         `,
       )
@@ -305,17 +305,20 @@ export function ProfissionaisPage() {
         return { error: 'Recarregue os dados e tente novamente.' }
       }
       const nextDetalhes = mergeFormIntoDetalhes(current, form)
+      const siglaConselho = nextDetalhes.siglaConselho.trim() || 'CRM'
       const { error } = await supabase
         .from('profissionais')
         .update({
           nome: form.nomeCompleto.trim(),
           profissao: form.profissao,
+          sigla_conselho: siglaConselho,
           conselho_numero: form.numeroCrm.trim(),
           registro_uf: form.ufCrm.trim(),
           email: form.email.trim() || null,
           telefone: form.telefone1.trim() || null,
+          cpf: form.cpf.trim() || null,
           local_id: form.localId.trim() || null,
-          detalhes: detalhesToJson(nextDetalhes),
+          detalhes: detalhesToJson({ ...nextDetalhes, siglaConselho }),
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)
@@ -602,6 +605,14 @@ export function ProfissionaisPage() {
                               className="inline-block max-w-full rounded px-2 py-0.5 text-xs font-medium text-teal-950 bg-teal-200/90"
                             >
                               {setor}
+                            </span>
+                          ))}
+                          {profissional.nomesGruposLista.map((nomeGrupo, idxGrupo) => (
+                            <span
+                              key={`${profissional.id}-grp-${nomeGrupo}-${idxGrupo}`}
+                              className="inline-block max-w-full rounded px-2 py-0.5 text-xs font-medium text-slate-800 bg-slate-200/90"
+                            >
+                              {nomeGrupo}
                             </span>
                           ))}
                         </div>

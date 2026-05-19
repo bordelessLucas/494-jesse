@@ -10,8 +10,22 @@ const enderecoBelem = {
   uf: 'PA',
 } satisfies ProfissionalCompleto['detalhes']['endereco']
 
+type ProfissionalListaMock = Omit<ProfissionalCompleto, 'nomesGruposLista'>
+
+function comNomesGrupoNaLista(p: ProfissionalListaMock): ProfissionalCompleto {
+  const metadatos = p.detalhes.grupos.map((g) => g.nome.trim()).filter(Boolean)
+  const setoresReais = p.setores.filter((s) => s !== '—')
+  const nomesGruposLista =
+    metadatos.length > 0
+      ? metadatos
+      : setoresReais.length > 0
+        ? [...new Set(setoresReais)].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+        : ['—']
+  return { ...p, nomesGruposLista }
+}
+
 export const MOCK_PROFISSIONAIS_COMPLETO: ProfissionalCompleto[] = [
-  {
+  comNomesGrupoNaLista({
     id: '1',
     nome: 'Dra. Ana Paula Ferreira',
     profissao: 'Médico(a)',
@@ -80,8 +94,8 @@ export const MOCK_PROFISSIONAIS_COMPLETO: ProfissionalCompleto[] = [
         },
       ],
     },
-  },
-  {
+  }),
+  comNomesGrupoNaLista({
     id: '2',
     nome: 'Dr. Ricardo Mendes Oliveira',
     profissao: 'Médico(a)',
@@ -132,8 +146,8 @@ export const MOCK_PROFISSIONAIS_COMPLETO: ProfissionalCompleto[] = [
       habilidades: ['Ventilação mecânica', 'PICC', 'Hemodinâmica básica'],
       anexos: [{ nome: 'contrato_escaneado.pdf', tipo: 'PDF', enviadoEm: '19/09/2020' }],
     },
-  },
-  {
+  }),
+  comNomesGrupoNaLista({
     id: '3',
     nome: 'Enf.ª Mariana Costa Silva',
     profissao: 'Enfermeiro(a)',
@@ -189,8 +203,8 @@ export const MOCK_PROFISSIONAIS_COMPLETO: ProfissionalCompleto[] = [
       habilidades: ['PALS', 'Sala Vermelha', 'Curativo avançado'],
       anexos: [],
     },
-  },
-  {
+  }),
+  comNomesGrupoNaLista({
     id: '4',
     nome: 'Dr. Felipe Augusto Nunes',
     profissao: 'Médico(a)',
@@ -240,8 +254,8 @@ export const MOCK_PROFISSIONAIS_COMPLETO: ProfissionalCompleto[] = [
       habilidades: ['Artroscopia joelho', 'Fixação externa urgência'],
       anexos: [{ nome: 'diploma_ortopedia.pdf', tipo: 'PDF', enviadoEm: '01/06/2017' }],
     },
-  },
-  {
+  }),
+  comNomesGrupoNaLista({
     id: '5',
     nome: 'Dr. Carlos Eduardo Martins',
     profissao: 'Médico(a)',
@@ -289,8 +303,8 @@ export const MOCK_PROFISSIONAIS_COMPLETO: ProfissionalCompleto[] = [
       habilidades: ['ECG de alto volume', 'Bloqueios AV'],
       anexos: [],
     },
-  },
-  {
+  }),
+  comNomesGrupoNaLista({
     id: '6',
     nome: 'Enf. Ricardo Souza Lima',
     profissao: 'Enfermeiro(a)',
@@ -340,8 +354,8 @@ export const MOCK_PROFISSIONAIS_COMPLETO: ProfissionalCompleto[] = [
       habilidades: ['Curativo complexo', 'Segurança do paciente NPSG'],
       anexos: [],
     },
-  },
-  {
+  }),
+  comNomesGrupoNaLista({
     id: '7',
     nome: 'Dra. Juliana Prado Reis',
     profissao: 'Médico(a)',
@@ -405,8 +419,8 @@ export const MOCK_PROFISSIONAIS_COMPLETO: ProfissionalCompleto[] = [
       habilidades: ['Parto humanizado', 'Laqueadura videolaparoscópica'],
       anexos: [{ nome: 'CRM_PA_assinado.pdf', tipo: 'PDF', enviadoEm: '15/02/2018' }],
     },
-  },
-  {
+  }),
+  comNomesGrupoNaLista({
     id: '8',
     nome: 'Dr. Bruno Henrique Alves',
     profissao: 'Médico(a)',
@@ -450,5 +464,5 @@ export const MOCK_PROFISSIONAIS_COMPLETO: ProfissionalCompleto[] = [
       habilidades: ['Laparoscopia básica', 'Laparotomia urgência'],
       anexos: [],
     },
-  },
+  }),
 ]

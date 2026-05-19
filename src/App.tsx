@@ -7,6 +7,7 @@ import { ThemeBrandingProvider } from './theme/ThemeBrandingProvider'
 import { CadastroPage } from './pages/CadastroPage'
 import { CadastrosEspecialidadesPage } from './pages/CadastrosEspecialidadesPage'
 import { CadastrosLocaisPage } from './pages/CadastrosLocaisPage'
+import { CoordenadoresPage } from './pages/CoordenadoresPage'
 import { ConfiguracaoPage } from './pages/ConfiguracaoPage'
 import { MarcaPlataformaPage } from './pages/configuracao/MarcaPlataformaPage'
 import { ConfiguracaoSecaoPage } from './pages/configuracao/ConfiguracaoSecaoPage'
@@ -25,6 +26,7 @@ import { NotFoundPage } from './pages/NotFoundPage'
 import { ProfissionaisPage } from './pages/ProfissionaisPage'
 import { CargaHorariaPage } from './pages/Dashboard/CargaHorariaPage'
 import { ResumoPage } from './pages/Dashboard/ResumoPage'
+import { DocumentosUsuarioPage, VisualizadoresPage } from './pages/UsuariosEmBrevePage'
 import { EmissaoRelatoriosPage } from './pages/Relatorios/EmissaoRelatoriosPage'
 import { IndicadoresScirasPage } from './pages/Relatorios/IndicadoresScirasPage'
 
@@ -83,6 +85,9 @@ function App() {
               element={<Navigate to="/usuarios/profissionais" replace />}
             />
             <Route path="usuarios/profissionais" element={<ProfissionaisPage />} />
+            <Route path="usuarios/coordenadores" element={<CoordenadoresPage />} />
+            <Route path="usuarios/visualizadores" element={<VisualizadoresPage />} />
+            <Route path="usuarios/documentos" element={<DocumentosUsuarioPage />} />
             <Route path="usuarios/locais" element={<CadastrosLocaisPage />} />
             <Route
               path="usuarios/especialidades"

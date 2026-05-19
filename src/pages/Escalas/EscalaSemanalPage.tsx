@@ -40,7 +40,6 @@ import type {
   ContextoModalPlantao,
   PlantaoCartao,
   StatusPlantaoEscala,
-  TomCartao,
 } from '../../lib/escalas/escalaTypes'
 import { supabase } from '../../lib/supabase'
 import { useSupabaseUser } from '../../hooks/useSupabaseUser'

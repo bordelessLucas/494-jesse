@@ -12,6 +12,9 @@ export function defaultProfissionalDetalhes(siglaConselho: string): Profissional
   return {
     fotoUrl: null,
     siglaConselho,
+    rqe: '',
+    cns: '',
+    numeroRegistroCfm: '',
     email: '',
     cpf: '',
     telefone: '',
@@ -61,6 +64,9 @@ export function mergeFormIntoDetalhes(
   const d = current.detalhes
   return {
     ...d,
+    rqe: form.rqe.trim(),
+    cns: form.cns.trim(),
+    numeroRegistroCfm: form.numeroRegistroCfm.trim(),
     email: form.email,
     telefone: form.telefone1,
     celular: form.telefone2,
@@ -89,6 +95,8 @@ export function mergeFormIntoDetalhes(
     periodosContratacao: form.periodosContratacao.map((p) => ({ ...p })),
     afastamentos: form.afastamentos.map((a) => ({ ...a })),
     contasBancarias: form.contasBancarias.map((c) => ({ ...c })),
+    habilidades: form.habilidades.map((h) => h.trim()).filter(Boolean),
+    anexos: form.anexos.map((a) => ({ ...a })),
   }
 }
 
@@ -224,6 +232,14 @@ function mergeDetalhes(
   return {
     ...base,
     ...j,
+    rqe:
+      typeof j.rqe === 'string' ? j.rqe : base.rqe,
+    cns:
+      typeof j.cns === 'string' ? j.cns : base.cns,
+    numeroRegistroCfm:
+      typeof j.numeroRegistroCfm === 'string'
+        ? j.numeroRegistroCfm
+        : base.numeroRegistroCfm,
     siglaConselho: typeof j.siglaConselho === 'string' ? j.siglaConselho : sigla,
     endereco: {
       ...base.endereco,
@@ -282,7 +298,39 @@ function mergeDetalhes(
 
 export type ProfissionalSetorJoin = {
   setor_id: string
-  setores: { nome: string } | null
+  setores: {
+    nome: string
+    /** Via `local_id`: local ao qual o setor pertence. */
+    locais: { nome_fantasia: string } | null
+  } | null
+}
+
+/** Locais únicos inferidos pelos vínculos de setores (fallback quando «local principal» está vazio). */
+function nomeFantasiaDosSetoresVinculados(
+  juncoes: ProfissionalSetorJoin[] | null,
+): string[] {
+  const unicos = new Set<string>()
+  for (const j of juncoes ?? []) {
+    const n = j.setores?.locais?.nome_fantasia?.trim()
+    if (n) unicos.add(n)
+  }
+  return [...unicos]
+}
+
+/** Rótulos tipo «Local › Setor» para coluna «Grupo» quando não há metadatos em `detalhes.grupos`. */
+function rotulosGrupoPorVinculos(juncoes: ProfissionalSetorJoin[] | null): string[] {
+  const vistos = new Set<string>()
+  const rotulos: string[] = []
+  for (const ps of juncoes ?? []) {
+    const nf = ps.setores?.locais?.nome_fantasia?.trim() ?? ''
+    const setorN = ps.setores?.nome?.trim() ?? ''
+    if (!setorN) continue
+    const rotulo = nf ? `${nf} › ${setorN}` : setorN
+    if (vistos.has(rotulo)) continue
+    vistos.add(rotulo)
+    rotulos.push(rotulo)
+  }
+  return rotulos.sort((a, b) => a.localeCompare(b, 'pt-BR'))
 }
 
 export type ProfissionalQueryRow = {
@@ -306,7 +354,14 @@ export type ProfissionalQueryRow = {
 
 export function mapRowToProfissionalCompleto(row: ProfissionalQueryRow): ProfissionalCompleto {
   const registroProfissional = `${row.conselho_numero?.trim() || ''}/${row.registro_uf?.trim() || '—'}`
-  const localNome = row.locais?.nome_fantasia?.trim() || '—'
+  const nomeLocalFk = row.locais?.nome_fantasia?.trim() ?? ''
+  const locaisviaSetores = nomeFantasiaDosSetoresVinculados(row.profissional_setores).sort((a, b) =>
+    a.localeCompare(b, 'pt-BR'),
+  )
+  const localNome =
+    nomeLocalFk ||
+    (locaisviaSetores.length ? locaisviaSetores.join(', ') : '') ||
+    '—'
   const setorIdsVinculados =
     row.profissional_setores
       ?.map((ps) => ps.setor_id)
@@ -322,6 +377,17 @@ export function mapRowToProfissionalCompleto(row: ProfissionalQueryRow): Profiss
   detalhes.telefone = row.telefone ?? detalhes.telefone
   detalhes.cpf = row.cpf ?? detalhes.cpf
 
+  const nomesMetadatosGrupo = detalhes.grupos
+    .map((g) => g.nome.trim())
+    .filter((nome) => nome.length > 0)
+  const nomesGruposListaBase =
+    nomesMetadatosGrupo.length > 0
+      ? nomesMetadatosGrupo
+      : rotulosGrupoPorVinculos(row.profissional_setores)
+  const nomesGruposLista = nomesGruposListaBase.length
+    ? nomesGruposListaBase
+    : ['—']
+
   return {
     id: row.id,
     nome: row.nome,
@@ -329,6 +395,7 @@ export function mapRowToProfissionalCompleto(row: ProfissionalQueryRow): Profiss
     registroProfissional,
     localId: row.local_id,
     localNome,
+    nomesGruposLista,
     setores: setores.length ? setores : ['—'],
     setorIdsVinculados,
     detalhes,

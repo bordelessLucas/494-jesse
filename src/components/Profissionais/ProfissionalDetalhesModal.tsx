@@ -34,9 +34,11 @@ import {
 } from 'lucide-react'
 
 import { cn } from '../../lib/cn'
+import { supabase } from '../../lib/supabase'
 import type {
   ProfissionalCompleto,
   ProfissionalAfastamento,
+  ProfissionalAnexo,
   ProfissionalContaBancaria,
   ProfissionalDetalhes,
   ProfissionalPeriodoContratacao,
@@ -198,6 +200,8 @@ export interface FormInformacoes {
   dataAdmissao: string
   codigo: string
   detalhesObservacao: string
+  habilidades: string[]
+  anexos: ProfissionalAnexo[]
   /** Id em `public.locais`; vazio = sem local principal. */
   localId: string
   enderecoCep: string
@@ -235,11 +239,11 @@ function criarFormInformacoes(p: ProfissionalCompleto): FormInformacoes {
     profissao: p.profissao,
     numeroCrm: num,
     ufCrm: uf || 'PA',
-    rqe: '',
-    cns: '',
-    numeroRegistroCfm: num,
+    rqe: p.detalhes.rqe?.trim() ?? '',
+    cns: p.detalhes.cns?.trim() ?? '',
+    numeroRegistroCfm: (p.detalhes.numeroRegistroCfm?.trim() || num || '').trim(),
     dataAdmissao: p.detalhes.contratacao.dataAdmissao,
-    codigo: p.detalhes.contratacao.numeroContrato.replace(/\D/g, '').slice(0, 8),
+    codigo: p.detalhes.contratacao.numeroContrato,
     detalhesObservacao:
       p.detalhes.observacaoInterna?.trim() ??
       `Local: ${p.localNome}\nSetores vinculados: ${p.setores.join(', ')}.`,
@@ -259,6 +263,8 @@ function criarFormInformacoes(p: ProfissionalCompleto): FormInformacoes {
     periodosContratacao: (p.detalhes.periodosContratacao ?? []).map((x) => ({ ...x })),
     afastamentos: p.detalhes.afastamentos.map((a) => ({ ...a })),
     contasBancarias: (p.detalhes.contasBancarias ?? []).map((c) => ({ ...c })),
+    habilidades: [...p.detalhes.habilidades],
+    anexos: p.detalhes.anexos.map((a) => ({ ...a })),
   }
 }
 
@@ -268,23 +274,6 @@ function iniciaisNome(nome: string) {
   if (partes.length === 0) return '?'
   if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase()
   return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
-}
-
-function Campo({
-  rotulo,
-  valor,
-}: {
-  rotulo: string
-  valor: string
-}) {
-  return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
-        {rotulo}
-      </dt>
-      <dd className="mt-1 text-sm leading-relaxed text-slate-900">{valor}</dd>
-    </div>
-  )
 }
 
 const inputEditavel =
@@ -706,7 +695,12 @@ function ContratacaoFormulario({
   setForm: Dispatch<SetStateAction<FormInformacoes | null>>
 }) {
   const [rascunhoAberto, setRascunhoAberto] = useState(false)
-  const [rascunho, setRascunho] = useState({
+  const [rascunho, setRascunho] = useState<{
+    tipo: (typeof TIPOS_CONTRATACAO)[number]
+    inicio: string
+    fim: string
+    comentario: string
+  }>({
     tipo: TIPOS_CONTRATACAO[0],
     inicio: '',
     fim: '',
@@ -838,7 +832,7 @@ function ContratacaoFormulario({
                 <select
                   id="ct-ras-tipo"
                   value={rascunho.tipo}
-                  onChange={(e) => setRascunho((r) => ({ ...r, tipo: e.target.value }))}
+                  onChange={(e) => setRascunho((r) => ({ ...r, tipo: e.target.value as (typeof TIPOS_CONTRATACAO)[number] }))}
                   className={cn(campoContr, 'cursor-pointer')}
                 >
                   {TIPOS_CONTRATACAO.map((t) => (
@@ -946,7 +940,12 @@ function AfastamentosFormulario({
   setForm: Dispatch<SetStateAction<FormInformacoes | null>>
 }) {
   const [rascunhoAberto, setRascunhoAberto] = useState(false)
-  const [rascunho, setRascunho] = useState({
+  const [rascunho, setRascunho] = useState<{
+    inicio: string
+    fim: string
+    tipo: (typeof TIPOS_AFASTAMENTO)[number]
+    comentario: string
+  }>({
     inicio: '',
     fim: '',
     tipo: TIPOS_AFASTAMENTO[0],
@@ -1101,7 +1100,12 @@ function AfastamentosFormulario({
                 <select
                   id="af-ras-tipo"
                   value={rascunho.tipo}
-                  onChange={(e) => setRascunho((r) => ({ ...r, tipo: e.target.value }))}
+                  onChange={(e) =>
+                    setRascunho((r) => ({
+                      ...r,
+                      tipo: e.target.value as (typeof TIPOS_AFASTAMENTO)[number],
+                    }))
+                  }
                   className={cn(campoData, 'cursor-pointer')}
                 >
                   {TIPOS_AFASTAMENTO.map((t) => (
@@ -1169,6 +1173,215 @@ function AfastamentosFormulario({
           ) : null}
         </div>
       </div>
+    </div>
+  )
+}
+
+function HabilidadesFormulario({
+  form,
+  setForm,
+}: {
+  form: FormInformacoes
+  setForm: Dispatch<SetStateAction<FormInformacoes | null>>
+}) {
+  const [novaHabilidade, setNovaHabilidade] = useState('')
+
+  function adicionar() {
+    const t = novaHabilidade.trim()
+    if (!t) return
+    const dup = form.habilidades.some((h) => h.trim().toLowerCase() === t.toLowerCase())
+    if (dup) {
+      setNovaHabilidade('')
+      return
+    }
+    setForm((prev) =>
+      prev ? { ...prev, habilidades: [...prev.habilidades, t] } : prev,
+    )
+    setNovaHabilidade('')
+  }
+
+  function remover(index: number) {
+    setForm((prev) =>
+      prev
+        ? {
+            ...prev,
+            habilidades: prev.habilidades.filter((_, i) => i !== index),
+          }
+        : prev,
+    )
+  }
+
+  return (
+    <div className="space-y-5">
+      <p className="text-sm leading-relaxed text-slate-600">
+        Cadastre as habilidades e competências relacionadas ao desempenho profissional.
+      </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <input
+          type="text"
+          value={novaHabilidade}
+          onChange={(e) => setNovaHabilidade(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), adicionar())}
+          className={cn(inputEditavel, 'sm:max-w-md')}
+          placeholder="Ex.: Ultrassom, UTI adulto..."
+          aria-label="Nova habilidade"
+        />
+        <button
+          type="button"
+          onClick={adicionar}
+          className="inline-flex w-fit shrink-0 items-center justify-center gap-2 rounded-md bg-[#2563eb] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#1d4ed8]"
+        >
+          <Plus className="h-4 w-4 shrink-0" aria-hidden />
+          Adicionar
+        </button>
+      </div>
+      {form.habilidades.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
+          Nenhuma habilidade cadastrada.
+        </p>
+      ) : (
+        <ul className="flex flex-wrap gap-2">
+          {form.habilidades.map((habilidade, index) => (
+            <li
+              key={`${habilidade}-${index}`}
+              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white pl-3 pr-1 py-1.5 text-sm text-slate-800"
+            >
+              <span className="max-w-[min(280px,calc(100vw-140px))] truncate">{habilidade}</span>
+              <button
+                type="button"
+                onClick={() => remover(index)}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-danger-600 hover:bg-red-50"
+                aria-label={`Remover ${habilidade}`}
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function AnexosFormulario({
+  form,
+  setForm,
+}: {
+  form: FormInformacoes
+  setForm: Dispatch<SetStateAction<FormInformacoes | null>>
+}) {
+  function atualizarLinha<K extends keyof ProfissionalAnexo>(
+    index: number,
+    campo: K,
+    valor: ProfissionalAnexo[K],
+  ) {
+    setForm((prev) => {
+      if (!prev) return prev
+      const copia = prev.anexos.map((row) => ({ ...row }))
+      const linha = copia[index]
+      if (!linha) return prev
+      copia[index] = { ...linha, [campo]: valor }
+      return { ...prev, anexos: copia }
+    })
+  }
+
+  function adicionarLinha() {
+    setForm((prev) =>
+      prev
+        ? {
+            ...prev,
+            anexos: [
+              ...prev.anexos,
+              { nome: '', tipo: 'Documento', enviadoEm: '' },
+            ],
+          }
+        : prev,
+    )
+  }
+
+  function removerLinha(index: number) {
+    setForm((prev) =>
+      prev
+        ? { ...prev, anexos: prev.anexos.filter((_, i) => i !== index) }
+        : prev,
+    )
+  }
+
+  return (
+    <div className="space-y-5">
+      <p className="text-sm leading-relaxed text-slate-600">
+        Registre anexos e documentos relacionados ao profissional. O envio de arquivos para o
+        armazenamento em nuvem pode ser configurado depois — por ora os metadados são salvos no
+        perfil.
+      </p>
+      {form.anexos.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+          Nenhum anexo registrado.
+        </p>
+      ) : (
+        <ul className="space-y-3">
+          {form.anexos.map((anexo, index) => (
+            <li
+              key={`anexo-${index}`}
+              className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:p-4"
+            >
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_minmax(0,0.65fr)_8rem_auto]">
+                <div className="min-w-0">
+                  <FormLabel htmlFor={`anexo-nome-${index}`}>Descrição ou nome</FormLabel>
+                  <input
+                    id={`anexo-nome-${index}`}
+                    type="text"
+                    value={anexo.nome}
+                    onChange={(e) => atualizarLinha(index, 'nome', e.target.value)}
+                    className={inputEditavel}
+                    placeholder="Ex.: Diploma, CRM..."
+                  />
+                </div>
+                <div className="min-w-0">
+                  <FormLabel htmlFor={`anexo-tipo-${index}`}>Tipo</FormLabel>
+                  <input
+                    id={`anexo-tipo-${index}`}
+                    type="text"
+                    value={anexo.tipo}
+                    onChange={(e) => atualizarLinha(index, 'tipo', e.target.value)}
+                    className={inputEditavel}
+                  />
+                </div>
+                <div>
+                  <FormLabel htmlFor={`anexo-data-${index}`}>Referência ou data</FormLabel>
+                  <input
+                    id={`anexo-data-${index}`}
+                    type="text"
+                    autoComplete="off"
+                    value={anexo.enviadoEm}
+                    onChange={(e) => atualizarLinha(index, 'enviadoEm', e.target.value)}
+                    className={inputEditavel}
+                    placeholder="aaaa-mm-dd"
+                  />
+                </div>
+                <div className="flex items-end justify-end pb-1">
+                  <button
+                    type="button"
+                    onClick={() => removerLinha(index)}
+                    className="inline-flex rounded-md p-2 text-danger-600 hover:bg-red-50"
+                    aria-label="Remover anexo"
+                  >
+                    <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
+                  </button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <button
+        type="button"
+        onClick={adicionarLinha}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[#2563eb]/60 bg-blue-50/40 py-4 text-sm font-medium text-[#2563eb] hover:bg-blue-50"
+      >
+        <Plus className="h-4 w-4 shrink-0" aria-hidden />
+        Adicionar registro de anexo
+      </button>
     </div>
   )
 }
@@ -1778,6 +1991,11 @@ export function ProfissionalDetalhesModal({
     null,
   )
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [recuperacaoAuth, setRecuperacaoAuth] = useState<{
+    tipo: 'ok' | 'erro'
+    mensagem: string
+  } | null>(null)
+  const [recuperandoSenha, setRecuperandoSenha] = useState(false)
 
   useEffect(() => {
     if (open && profissional) setAba('informacoes')
@@ -1813,8 +2031,46 @@ export function ProfissionalDetalhesModal({
   }, [profissional])
 
   useEffect(() => {
-    if (open) setSaveError(null)
+    if (open) {
+      setSaveError(null)
+      setRecuperacaoAuth(null)
+    }
   }, [open, profissional?.id])
+
+  async function aoRecuperarSenha() {
+    setSaveError(null)
+    setRecuperacaoAuth(null)
+    const email = formInformacoes?.email.trim()
+    if (!email) {
+      setSaveError(
+        'Informe o e-mail do profissional (aba Informações) para enviar o link de redefinição.',
+      )
+      setAba('informacoes')
+      return
+    }
+    const origemSite =
+      (typeof import.meta.env.VITE_PUBLIC_SITE_URL === 'string' &&
+        import.meta.env.VITE_PUBLIC_SITE_URL.trim()) ||
+      (typeof window !== 'undefined' ? window.location.origin : '')
+    const redirectTo = `${origemSite.replace(/\/$/, '')}/login`
+    setRecuperandoSenha(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    })
+    setRecuperandoSenha(false)
+    if (error) {
+      setRecuperacaoAuth({
+        tipo: 'erro',
+        mensagem: error.message || 'Não foi possível enviar o e-mail de recuperação.',
+      })
+      return
+    }
+    setRecuperacaoAuth({
+      tipo: 'ok',
+      mensagem:
+        'Se existir conta com esse e-mail no projeto, será enviada uma mensagem com o link para redefinir a senha.',
+    })
+  }
 
   if (!open || !profissional) return null
 
@@ -1824,6 +2080,12 @@ export function ProfissionalDetalhesModal({
   async function aoSalvar() {
     if (!formInformacoes) return
     setSaveError(null)
+    setRecuperacaoAuth(null)
+    if (!formInformacoes.enderecoUf.trim()) {
+      setSaveError('Preencha a UF do endereço (aba Endereço).')
+      setAba('endereco')
+      return
+    }
     if (!formInformacoes.enderecoCidade.trim()) {
       setSaveError('Preencha a cidade do endereço (aba Endereço).')
       setAba('endereco')
@@ -1934,40 +2196,16 @@ export function ProfissionalDetalhesModal({
         ) : null
       break
     case 'habilidades':
-      conteudo = (
-        <ul className="flex flex-wrap gap-2">
-          {d.habilidades.map((h) => (
-            <li
-              key={h}
-              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800"
-            >
-              {h}
-            </li>
-          ))}
-        </ul>
-      )
+      conteudo =
+        formInformacoes ? (
+          <HabilidadesFormulario form={formInformacoes} setForm={setFormInformacoes} />
+        ) : null
       break
     case 'anexos':
       conteudo =
-        d.anexos.length === 0 ? (
-          <p className="text-sm text-slate-600">Nenhum anexo enviado.</p>
-        ) : (
-          <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
-            {d.anexos.map((a) => (
-              <li
-                key={a.nome}
-                className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
-              >
-                <span className="cursor-pointer font-medium text-[#2563eb] underline-offset-4 hover:underline">
-                  {a.nome}
-                </span>
-                <span className="text-xs text-slate-500">
-                  {a.tipo} · {a.enviadoEm}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )
+        formInformacoes ? (
+          <AnexosFormulario form={formInformacoes} setForm={setFormInformacoes} />
+        ) : null
       break
     default:
       conteudo = null
@@ -2033,15 +2271,36 @@ export function ProfissionalDetalhesModal({
                 {saveError}
               </p>
             ) : null}
+            {recuperacaoAuth ? (
+              <p
+                role="status"
+                className={
+                  recuperacaoAuth.tipo === 'ok'
+                    ? 'w-full rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900 sm:w-auto'
+                    : 'w-full rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-800 sm:w-auto'
+                }
+              >
+                {recuperacaoAuth.mensagem}
+              </p>
+            ) : null}
             <button
               type="button"
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-400 hover:bg-slate-50"
+              onClick={() => void aoRecuperarSenha()}
+              disabled={salvando || recuperandoSenha}
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span className="inline-flex shrink-0 items-center gap-0.5 text-slate-600" aria-hidden>
                 <Mail className="h-4 w-4" />
                 <ArrowRight className="h-3 w-3 opacity-80" />
               </span>
-              Recuperar Senha
+              {recuperandoSenha ? (
+                <>
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                  Enviando...
+                </>
+              ) : (
+                'Recuperar Senha'
+              )}
             </button>
             <button
               type="button"
