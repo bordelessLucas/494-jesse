@@ -309,6 +309,50 @@ export type Database = {
           },
         ]
       }
+      financeiro_extrato_periodo: {
+        Row: {
+          id: string
+          user_id: string
+          profissional_id: string
+          competencia: string
+          fechado_em: string | null
+          status_financeiro: string
+          extrato_fechado: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          profissional_id: string
+          competencia: string
+          fechado_em?: string | null
+          status_financeiro?: string
+          extrato_fechado?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          profissional_id?: string
+          competencia?: string
+          fechado_em?: string | null
+          status_financeiro?: string
+          extrato_fechado?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'financeiro_extrato_periodo_profissional_id_fkey'
+            columns: ['profissional_id']
+            isOneToOne: false
+            referencedRelation: 'profissionais'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       plantoes: {
         Row: {
           id: string
@@ -321,6 +365,9 @@ export type Database = {
           hora_fim: string
           status: string
           observacoes: string | null
+          valor_plantao: number
+          ajuste_financeiro: number
+          observacao_ajuste: string | null
           created_at: string
           updated_at: string
         }
@@ -335,6 +382,9 @@ export type Database = {
           hora_fim: string
           status?: string
           observacoes?: string | null
+          valor_plantao?: number
+          ajuste_financeiro?: number
+          observacao_ajuste?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -349,6 +399,9 @@ export type Database = {
           hora_fim?: string
           status?: string
           observacoes?: string | null
+          valor_plantao?: number
+          ajuste_financeiro?: number
+          observacao_ajuste?: string | null
           created_at?: string
           updated_at?: string
         }

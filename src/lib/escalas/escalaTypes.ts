@@ -1,6 +1,6 @@
 export type TomCartao = 'util' | 'fds'
 
-export type StatusPlantaoEscala = 'vago' | 'confirmado' | 'pendente'
+export type StatusPlantaoEscala = 'vago' | 'confirmado' | 'pendente' | 'realizado'
 
 export type PlantaoCartao = {
   id: string
@@ -20,4 +20,6 @@ export type ContextoModalPlantao = {
   /** Definido apenas para plantão já persistido no Supabase */
   plantaoId?: string | null
   profissionalId?: string | null
+  /** Valor bruto cadastrado (persistido em `plantoes.valor_plantao`). */
+  valorPlantao?: number
 }

@@ -44,6 +44,7 @@ const STATUS_LABELS: Record<StatusPlantaoEscala, string> = {
   vago: 'Vago',
   confirmado: 'Confirmado',
   pendente: 'Pendente',
+  realizado: 'Realizado',
 }
 
 const STATUS_STYLES: Record<StatusPlantaoEscala, string> = {
@@ -52,6 +53,8 @@ const STATUS_STYLES: Record<StatusPlantaoEscala, string> = {
     'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
   pendente:
     'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100',
+  realizado:
+    'border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100',
 }
 
 const TODOS_LOCAIS = 'todos-locais'

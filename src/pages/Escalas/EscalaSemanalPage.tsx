@@ -230,6 +230,7 @@ export function ModalAlterarPlantao({
   const [horaInicioForm, setHoraInicioForm] = useState('07:00')
   const [horaFimForm, setHoraFimForm] = useState('19:00')
   const [situacao, setSituacao] = useState<StatusPlantaoEscala>('pendente')
+  const [valorPlantaoNum, setValorPlantaoNum] = useState(0)
   const [salvando, setSalvando] = useState(false)
   const [erroSalvar, setErroSalvar] = useState<string | null>(null)
   /** yyyy-MM-dd para input type="date" */
@@ -258,6 +259,11 @@ export function ModalAlterarPlantao({
       contexto.cartao.status ??
       (contexto.profissionalId ? 'confirmado' : 'pendente')
     setSituacao(st === 'vago' ? 'vago' : st)
+    setValorPlantaoNum(
+      typeof contexto.valorPlantao === 'number' && Number.isFinite(contexto.valorPlantao)
+        ? contexto.valorPlantao
+        : 0,
+    )
     setErroSalvar(null)
 
     const { dia, cartao } = contexto
@@ -366,6 +372,9 @@ export function ModalAlterarPlantao({
     } else if (situacao === 'confirmado' && !profId) {
       setErroSalvar('Selecione um profissional para situação confirmada.')
       return
+    } else if (situacao === 'realizado' && !profId) {
+      setErroSalvar('Selecione um profissional para situação realizada.')
+      return
     }
 
     if (!dataPlantaoIso || !/^\d{4}-\d{2}-\d{2}$/.test(dataPlantaoIso)) {
@@ -374,6 +383,9 @@ export function ModalAlterarPlantao({
     }
     const dataIso = dataPlantaoIso
     const agora = new Date().toISOString()
+
+    const valorPlantaoGravar =
+      Number.isFinite(valorPlantaoNum) && valorPlantaoNum >= 0 ? valorPlantaoNum : 0
 
     setSalvando(true)
     setErroSalvar(null)
@@ -388,6 +400,7 @@ export function ModalAlterarPlantao({
           hora_inicio: horaInicioForm,
           hora_fim: horaFimForm,
           status: statusFinal,
+          valor_plantao: valorPlantaoGravar,
           updated_at: agora,
         })
         if (error) {
@@ -405,6 +418,7 @@ export function ModalAlterarPlantao({
             hora_inicio: horaInicioForm,
             hora_fim: horaFimForm,
             status: statusFinal,
+            valor_plantao: valorPlantaoGravar,
             updated_at: agora,
           })
           .eq('id', plantaoIdReal)
@@ -663,9 +677,17 @@ export function ModalAlterarPlantao({
                         <Info className="h-3 w-3 text-slate-400" aria-hidden />
                       </label>
                       <input
-                        type="text"
+                        type="number"
+                        min={0}
+                        step="0.01"
                         className={INPUT_MODAL}
-                        placeholder="R$ 0,00"
+                        value={valorPlantaoNum}
+                        onChange={(e) => {
+                          const v =
+                            e.target.value === '' ? 0 : Number.parseFloat(e.target.value)
+                          setValorPlantaoNum(Number.isFinite(v) ? v : 0)
+                        }}
+                        disabled={salvando}
                       />
                     </div>
                     <div>
@@ -748,6 +770,7 @@ export function ModalAlterarPlantao({
                         <option value="vago">Vago</option>
                         <option value="pendente">Pendente</option>
                         <option value="confirmado">Confirmado</option>
+                        <option value="realizado">Realizado</option>
                       </select>
                       <label className="mb-2 flex items-center gap-2 text-xs text-slate-600">
                         <input
@@ -1015,9 +1038,11 @@ function CartaoPlantao({ cartao, onClick, linhaAuxiliar }: CartaoPlantaoProps) {
         ? 'bg-amber-500'
         : cartao.status === 'confirmado'
           ? 'bg-emerald-600'
-          : cartao.tom === 'util'
-            ? 'bg-emerald-500'
-            : 'bg-orange-500'
+          : cartao.status === 'realizado'
+            ? 'bg-sky-600'
+            : cartao.tom === 'util'
+              ? 'bg-emerald-500'
+              : 'bg-orange-500'
 
   return (
     <button
@@ -1257,6 +1282,9 @@ export function EscalaSemanalPage() {
           hora_inicio: formatarHoraDb(p.hora_inicio),
           hora_fim: formatarHoraDb(p.hora_fim),
           status: p.status,
+          valor_plantao: Number(p.valor_plantao ?? 0),
+          ajuste_financeiro: Number(p.ajuste_financeiro ?? 0),
+          observacao_ajuste: p.observacao_ajuste ?? null,
           updated_at: agora,
         })
       }
@@ -1500,6 +1528,8 @@ export function EscalaSemanalPage() {
                           setorId: row?.setor_id ?? setorIdParaNovoPlantao,
                           plantaoId: c.id,
                           profissionalId: c.profissionalId ?? null,
+                          valorPlantao:
+                            row != null ? Number(row.valor_plantao ?? 0) : 0,
                         })
                       }}
                     />
@@ -1539,7 +1569,7 @@ export function EscalaSemanalPage() {
 
       <p className="mt-4 text-center text-xs text-slate-500">
         Dados carregados do Supabase. Barra do cartão: cor por situação (vago /
-        pendente / confirmado) ou por tipo de dia quando não houver situação.
+        pendente / confirmado / realizado) ou por tipo de dia quando não houver situação.
       </p>
 
       <ModalAlterarPlantao

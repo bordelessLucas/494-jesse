@@ -17,6 +17,9 @@ export type PlantaoRowDb = {
   hora_fim: string
   status: StatusPlantaoEscala
   observacoes: string | null
+  valor_plantao?: number
+  ajuste_financeiro?: number
+  observacao_ajuste?: string | null
   profissionais?: ProfissionalJoin
 }
 
@@ -85,6 +88,9 @@ export async function buscarPlantoesIntervalo(
       hora_fim,
       status,
       observacoes,
+      valor_plantao,
+      ajuste_financeiro,
+      observacao_ajuste,
       profissionais ( id, nome )
     `,
     )
