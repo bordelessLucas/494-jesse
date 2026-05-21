@@ -18,6 +18,9 @@ import {
   valorFinalLinha,
   type LinhaExtratoFinanceiro,
 } from '../../lib/financeiro/extratoCalculos'
+import {
+  buscarLinhasExtratoCompetencia,
+} from '../../lib/financeiro/financeiroData'
 import { supabase } from '../../lib/supabase'
 import { useSupabaseUser } from '../../hooks/useSupabaseUser'
 
@@ -59,30 +62,6 @@ const BADGE_MAP: Record<
 function normalizarStatusFinanceiro(s: string | undefined): BadgeFinanceiro {
   if (s === 'processado' || s === 'pago' || s === 'pendente') return s
   return 'pendente'
-}
-
-type LinhaPlantaoRow = {
-  id: string
-  data_plantao: string
-  valor_plantao: number | null
-  ajuste_financeiro: number | null
-  observacao_ajuste: string | null
-  locais: { nome_fantasia: string } | null
-  setores: { nome: string } | null
-  profissionais: { nome: string } | null
-}
-
-function mapPlantaoParaLinha(r: LinhaPlantaoRow): LinhaExtratoFinanceiro {
-  return {
-    plantaoId: r.id,
-    dataPlantao: r.data_plantao,
-    localNome: r.locais?.nome_fantasia?.trim() ?? '—',
-    setorNome: r.setores?.nome?.trim() ?? '—',
-    profissionalNome: r.profissionais?.nome?.trim() ?? '—',
-    valorBruto: Number(r.valor_plantao ?? 0),
-    ajusteFinanceiro: Number(r.ajuste_financeiro ?? 0),
-    observacaoAjuste: (r.observacao_ajuste ?? '').trim(),
-  }
 }
 
 function exportarExtratoPdf(params: {
@@ -267,50 +246,31 @@ export function ExtratoFinanceiroPage() {
     setCarregando(true)
     setErro(null)
 
-    let q = supabase
-      .from('plantoes')
-      .select(
-        `
-        id,
-        data_plantao,
-        valor_plantao,
-        ajuste_financeiro,
-        observacao_ajuste,
-        locais ( nome_fantasia ),
-        setores ( nome ),
-        profissionais ( nome )
-      `,
+    try {
+      const linhasCarregadas = await buscarLinhasExtratoCompetencia(
+        user.id,
+        competenciaInicio,
+        competenciaFim,
+        profissionalFiltro !== VISAO_TODOS
+          ? { profissionalId: profissionalFiltro }
+          : undefined,
       )
-      .eq('user_id', user.id)
-      .eq('status', 'realizado')
-      .gte('data_plantao', competenciaInicio)
-      .lte('data_plantao', competenciaFim)
-      .order('data_plantao', { ascending: true })
-
-    if (profissionalFiltro !== VISAO_TODOS) {
-      q = q.eq('profissional_id', profissionalFiltro)
-    }
-
-    const { data, error: e } = await q
-
-    if (e) {
+      setLinhas(linhasCarregadas)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Erro ao carregar plantões.'
       setLinhas([])
       setErro(
-        e.message.includes('valor_plantao') ||
-          e.message.includes('ajuste_financeiro') ||
-          e.message.includes('observacao_ajuste') ||
-          e.message.includes('realizado') ||
-          e.message.includes('schema')
+        msg.includes('valor_plantao') ||
+          msg.includes('ajuste_financeiro') ||
+          msg.includes('observacao_ajuste') ||
+          msg.includes('realizado') ||
+          msg.includes('schema')
           ? 'A migração financeira ainda não foi aplicada. Execute as migrações em supabase/migrations (ex.: 20260519150000 e 20260520100000).'
-          : e.message,
+          : msg,
       )
+    } finally {
       setCarregando(false)
-      return
     }
-
-    const rows = (data ?? []) as LinhaPlantaoRow[]
-    setLinhas(rows.map(mapPlantaoParaLinha))
-    setCarregando(false)
   }, [user, competenciaInicio, competenciaFim, profissionalFiltro])
 
   useEffect(() => {

@@ -309,6 +309,114 @@ export type Database = {
           },
         ]
       }
+      escala_modelo_itens: {
+        Row: {
+          id: string
+          user_id: string
+          modelo_id: string
+          semana_index: number
+          dia_semana: number
+          hora_inicio: string
+          hora_fim: string
+          duracao_minutos: number | null
+          tipo: string
+          profissional_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          modelo_id: string
+          semana_index?: number
+          dia_semana: number
+          hora_inicio: string
+          hora_fim: string
+          duracao_minutos?: number | null
+          tipo?: string
+          profissional_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          modelo_id?: string
+          semana_index?: number
+          dia_semana?: number
+          hora_inicio?: string
+          hora_fim?: string
+          duracao_minutos?: number | null
+          tipo?: string
+          profissional_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'escala_modelo_itens_modelo_id_fkey'
+            columns: ['modelo_id']
+            isOneToOne: false
+            referencedRelation: 'escala_modelos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'escala_modelo_itens_profissional_id_fkey'
+            columns: ['profissional_id']
+            isOneToOne: false
+            referencedRelation: 'profissionais'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      escala_modelos: {
+        Row: {
+          id: string
+          user_id: string
+          local_id: string
+          setor_id: string
+          nome: string
+          quantidade_semanas: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          local_id: string
+          setor_id: string
+          nome?: string
+          quantidade_semanas?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          local_id?: string
+          setor_id?: string
+          nome?: string
+          quantidade_semanas?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'escala_modelos_local_id_fkey'
+            columns: ['local_id']
+            isOneToOne: false
+            referencedRelation: 'locais'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'escala_modelos_setor_id_fkey'
+            columns: ['setor_id']
+            isOneToOne: false
+            referencedRelation: 'setores'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       financeiro_extrato_periodo: {
         Row: {
           id: string

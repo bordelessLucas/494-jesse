@@ -1,7 +1,26 @@
-import { useId, useMemo, useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { useEffect, useId, useMemo, useState } from 'react'
+import { AlertTriangle, Loader2 } from 'lucide-react'
+import {
+  endOfMonth,
+  endOfWeek,
+  format,
+  startOfMonth,
+  startOfWeek,
+} from 'date-fns'
 
+import { useSupabaseUser } from '../../hooks/useSupabaseUser'
 import { cn } from '../../lib/cn'
+import {
+  buscarPlantoesIntervaloComLocaisSetores,
+  buscarProfissionaisComLocal,
+  type PlantaoDashboardRow,
+  type ProfissionalCargaRow,
+} from '../../lib/dashboard/dashboardQueries'
+import {
+  duracaoHorasPlantao,
+  metaHorasMensalContrato,
+  metaHorasSemanalContrato,
+} from '../../lib/dashboard/plantaoHoras'
 
 type PeriodoCarga = 'mes-atual' | 'semana-atual'
 
@@ -17,85 +36,25 @@ type ProfissionalCarga = {
   fotoUrl: string | null
 }
 
-const PROFISSIONAIS_CARGA_MOCK: ProfissionalCarga[] = [
-  {
-    id: '1',
-    nome: 'Dra. Ana Paula Ferreira',
-    especialidade: 'Cardiologia',
-    hospitalSetor: 'Hospital Amazonônia — UTI',
-    horasAtuais: 36,
-    horasMeta: 40,
-    fotoUrl: null,
-  },
-  {
-    id: '2',
-    nome: 'Dr. Carlos Mendes Silva',
-    especialidade: 'Clínica Geral',
-    hospitalSetor: 'PS Central — Emergência',
-    horasAtuais: 40,
-    horasMeta: 40,
-    fotoUrl: null,
-  },
-  {
-    id: '3',
-    nome: 'Enf. Mariana Costa',
-    especialidade: 'Enfermagem intensiva',
-    hospitalSetor: 'Hospital Regional Norte — UTI Pediátrica',
-    horasAtuais: 52,
-    horasMeta: 40,
-    fotoUrl: null,
-  },
-  {
-    id: '4',
-    nome: 'Dr. Roberto Lima',
-    especialidade: 'Anestesiologia',
-    hospitalSetor: 'Hospital Amazonônia — Centro cirúrgico',
-    horasAtuais: 28,
-    horasMeta: 40,
-    fotoUrl: null,
-  },
-  {
-    id: '5',
-    nome: 'Dra. Juliana Rocha',
-    especialidade: 'Pediatria',
-    hospitalSetor: 'Hospital Regional Norte — UTI Pediátrica',
-    horasAtuais: 62,
-    horasMeta: 40,
-    fotoUrl: null,
-  },
-  {
-    id: '6',
-    nome: 'Dr. Paulo Henrique Alves',
-    especialidade: 'Ortopedia',
-    hospitalSetor: 'PS Central — Ortopedia',
-    horasAtuais: 45,
-    horasMeta: 40,
-    fotoUrl: null,
-  },
-  {
-    id: '7',
-    nome: 'Enf. Fernanda Duarte',
-    especialidade: 'Enfermagem',
-    hospitalSetor: 'Hospital Amazonônia — UTI',
-    horasAtuais: 71,
-    horasMeta: 48,
-    fotoUrl: null,
-  },
-  {
-    id: '8',
-    nome: 'Dra. Camila Nogueira',
-    especialidade: 'Medicina intensiva',
-    hospitalSetor: 'Hospital Amazonônia — UTI',
-    horasAtuais: 33,
-    horasMeta: 40,
-    fotoUrl: null,
-  },
-]
-
 const SELECT_CLASS =
   'min-w-44 rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-8 text-sm text-slate-800 shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20'
 
 type FiltroRapido = 'todos' | 'ok' | 'alerta'
+
+function fotoDoDetalhes(detalhes: unknown): string | null {
+  const d = detalhes as { fotoUrl?: string | null } | null
+  const u = d?.fotoUrl?.trim()
+  return u || null
+}
+
+function especialidadeRotulo(
+  detalhes: unknown,
+  profissao: string,
+): string {
+  const d = detalhes as { especialidade?: string } | null
+  const e = d?.especialidade?.trim()
+  return e || profissao
+}
 
 function iniciais(nome: string) {
   const partes = nome.trim().split(/\s+/).filter(Boolean)
@@ -123,22 +82,122 @@ function corBarra(status: StatusCarga) {
   }
 }
 
+function acumularHorasPorProfissional(
+  plantoes: PlantaoDashboardRow[],
+): Map<string, number> {
+  const map = new Map<string, number>()
+  for (const p of plantoes) {
+    if (!p.profissional_id) continue
+    const h = duracaoHorasPlantao(p.data_plantao, p.hora_inicio, p.hora_fim)
+    const cur = map.get(p.profissional_id) ?? 0
+    map.set(p.profissional_id, cur + h)
+  }
+  return map
+}
+
 export function CargaHorariaPage() {
   const periodoId = useId()
   const hospitalId = useId()
+  const { user, isLoading: isLoadingUser } = useSupabaseUser()
 
   const [periodo, setPeriodo] = useState<PeriodoCarga>('mes-atual')
   const [hospitalSetorFiltro, setHospitalSetorFiltro] = useState<string>('todos')
   const [filtroRapido, setFiltroRapido] = useState<FiltroRapido>('todos')
+  const [profRows, setProfRows] = useState<ProfissionalCargaRow[]>([])
+  const [plantoes, setPlantoes] = useState<PlantaoDashboardRow[]>([])
+  const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState<string | null>(null)
+
+  const intervalo = useMemo(() => {
+    const agora = new Date()
+    if (periodo === 'mes-atual') {
+      const ini = startOfMonth(agora)
+      const fim = endOfMonth(agora)
+      return {
+        minIso: format(ini, 'yyyy-MM-dd'),
+        maxIso: format(fim, 'yyyy-MM-dd'),
+      }
+    }
+    const ini = startOfWeek(agora, { weekStartsOn: 1 })
+    const fim = endOfWeek(agora, { weekStartsOn: 1 })
+    return {
+      minIso: format(ini, 'yyyy-MM-dd'),
+      maxIso: format(fim, 'yyyy-MM-dd'),
+    }
+  }, [periodo])
+
+  useEffect(() => {
+    if (isLoadingUser || !user) return
+    const userId = user.id
+    let cancelado = false
+
+    async function load() {
+      setCarregando(true)
+      setErro(null)
+      try {
+        const [profissionais, plinhas] = await Promise.all([
+          buscarProfissionaisComLocal(userId),
+          buscarPlantoesIntervaloComLocaisSetores(
+            userId,
+            intervalo.minIso,
+            intervalo.maxIso,
+          ),
+        ])
+        if (cancelado) return
+        setProfRows(profissionais)
+        setPlantoes(plinhas)
+      } catch (e) {
+        if (!cancelado) {
+          setErro(e instanceof Error ? e.message : 'Erro ao carregar dados.')
+        }
+      } finally {
+        if (!cancelado) setCarregando(false)
+      }
+    }
+
+    void load()
+    return () => {
+      cancelado = true
+    }
+  }, [user, isLoadingUser, intervalo.minIso, intervalo.maxIso])
+
+  const horasPorProf = useMemo(
+    () => acumularHorasPorProfissional(plantoes),
+    [plantoes],
+  )
+
+  const listaProfissionais: ProfissionalCarga[] = useMemo(() => {
+    return profRows.map((r) => {
+      const horasBrutas = horasPorProf.get(r.id) ?? 0
+      const horasAtuais = Math.round(horasBrutas)
+      const meta =
+        periodo === 'mes-atual'
+          ? metaHorasMensalContrato(r.detalhes)
+          : metaHorasSemanalContrato(r.detalhes)
+      const localNome = r.locais?.nome_fantasia?.trim() ?? 'Sem local definido'
+      return {
+        id: r.id,
+        nome: r.nome,
+        especialidade: especialidadeRotulo(r.detalhes, r.profissao),
+        hospitalSetor: `${localNome} — ${r.profissao}`,
+        horasAtuais,
+        horasMeta: meta,
+        fotoUrl: fotoDoDetalhes(r.detalhes),
+      }
+    })
+  }, [profRows, horasPorProf, periodo])
 
   const opcoesHospitalSetor = useMemo(() => {
-    const set = new Set(PROFISSIONAIS_CARGA_MOCK.map((p) => p.hospitalSetor))
+    const set = new Set(listaProfissionais.map((p) => p.hospitalSetor))
     return Array.from(set).sort()
-  }, [])
+  }, [listaProfissionais])
 
   const listaFiltrada = useMemo(() => {
-    return PROFISSIONAIS_CARGA_MOCK.filter((p) => {
-      if (hospitalSetorFiltro !== 'todos' && p.hospitalSetor !== hospitalSetorFiltro) {
+    return listaProfissionais.filter((p) => {
+      if (
+        hospitalSetorFiltro !== 'todos' &&
+        p.hospitalSetor !== hospitalSetorFiltro
+      ) {
         return false
       }
       const s = statusCarga(p)
@@ -146,10 +205,28 @@ export function CargaHorariaPage() {
       if (filtroRapido === 'alerta' && s === 'ok') return false
       return true
     })
-  }, [hospitalSetorFiltro, filtroRapido])
+  }, [listaProfissionais, hospitalSetorFiltro, filtroRapido])
+
+  if (isLoadingUser || (carregando && profRows.length === 0 && !erro)) {
+    return (
+      <div className="flex min-h-[40vh] flex-1 items-center justify-center gap-2 bg-slate-50 p-6 text-slate-600">
+        <Loader2 className="h-6 w-6 animate-spin text-primary-600" aria-hidden />
+        <span>A carregar carga horária…</span>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-0 flex-1 space-y-6 bg-slate-50 p-4 md:p-6">
+      {erro ? (
+        <div
+          className="rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-800"
+          role="alert"
+        >
+          {erro}
+        </div>
+      ) : null}
+
       <header className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -157,7 +234,8 @@ export function CargaHorariaPage() {
               Gestão de Carga Horária
             </h1>
             <p className="mt-1.5 text-sm text-slate-600">
-              Acompanhe horas trabalhadas versus a meta contratada por profissional.
+              Horas somadas a partir dos plantões na escala (Supabase), face à meta
+              em «Contratação» do profissional.
             </p>
           </div>
 
@@ -232,7 +310,8 @@ export function CargaHorariaPage() {
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {listaFiltrada.map((p) => {
             const status = statusCarga(p)
-            const pctDaMeta = p.horasMeta > 0 ? (p.horasAtuais / p.horasMeta) * 100 : 0
+            const pctDaMeta =
+              p.horasMeta > 0 ? (p.horasAtuais / p.horasMeta) * 100 : 0
             const fillWidth = Math.min(100, pctDaMeta)
 
             return (
@@ -287,7 +366,8 @@ export function CargaHorariaPage() {
                   <div className="mt-5">
                     <div className="mb-2 flex items-baseline justify-between gap-2 text-sm">
                       <span className="font-medium text-slate-800">
-                        {p.horasAtuais}h / {p.horasMeta}h contratadas
+                        {p.horasAtuais}h / {p.horasMeta}h{' '}
+                        {periodo === 'mes-atual' ? 'meta mensal (≈4× semanal)' : 'contratadas (semana)'}
                       </span>
                       <span
                         className={cn(
@@ -325,8 +405,7 @@ export function CargaHorariaPage() {
           </div>
         ) : (
           <p className="text-center text-xs text-slate-500">
-            Dados de demonstração ·{' '}
-            {periodo === 'mes-atual' ? 'visão mensal (mock)' : 'visão semanal (mock)'}
+            Dados de {periodo === 'mes-atual' ? 'plantões do mês corrente' : 'plantões desta semana'}.
           </p>
         )}
       </section>

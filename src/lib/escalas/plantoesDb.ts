@@ -148,3 +148,46 @@ export async function buscarProfissionaisEscala(
   if (error) throw new Error(error.message)
   return (data ?? []) as { id: string; nome: string }[]
 }
+
+/** Dados extra para colunas Reg. Prof. e CPF em exportações (relatórios). */
+export async function buscarProfissionaisRelatorioEscala(userId: string): Promise<
+  Record<
+    string,
+    {
+      nome: string
+      registroProfissional: string
+      cpf: string | null
+    }
+  >
+> {
+  const { data, error } = await supabase
+    .from('profissionais')
+    .select('id, nome, sigla_conselho, conselho_numero, registro_uf, cpf')
+    .eq('user_id', userId)
+
+  if (error) throw new Error(error.message)
+
+  const out: Record<
+    string,
+    { nome: string; registroProfissional: string; cpf: string | null }
+  > = {}
+
+  for (const p of data ?? []) {
+    const partesReg = [p.sigla_conselho, p.conselho_numero].filter(
+      (x): x is string => typeof x === 'string' && x.trim().length > 0,
+    )
+    let registro = partesReg.join(' ')
+    if (p.registro_uf && String(p.registro_uf).trim().length > 0) {
+      registro = registro ? `${registro}/${p.registro_uf}` : String(p.registro_uf)
+    }
+    if (!registro) registro = '/'
+
+    out[p.id] = {
+      nome: p.nome,
+      registroProfissional: registro,
+      cpf: p.cpf,
+    }
+  }
+
+  return out
+}

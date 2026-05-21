@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Clock3,
   DollarSign,
+  Loader2,
   MapPin,
   MessageSquareText,
   Search,
@@ -12,7 +13,6 @@ import {
   X,
 } from 'lucide-react'
 import {
-  addDays,
   addMonths,
   eachDayOfInterval,
   endOfMonth,
@@ -21,11 +21,26 @@ import {
   startOfMonth,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { useSupabaseUser } from '../../hooks/useSupabaseUser'
 import { cn } from '../../lib/cn'
+import {
+  buscarPlantoesDoProfissional,
+  buscarProfissionaisComLocal,
+  profissionalIdPorEmailPreferido,
+  STORAGE_MINHA_AGENDA_PROFISSIONAL,
+  type PlantaoDashboardRow,
+  type ProfissionalCargaRow,
+} from '../../lib/dashboard/dashboardQueries'
+import {
+  dataLocalAPartirDeIsoData,
+  formatarHoraDb,
+} from '../../lib/escalas/plantoesDb'
+import type { StatusPlantaoEscala } from '../../lib/escalas/escalaTypes'
+import { duracaoHorasPlantao } from '../../lib/dashboard/plantaoHoras'
 
-type StatusAgenda = 'confirmado' | 'vago' | 'pendente'
+type StatusAgenda = StatusPlantaoEscala
 
 type PlantaoAgenda = {
   id: string
@@ -48,15 +63,15 @@ const STATUS_LABELS: Record<StatusAgenda, string> = {
   confirmado: 'Confirmado',
   vago: 'Vago',
   pendente: 'Pendente',
+  realizado: 'Realizado',
 }
 
 const STATUS_STYLES: Record<StatusAgenda, string> = {
   confirmado: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   vago: 'border-rose-200 bg-rose-50 text-rose-700',
   pendente: 'border-amber-200 bg-amber-50 text-amber-700',
+  realizado: 'border-sky-200 bg-sky-50 text-sky-800',
 }
-
-const PROFISSIONAL_LOGADO = 'Dr. João Silva'
 
 function capitalizar(texto: string): string {
   return texto.slice(0, 1).toUpperCase() + texto.slice(1)
@@ -82,44 +97,17 @@ function formatarValor(valor: number): string {
   }).format(valor)
 }
 
-function gerarPlantoesMock(): PlantaoAgenda[] {
-  const hoje = new Date()
-
-  const offsets = [
-    1, 2, 4, 6, 8, 10, 12, 14, 18, 22, 27, 33,
-  ]
-
-  const locais = [
-    'Hospital Regional Amazonas',
-    'Hospital Municipal Central',
-    'UPA Norte',
-    'Hospital Santa Clara',
-  ]
-
-  const setores = [
-    'UTI Pediátrica',
-    'Enfermaria',
-    'PS Adulto',
-    'Centro Cirúrgico',
-    'UTI Adulto',
-  ]
-
-  return offsets.map((offset, index) => {
-    const data = addDays(hoje, offset)
-    const status: StatusAgenda =
-      index % 5 === 0 ? 'vago' : index % 3 === 0 ? 'pendente' : 'confirmado'
-
-    return {
-      id: `agenda-${offset}-${index}`,
-      data,
-      local: locais[index % locais.length] ?? locais[0],
-      setor: setores[index % setores.length] ?? setores[0],
-      horaInicio: index % 4 === 0 ? '19:00' : '07:00',
-      horaFim: index % 4 === 0 ? '07:00' : '19:00',
-      valorPrevisto: index % 4 === 0 ? 1800 : index % 2 === 0 ? 1500 : 1200,
-      status,
-    }
-  })
+function linhaDbParaPlantaoAgenda(row: PlantaoDashboardRow): PlantaoAgenda {
+  return {
+    id: row.id,
+    data: dataLocalAPartirDeIsoData(row.data_plantao),
+    local: row.locais?.nome_fantasia?.trim() ?? 'Local',
+    setor: row.setores?.nome?.trim() ?? 'Setor',
+    horaInicio: formatarHoraDb(row.hora_inicio),
+    horaFim: formatarHoraDb(row.hora_fim),
+    valorPrevisto: row.valor_plantao ?? 0,
+    status: row.status,
+  }
 }
 
 function agruparPorMes(plantoes: PlantaoAgenda[]): GrupoAgenda[] {
@@ -193,23 +181,150 @@ function ModalEmDesenvolvimento({
   )
 }
 
+function escolherProfissionalIdInicial(
+  rows: ProfissionalCargaRow[],
+  emailSessao: string | null | undefined,
+): string | null {
+  if (rows.length === 0) return null
+  const guardado =
+    typeof localStorage !== 'undefined'
+      ? localStorage.getItem(STORAGE_MINHA_AGENDA_PROFISSIONAL)
+      : null
+  if (guardado && rows.some((r) => r.id === guardado)) return guardado
+  const porEmail = profissionalIdPorEmailPreferido(rows, emailSessao)
+  if (porEmail) return porEmail
+  if (rows.length === 1) return rows[0].id
+  return null
+}
+
 export function MinhaAgendaPage() {
+  const { user, isLoading: isLoadingUser } = useSupabaseUser()
   const [dataReferencia, setDataReferencia] = useState(() => new Date())
   const [modalAberto, setModalAberto] = useState(false)
 
-  const plantoes = useMemo(() => {
-    return gerarPlantoesMock()
+  const [profissionaisDetalhe, setProfissionaisDetalhe] = useState<
+    ProfissionalCargaRow[]
+  >([])
+  const [profissionalId, setProfissionalId] = useState<string | null>(null)
+  const [plantoesRows, setPlantoesRows] = useState<PlantaoDashboardRow[]>([])
+  const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isLoadingUser || !user) return
+    const uid = user.id
+    const email = user.email
+    let cancelado = false
+
+    async function loadProfissionais() {
+      try {
+        const rows = await buscarProfissionaisComLocal(uid)
+        if (cancelado) return
+        setProfissionaisDetalhe(rows)
+        setProfissionalId((atual) => {
+          if (atual && rows.some((o) => o.id === atual)) return atual
+          return escolherProfissionalIdInicial(rows, email)
+        })
+      } catch (e) {
+        if (!cancelado) {
+          setErro(e instanceof Error ? e.message : 'Erro ao carregar profissionais.')
+        }
+      }
+    }
+
+    void loadProfissionais()
+    return () => {
+      cancelado = true
+    }
+  }, [user, isLoadingUser])
+
+  const profissionais = useMemo(
+    () => profissionaisDetalhe.map((r) => ({ id: r.id, nome: r.nome })),
+    [profissionaisDetalhe],
+  )
+
+  const intervaloPlantoes = useMemo(() => {
+    const hoje = new Date()
+    const min = format(addMonths(startOfMonth(hoje), -6), 'yyyy-MM-dd')
+    const max = format(addMonths(endOfMonth(hoje), 36), 'yyyy-MM-dd')
+    return { min, max }
   }, [])
 
+  useEffect(() => {
+    if (isLoadingUser || !user || !profissionalId) {
+      if (!isLoadingUser && user && profissionaisDetalhe.length > 0 && !profissionalId) {
+        setPlantoesRows([])
+        setCarregando(false)
+      }
+      return
+    }
+    const userId = user.id
+    const pid = profissionalId
+    let cancelado = false
+
+    async function loadPlantoes() {
+      setCarregando(true)
+      setErro(null)
+      try {
+        const linhas = await buscarPlantoesDoProfissional(
+          userId,
+          pid,
+          intervaloPlantoes.min,
+          intervaloPlantoes.max,
+        )
+        if (cancelado) return
+        setPlantoesRows(linhas)
+      } catch (e) {
+        if (!cancelado) {
+          setErro(e instanceof Error ? e.message : 'Erro ao carregar plantões.')
+        }
+      } finally {
+        if (!cancelado) setCarregando(false)
+      }
+    }
+
+    void loadPlantoes()
+    return () => {
+      cancelado = true
+    }
+  }, [
+    user,
+    isLoadingUser,
+    profissionalId,
+    intervaloPlantoes.min,
+    intervaloPlantoes.max,
+    profissionaisDetalhe.length,
+  ])
+
+  const profissionalNome =
+    profissionais.find((p) => p.id === profissionalId)?.nome ?? 'Selecione um profissional'
+
+  const plantoes = useMemo(
+    () => plantoesRows.map(linhaDbParaPlantaoAgenda),
+    [plantoesRows],
+  )
+
   const plantoesDoMesAtual = useMemo(() => {
-    return plantoes.filter((plantao) => isSameMonth(plantao.data, dataReferencia))
+    return plantoes.filter((plantao) =>
+      isSameMonth(plantao.data, dataReferencia),
+    )
   }, [dataReferencia, plantoes])
 
   const grupos = useMemo(() => agruparPorMes(plantoes), [plantoes])
 
   const cargaHorariaMes = useMemo(() => {
-    return plantoesDoMesAtual.length * 12
-  }, [plantoesDoMesAtual.length])
+    const total = plantoesDoMesAtual.reduce(
+      (acc, p) =>
+        acc +
+        duracaoHorasPlantao(
+          format(p.data, 'yyyy-MM-dd'),
+          p.horaInicio,
+          p.horaFim,
+        ),
+      0,
+    )
+    return Math.round(total)
+  }, [plantoesDoMesAtual])
 
   const irMesAnterior = useCallback(() => {
     setDataReferencia((atual) => addMonths(atual, -1))
@@ -219,8 +334,35 @@ export function MinhaAgendaPage() {
     setDataReferencia((atual) => addMonths(atual, 1))
   }, [])
 
+  const aoMudarProfissional = useCallback((id: string) => {
+    setProfissionalId(id)
+    try {
+      localStorage.setItem(STORAGE_MINHA_AGENDA_PROFISSIONAL, id)
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  if (isLoadingUser) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-slate-600">
+        <Loader2 className="h-6 w-6 animate-spin text-primary-600" aria-hidden />
+        <span>A carregar…</span>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-5 bg-slate-50">
+      {erro ? (
+        <div
+          className="rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-800"
+          role="alert"
+        >
+          {erro}
+        </div>
+      ) : null}
+
       <header className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/80">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-3">
@@ -240,11 +382,12 @@ export function MinhaAgendaPage() {
           <div className="flex flex-wrap gap-2">
             <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700">
               <ShieldCheck className="h-4 w-4 text-emerald-500" aria-hidden />
-              Plantões este mês: {plantoesDoMesAtual.length}
+              Plantões este mês:{' '}
+              {carregando ? '…' : plantoesDoMesAtual.length}
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700">
               <Clock3 className="h-4 w-4 text-primary-500" aria-hidden />
-              Carga horária: {cargaHorariaMes}h
+              Carga horária: {carregando ? '…' : `${cargaHorariaMes}h`}
             </span>
           </div>
         </div>
@@ -277,14 +420,39 @@ export function MinhaAgendaPage() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600">
-              <Search className="h-4 w-4 text-slate-400" aria-hidden />
-              <span>{PROFISSIONAL_LOGADO}</span>
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600">
+              <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+              <span className="truncate">{profissionalNome}</span>
             </div>
+            {profissionais.length > 0 ? (
+              <select
+                className="min-w-56 rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-8 text-sm font-medium text-slate-800 shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                value={profissionalId ?? ''}
+                onChange={(e) => aoMudarProfissional(e.target.value)}
+                aria-label="Profissional para ver a agenda"
+              >
+                <option value="" disabled>
+                  Escolher profissional
+                </option>
+                {profissionais.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </select>
+            ) : null}
           </div>
         </div>
       </header>
+
+      {!profissionalId && profissionais.length > 0 ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Selecione um profissional para ver os plantões. O sistema usa o e-mail da
+          conta quando coincide com o cadastro do profissional; caso contrário,
+          escolha manualmente (a escolha fica guardada neste navegador).
+        </div>
+      ) : null}
 
       <div className="rounded-xl bg-white shadow-sm ring-1 ring-slate-200/80">
         <div className="border-b border-slate-200 px-5 py-4">
@@ -292,104 +460,121 @@ export function MinhaAgendaPage() {
             Próximos plantões organizados por mês
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            Lista cronológica focada na visão do profissional logado.
+            Dados da tabela «plantões» no Supabase, filtrados pelo profissional
+            selecionado.
           </p>
         </div>
 
         <div className="space-y-0 p-4 sm:p-5">
-          {grupos.map((grupo) => (
-            <section key={grupo.chave} className="relative pb-8 last:pb-0">
-              <div className="mb-4 flex items-center gap-3">
-                <span className="h-px flex-1 bg-slate-200" />
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {grupo.titulo}
-                </span>
-                <span className="h-px flex-1 bg-slate-200" />
-              </div>
+          {carregando ? (
+            <div className="flex items-center justify-center gap-2 py-16 text-slate-600">
+              <Loader2 className="h-6 w-6 animate-spin text-primary-600" aria-hidden />
+              A carregar plantões…
+            </div>
+          ) : !profissionalId ? (
+            <p className="py-12 text-center text-sm text-slate-500">
+              Nenhum profissional selecionado.
+            </p>
+          ) : grupos.length === 0 ? (
+            <p className="py-12 text-center text-sm text-slate-500">
+              Nenhum plantão encontrado para este profissional no intervalo
+              carregado.
+            </p>
+          ) : (
+            grupos.map((grupo) => (
+              <section key={grupo.chave} className="relative pb-8 last:pb-0">
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="h-px flex-1 bg-slate-200" />
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {grupo.titulo}
+                  </span>
+                  <span className="h-px flex-1 bg-slate-200" />
+                </div>
 
-              <div className="space-y-3">
-                {grupo.plantoes.map((plantao) => (
-                  <article
-                    key={plantao.id}
-                    className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
-                  >
-                    <div className="grid gap-4 lg:grid-cols-[8rem_minmax(0,1fr)_14rem] lg:items-center">
-                      <div className="rounded-xl bg-slate-50 p-4 text-center">
-                        <p className="text-3xl font-semibold tracking-tight text-slate-900">
-                          {format(plantao.data, 'dd', { locale: ptBR })}
-                        </p>
-                        <p className="mt-1 text-sm font-semibold text-slate-600">
-                          {formatarDiaCurto(plantao.data)}
-                        </p>
-                        <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">
-                          {formatarNomeDia(plantao.data)}
-                        </p>
-                      </div>
-
-                      <div className="min-w-0 space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-base font-semibold text-slate-900">
+                <div className="space-y-3">
+                  {grupo.plantoes.map((plantao) => (
+                    <article
+                      key={plantao.id}
+                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+                    >
+                      <div className="grid gap-4 lg:grid-cols-[8rem_minmax(0,1fr)_14rem] lg:items-center">
+                        <div className="rounded-xl bg-slate-50 p-4 text-center">
+                          <p className="text-3xl font-semibold tracking-tight text-slate-900">
+                            {format(plantao.data, 'dd', { locale: ptBR })}
+                          </p>
+                          <p className="mt-1 text-sm font-semibold text-slate-600">
                             {formatarDiaCurto(plantao.data)}
-                          </h3>
-                          <span className="text-sm text-slate-500">
+                          </p>
+                          <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">
                             {formatarNomeDia(plantao.data)}
-                          </span>
+                          </p>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
-                          <span className="inline-flex items-center gap-1.5">
-                            <Clock3 className="h-4 w-4 text-slate-400" aria-hidden />
-                            {plantao.horaInicio} - {plantao.horaFim}
-                          </span>
-                          <span className="inline-flex items-center gap-1.5">
-                            <MapPin className="h-4 w-4 text-slate-400" aria-hidden />
-                            {plantao.local}
-                          </span>
+                        <div className="min-w-0 space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-base font-semibold text-slate-900">
+                              {formatarDiaCurto(plantao.data)}
+                            </h3>
+                            <span className="text-sm text-slate-500">
+                              {formatarNomeDia(plantao.data)}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
+                            <span className="inline-flex items-center gap-1.5">
+                              <Clock3 className="h-4 w-4 text-slate-400" aria-hidden />
+                              {plantao.horaInicio} - {plantao.horaFim}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                              <MapPin className="h-4 w-4 text-slate-400" aria-hidden />
+                              {plantao.local}
+                            </span>
+                          </div>
+
+                          <div className="inline-flex items-center gap-1.5 text-sm text-slate-600">
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                              {plantao.setor}
+                            </span>
+                          </div>
                         </div>
 
-                        <div className="inline-flex items-center gap-1.5 text-sm text-slate-600">
-                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
-                            {plantao.setor}
+                        <div className="flex flex-col items-start gap-3 lg:items-end lg:text-right">
+                          <div>
+                            <p className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              <DollarSign className="h-3.5 w-3.5" aria-hidden />
+                              Valor previsto
+                            </p>
+                            <p className="mt-1 text-2xl font-semibold text-slate-900">
+                              {formatarValor(plantao.valorPrevisto)}
+                            </p>
+                          </div>
+                          <span
+                            className={cn(
+                              'inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold',
+                              STATUS_STYLES[plantao.status],
+                            )}
+                          >
+                            {STATUS_LABELS[plantao.status]}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex flex-col items-start gap-3 lg:items-end lg:text-right">
-                        <div>
-                          <p className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            <DollarSign className="h-3.5 w-3.5" aria-hidden />
-                            Valor previsto
-                          </p>
-                          <p className="mt-1 text-2xl font-semibold text-slate-900">
-                            {formatarValor(plantao.valorPrevisto)}
-                          </p>
-                        </div>
-                        <span
-                          className={cn(
-                            'inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold',
-                            STATUS_STYLES[plantao.status],
-                          )}
+                      <div className="mt-4 border-t border-slate-200 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => setModalAberto(true)}
+                          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
                         >
-                          {STATUS_LABELS[plantao.status]}
-                        </span>
+                          <ArrowLeftRight className="h-4 w-4" aria-hidden />
+                          Solicitar Troca/Repasse
+                        </button>
                       </div>
-                    </div>
-
-                    <div className="mt-4 border-t border-slate-200 pt-4">
-                      <button
-                        type="button"
-                        onClick={() => setModalAberto(true)}
-                        className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
-                      >
-                        <ArrowLeftRight className="h-4 w-4" aria-hidden />
-                        Solicitar Troca/Repasse
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          ))}
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ))
+          )}
         </div>
       </div>
 
