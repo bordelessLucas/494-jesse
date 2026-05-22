@@ -59,8 +59,8 @@ export function RelatorioAtividadesTemplate({
       </h2>
 
       <section className="mt-6 space-y-4 text-justify text-sm leading-relaxed">
-        {conteudo.map((bloco, index) => (
-          <BlocoConteudoRelatorio key={index} bloco={bloco} />
+        {conteudo.map((bloco) => (
+          <BlocoConteudoRelatorio key={bloco.clientKey} bloco={bloco} />
         ))}
       </section>
 
@@ -83,6 +83,14 @@ type BlocoConteudoRelatorioProps = {
 function BlocoConteudoRelatorio({ bloco }: BlocoConteudoRelatorioProps) {
   if (bloco.type === 'text') {
     return <p className="bloco-impressao text-justify">{bloco.content}</p>
+  }
+
+  if (!bloco.url?.trim()) {
+    return (
+      <p className="bloco-impressao text-center text-xs italic text-slate-500">
+        [Imagem pendente — adicione ficheiro ou URL no editor]
+      </p>
+    )
   }
 
   return <BlocoImagemRelatorio url={bloco.url} caption={bloco.caption} />

@@ -15,24 +15,35 @@ export type AtualizacaoImagem = Partial<{
  */
 export type BlocosRelatorioOperacoes = {
   blocos: RelatorioAtividadesBloco[]
-  adicionarTexto: () => void
-  adicionarImagem: () => void
+  /** Devolve `clientKey` do novo bloco (para focar o campo no editor). */
+  adicionarTexto: () => string
+  /** Bloco imagem vazio (URL pode ser preenchida no cartão ou via upload). Devolve `clientKey`. */
+  adicionarImagem: () => string
+  /** Insere uma imagem já com URL pública (ex.: após upload). Devolve `clientKey`. */
+  adicionarImagemComUrl: (url: string, caption?: string) => string
   remover: (indice: number) => void
   moverParaCima: (indice: number) => void
   moverParaBaixo: (indice: number) => void
   atualizarTexto: (indice: number, content: string) => void
   atualizarImagem: (indice: number, atualizacao: AtualizacaoImagem) => void
+  atualizarImagemPorChave: (clientKey: string, atualizacao: AtualizacaoImagem) => void
 }
 
-const BLOCO_TEXTO_VAZIO: RelatorioAtividadesBloco = {
-  type: 'text',
-  content: '',
+function criarBlocoTextoVazio(): Extract<RelatorioAtividadesBloco, { type: 'text' }> {
+  return {
+    type: 'text',
+    clientKey: crypto.randomUUID(),
+    content: '',
+  }
 }
 
-const BLOCO_IMAGEM_VAZIO: RelatorioAtividadesBloco = {
-  type: 'image',
-  url: '',
-  caption: '',
+function criarBlocoImagemVazio(): Extract<RelatorioAtividadesBloco, { type: 'image' }> {
+  return {
+    type: 'image',
+    clientKey: crypto.randomUUID(),
+    url: '',
+    caption: '',
+  }
 }
 
 function trocarPosicoes<T>(lista: T[], a: number, b: number): T[] {
@@ -54,15 +65,31 @@ function trocarPosicoes<T>(lista: T[], a: number, b: number): T[] {
 export function useBlocosRelatorio(
   blocosIniciais: RelatorioAtividadesBloco[],
 ): BlocosRelatorioOperacoes {
-  const [blocos, setBlocos] =
-    useState<RelatorioAtividadesBloco[]>(blocosIniciais)
+  const [blocos, setBlocos] = useState<RelatorioAtividadesBloco[]>(() =>
+    blocosIniciais.map((b) => ({ ...b })),
+  )
 
-  const adicionarTexto = useCallback(() => {
-    setBlocos((atuais) => [...atuais, { ...BLOCO_TEXTO_VAZIO }])
+  const adicionarTexto = useCallback((): string => {
+    const novo = criarBlocoTextoVazio()
+    setBlocos((atuais) => [...atuais, novo])
+    return novo.clientKey
   }, [])
 
-  const adicionarImagem = useCallback(() => {
-    setBlocos((atuais) => [...atuais, { ...BLOCO_IMAGEM_VAZIO }])
+  const adicionarImagem = useCallback((): string => {
+    const novo = criarBlocoImagemVazio()
+    setBlocos((atuais) => [...atuais, novo])
+    return novo.clientKey
+  }, [])
+
+  const adicionarImagemComUrl = useCallback((url: string, caption = ''): string => {
+    const novo: Extract<RelatorioAtividadesBloco, { type: 'image' }> = {
+      type: 'image',
+      clientKey: crypto.randomUUID(),
+      url,
+      ...(caption.trim() ? { caption: caption.trim() } : {}),
+    }
+    setBlocos((atuais) => [...atuais, novo])
+    return novo.clientKey
   }, [])
 
   const remover = useCallback((indice: number) => {
@@ -108,14 +135,28 @@ export function useBlocosRelatorio(
     [],
   )
 
+  const atualizarImagemPorChave = useCallback(
+    (clientKey: string, atualizacao: AtualizacaoImagem) => {
+      setBlocos((atuais) =>
+        atuais.map((bloco) => {
+          if (bloco.clientKey !== clientKey || bloco.type !== 'image') return bloco
+          return { ...bloco, ...atualizacao }
+        }),
+      )
+    },
+    [],
+  )
+
   return {
     blocos,
     adicionarTexto,
     adicionarImagem,
+    adicionarImagemComUrl,
     remover,
     moverParaCima,
     moverParaBaixo,
     atualizarTexto,
     atualizarImagem,
+    atualizarImagemPorChave,
   }
 }

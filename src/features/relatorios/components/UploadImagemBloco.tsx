@@ -104,8 +104,7 @@ export function UploadImagemBloco({
 
   return (
     <div className="flex flex-col gap-2">
-      <label className="flex flex-col gap-1 text-xs">
-        <span className="font-medium text-slate-700">Imagem do relatório</span>
+      <span className="text-xs font-medium text-slate-700">Imagem do relatório</span>
         <input
           ref={inputRef}
           id={inputId}
@@ -159,7 +158,6 @@ export function UploadImagemBloco({
             </>
           )}
         </button>
-      </label>
 
       {mensagemErro ? (
         <p

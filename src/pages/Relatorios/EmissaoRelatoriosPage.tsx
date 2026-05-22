@@ -209,41 +209,8 @@ function montarAssinaturaAPartirDoCabecalho(
 const ESCALA_SETOR_VAZIA: EscalaFrequenciaSetorEntrada[] = []
 const ESCALA_COORDENACAO_VAZIA: EscalaCoordenacaoEntrada[] = []
 
-/**
- * Estrutura inicial sugerida pelo cliente para o relatório SCIRAS.
- * Padrão: Imagem (capa) → Texto → Texto → Imagem → Texto (conclusão).
- *
- * O coordenador pode editar, reordenar, remover ou adicionar blocos
- * livremente pelo EditorBlocosRelatorio.
- */
-const BLOCOS_INICIAIS_SCIRAS: RelatorioAtividadesBloco[] = [
-  {
-    type: 'image',
-    url: 'https://placehold.co/600x320?text=Capa+Institucional',
-    caption: 'Figura 1 — Capa institucional da seção.',
-  },
-  {
-    type: 'text',
-    content:
-      'Durante o período de referência, a coordenação médica do Serviço de Controle de Infecções Relacionadas à Assistência à Saúde (SCIRAS) conduziu as atividades habituais de monitoramento epidemiológico, suporte assistencial e revisão de protocolos institucionais.',
-  },
-  {
-    type: 'text',
-    content:
-      'As principais ações incluíram a revisão semanal dos indicadores de infecção hospitalar das unidades críticas, a participação nas reuniões da Comissão de Controle de Infecção Hospitalar (CCIH), a capacitação da equipe assistencial em higienização das mãos e a investigação ativa de surtos suspeitos.',
-  },
-  {
-    type: 'image',
-    url: 'https://placehold.co/600x320?text=Indicadores+Consolidados',
-    caption:
-      'Figura 2 — Dashboard com indicadores consolidados da competência.',
-  },
-  {
-    type: 'text',
-    content:
-      'Não foram identificados eventos sentinelas durante a competência. Permanecem em vigor as recomendações descritas no protocolo institucional vigente.',
-  },
-]
+/** Blocos iniciais vazios — o coordenador adiciona texto/imagem pelos botões. */
+const BLOCOS_INICIAIS_SCIRAS: RelatorioAtividadesBloco[] = []
 
 function formatarDataEmissao(competenciaCabecalho: string): string {
   const hoje = new Date()
@@ -485,7 +452,7 @@ function PainelConfiguracao({
   children,
 }: PainelConfiguracaoProps) {
   return (
-    <aside className="no-print flex h-screen w-full max-w-md shrink-0 flex-col border-r border-slate-200 bg-white print:hidden lg:w-1/3">
+    <aside className="no-print flex h-[100dvh] max-h-[100dvh] w-full max-w-md shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white print:hidden lg:w-1/3">
       <div className="shrink-0 p-6 pb-4">
         <h1 className="text-xl font-bold tracking-tight text-slate-900">
           Emissão de Relatórios
@@ -495,7 +462,8 @@ function PainelConfiguracao({
         </p>
       </div>
 
-      <div className="flex shrink-0 flex-col gap-4 px-6 pb-4">
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="flex flex-col gap-4 px-6 pb-4">
         <CampoSelect
           label="Tipo de Relatório"
           value={tipoSelecionado}
@@ -590,17 +558,14 @@ function PainelConfiguracao({
             </button>
           </div>
         ) : null}
+        </div>
+
+        {children ? (
+          <div className="border-t border-slate-100 px-6 py-4">{children}</div>
+        ) : null}
       </div>
 
-      {children ? (
-        <div className="flex min-h-0 flex-1 flex-col border-t border-slate-100 px-6 py-4">
-          {children}
-        </div>
-      ) : (
-        <div className="flex-1" />
-      )}
-
-      <div className="shrink-0 border-t border-slate-100 p-6">
+      <div className="shrink-0 border-t border-slate-100 bg-white p-6">
         <button
           type="button"
           onClick={onImprimir}

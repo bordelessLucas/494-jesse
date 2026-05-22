@@ -49,9 +49,12 @@ export type EscalaCoordenacaoEntrada = {
  *   - `image`: figura centralizada com legenda opcional (ex.: prints
  *              de planilhas, fotos de boletins, comprovantes etc.).
  */
+/** Chave estável para listas React (evita estado trocado ao reordenizar blocos). */
+type ChaveBloco = { clientKey: string }
+
 export type RelatorioAtividadesBloco =
-  | { type: 'text'; content: string }
-  | { type: 'image'; url: string; caption?: string }
+  | ({ type: 'text'; content: string } & ChaveBloco)
+  | ({ type: 'image'; url: string; caption?: string } & ChaveBloco)
 
 /** Dados que aparecem no rodapé de assinatura do relatório descritivo. */
 export type AssinaturaResponsavel = {
