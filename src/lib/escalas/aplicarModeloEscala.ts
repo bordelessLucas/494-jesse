@@ -5,10 +5,9 @@ import {
   formatarHoraDb,
   type PlantaoRowDb,
 } from './plantoesDb'
-import {
-  listarItensModelo,
-  type EscalaModeloItemRow,
-  type EscalaModeloRow,
+import type {
+  EscalaModeloItemRow,
+  EscalaModeloRow,
 } from './modelosEscalaDb'
 
 /** 1 = segunda … 7 = domingo (igual à tabela escala_modelo_itens). */
