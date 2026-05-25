@@ -46,6 +46,7 @@ const navigationItems: NavigationItem[] = [
     icon: FileText,
     subItems: [
       { to: '/relatorios/emissao', label: 'Emissão' },
+      { to: '/relatorios/historico', label: 'Histórico de Relatórios' },
       { to: '/relatorios/indicadores-sciras', label: 'Indicadores SCIRAS' },
     ],
   },

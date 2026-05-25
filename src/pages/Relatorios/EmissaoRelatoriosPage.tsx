@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react'
-import { Printer } from 'lucide-react'
+import { Loader2, Printer } from 'lucide-react'
+
+import { useSupabaseUser } from '../../hooks/useSupabaseUser'
+import { registrarRelatorioImpresso } from '../../lib/relatorios/relatoriosHistoricoDb'
+import type { Json } from '../../types/database.types'
 
 import { carregarIndicadoresParaRelatorio } from '../../features/sciras/carregarIndicadoresRelatorio'
 import type {
@@ -8,6 +12,7 @@ import type {
 } from '../../features/sciras/types'
 
 import { EditorBlocosRelatorio } from '../../features/relatorios/components/EditorBlocosRelatorio'
+import { HistoricoRelatoriosPanel } from '../../features/relatorios/components/HistoricoRelatoriosPanel'
 import { useBlocosRelatorio } from '../../features/relatorios/hooks/useBlocosRelatorio'
 import { FrequenciaCoordenacaoTemplate } from '../../features/relatorios/templates/FrequenciaCoordenacaoTemplate'
 import { FrequenciaSetorTemplate } from '../../features/relatorios/templates/FrequenciaSetorTemplate'
@@ -225,6 +230,7 @@ function formatarDataEmissao(competenciaCabecalho: string): string {
  * ============================================================ */
 
 export function EmissaoRelatoriosPage() {
+  const { user } = useSupabaseUser()
   const { logoUrl } = useThemeBranding()
   const competencias = useMemo(() => gerarCompetencias(), [])
 
@@ -260,6 +266,10 @@ export function EmissaoRelatoriosPage() {
     useState<IndicadorCirurgico | null>(null)
   const [indicadoresRelatorioCarregando, setIndicadoresRelatorioCarregando] =
     useState(false)
+
+  const [versaoHistorico, setVersaoHistorico] = useState(0)
+  const [aRegistarImpressao, setARegistarImpressao] = useState(false)
+  const [avisoHistorico, setAvisoHistorico] = useState<string | null>(null)
 
   const competencia = useMemo(
     () =>
@@ -344,7 +354,58 @@ export function EmissaoRelatoriosPage() {
     setCabecalhoTexto((atual) => ({ ...atual, [chave]: valor }))
   }
 
-  const handleImprimir = () => {
+  const handleImprimir = async () => {
+    setAvisoHistorico(null)
+
+    if (user) {
+      setARegistarImpressao(true)
+      try {
+        const titulo =
+          TIPOS_RELATORIO.find((t) => t.id === tipoSelecionado)?.label ??
+          tipoSelecionado
+        const competenciaRotulo = competencia?.label ?? competenciaId
+
+        await registrarRelatorioImpresso(user.id, {
+          tipo_relatorio: tipoSelecionado,
+          titulo,
+          competencia: competenciaRotulo,
+          local_ref: localId,
+          local_nome: detalhe.nomeLocal,
+          cabecalho: { ...cabecalhoTexto, logoUrl } as Json,
+          snapshot: {
+            tipoSelecionado,
+            competenciaId,
+            competenciaRotulo,
+            localId,
+            cabecalho,
+            totalDias,
+            rotulosTurnosFrequenciaSetor:
+              tipoSelecionado === 'FrequenciaSetor'
+                ? rotulosTurnosFrequenciaSetor
+                : undefined,
+            blocosSCIRAS:
+              tipoSelecionado === 'RelatorioSCIRAS'
+                ? blocosRelatorio.blocos
+                : undefined,
+            indicadorUti: indicadorUtiRelatorio,
+            indicadorCirurgico: indicadorCirurgicoRelatorio,
+          } as Json,
+        })
+        setVersaoHistorico((v) => v + 1)
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Erro ao guardar histórico.'
+        setAvisoHistorico(
+          msg.includes('relatorios_historico') || msg.includes('schema')
+            ? 'Não foi possível guardar o histórico (migração pendente). A impressão continuará.'
+            : `Histórico não guardado: ${msg}. A impressão continuará.`,
+        )
+      } finally {
+        setARegistarImpressao(false)
+      }
+    } else {
+      setAvisoHistorico('Inicie sessão para registar o relatório no histórico.')
+    }
+
     window.print()
   }
 
@@ -374,7 +435,12 @@ export function EmissaoRelatoriosPage() {
         competencias={competencias}
         localId={localId}
         onChangeLocal={setLocalId}
-        onImprimir={handleImprimir}
+        onImprimir={() => void handleImprimir()}
+        aRegistarImpressao={aRegistarImpressao}
+        avisoHistorico={avisoHistorico}
+        painelHistorico={
+          <HistoricoRelatoriosPanel userId={user?.id} versaoLista={versaoHistorico} />
+        }
         cabecalhoTexto={cabecalhoTexto}
         onAlterarCampoCabecalho={alterarCampoCabecalho}
         onRestaurarCabecalhoContrato={restaurarCabecalhoDoContrato}
@@ -420,6 +486,9 @@ type PainelConfiguracaoProps = {
   localId: LocalContratoId
   onChangeLocal: (valor: LocalContratoId) => void
   onImprimir: () => void
+  aRegistarImpressao?: boolean
+  avisoHistorico?: string | null
+  painelHistorico?: ReactNode
   cabecalhoTexto: CabecalhoTextoEditavel
   onAlterarCampoCabecalho: (
     chave: keyof CabecalhoTextoEditavel,
@@ -443,6 +512,9 @@ function PainelConfiguracao({
   localId,
   onChangeLocal,
   onImprimir,
+  aRegistarImpressao = false,
+  avisoHistorico,
+  painelHistorico,
   cabecalhoTexto,
   onAlterarCampoCabecalho,
   onRestaurarCabecalhoContrato,
@@ -565,14 +637,30 @@ function PainelConfiguracao({
         ) : null}
       </div>
 
+      {painelHistorico ? (
+        <div className="shrink-0 border-t border-slate-100 bg-slate-50/50 px-6 py-4">
+          {painelHistorico}
+        </div>
+      ) : null}
+
       <div className="shrink-0 border-t border-slate-100 bg-white p-6">
+        {avisoHistorico ? (
+          <p role="status" className="mb-3 text-xs text-amber-800">
+            {avisoHistorico}
+          </p>
+        ) : null}
         <button
           type="button"
+          disabled={aRegistarImpressao}
           onClick={onImprimir}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-5 py-3 text-base font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-5 py-3 text-base font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 disabled:opacity-60"
         >
-          <Printer className="h-5 w-5" aria-hidden />
-          Imprimir / Salvar PDF
+          {aRegistarImpressao ? (
+            <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+          ) : (
+            <Printer className="h-5 w-5" aria-hidden />
+          )}
+          {aRegistarImpressao ? 'A registar…' : 'Imprimir / Salvar PDF'}
         </button>
         <p className="mt-2 text-center text-xs text-slate-500">
           Dica: escolha “Salvar como PDF” na janela de impressão do navegador.

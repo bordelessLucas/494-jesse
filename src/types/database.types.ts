@@ -537,6 +537,48 @@ export type Database = {
           },
         ]
       }
+      relatorios_historico: {
+        Row: {
+          id: string
+          user_id: string
+          tipo_relatorio: string
+          titulo: string
+          competencia: string
+          local_ref: string
+          local_nome: string
+          cabecalho: Json
+          snapshot: Json
+          impresso_em: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          tipo_relatorio: string
+          titulo: string
+          competencia: string
+          local_ref: string
+          local_nome: string
+          cabecalho?: Json
+          snapshot?: Json
+          impresso_em?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          tipo_relatorio?: string
+          titulo?: string
+          competencia?: string
+          local_ref?: string
+          local_nome?: string
+          cabecalho?: Json
+          snapshot?: Json
+          impresso_em?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       sciras_indicadores_cirurgicos: {
         Row: {
           id: string

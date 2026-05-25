@@ -28,6 +28,7 @@ import { CargaHorariaPage } from './pages/Dashboard/CargaHorariaPage'
 import { ResumoPage } from './pages/Dashboard/ResumoPage'
 import { DocumentosUsuarioPage, VisualizadoresPage } from './pages/UsuariosEmBrevePage'
 import { EmissaoRelatoriosPage } from './pages/Relatorios/EmissaoRelatoriosPage'
+import { HistoricoRelatoriosPage } from './pages/Relatorios/HistoricoRelatoriosPage'
 import { IndicadoresScirasPage } from './pages/Relatorios/IndicadoresScirasPage'
 
 function App() {
@@ -62,6 +63,10 @@ function App() {
             <Route
               path="relatorios/emissao"
               element={<EmissaoRelatoriosPage />}
+            />
+            <Route
+              path="relatorios/historico"
+              element={<HistoricoRelatoriosPage />}
             />
             <Route
               path="relatorios/indicadores-sciras"

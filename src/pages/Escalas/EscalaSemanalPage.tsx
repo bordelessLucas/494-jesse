@@ -43,6 +43,7 @@ import type {
 } from '../../lib/escalas/escalaTypes'
 import { supabase } from '../../lib/supabase'
 import { useSupabaseUser } from '../../hooks/useSupabaseUser'
+import { SeletorModeloEscala } from './components/SeletorModeloEscala'
 
 const MESES_PT_MAIUSC = [
   'JANEIRO',
@@ -1480,6 +1481,18 @@ export function EscalaSemanalPage() {
                 </option>
               ))}
             </select>
+            <SeletorModeloEscala
+              compacto
+              className="mb-3"
+              userId={user?.id}
+              localId={localId}
+              setorId={setorId === TODOS_SETORES ? '' : setorId}
+              setorIndefinido={setorId === TODOS_SETORES || !localId}
+              dataInicioIso={chaveData(dias[0])}
+              dataFimIso={chaveData(dias[6])}
+              plantoesExistentes={plantoes}
+              onAplicado={carregarPlantoesSemana}
+            />
             <button
               type="button"
               disabled={

@@ -26,6 +26,7 @@ import {
   tomParaData,
   type PlantaoRowDb,
 } from '../../lib/escalas/plantoesDb'
+import { SeletorModeloEscala } from './components/SeletorModeloEscala'
 import { ModalAlterarPlantao, type ContextoModalPlantao } from './EscalaSemanalPage'
 
 type PlantaoMensal = {
@@ -399,6 +400,25 @@ export function EscalaMensalPage() {
             </button>
           </div>
         </div>
+
+        <SeletorModeloEscala
+          className="mt-4"
+          userId={user?.id}
+          localId={
+            localSelecionado !== TODOS_LOCAIS ? localSelecionado : ''
+          }
+          setorId={
+            setorSelecionado !== TODOS_SETORES ? setorSelecionado : ''
+          }
+          setorIndefinido={
+            localSelecionado === TODOS_LOCAIS ||
+            setorSelecionado === TODOS_SETORES
+          }
+          dataInicioIso={format(inicioMes, 'yyyy-MM-dd')}
+          dataFimIso={format(fimMes, 'yyyy-MM-dd')}
+          plantoesExistentes={plantoesRows}
+          onAplicado={carregarPlantoesGrade}
+        />
       </header>
 
       <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200/80">
