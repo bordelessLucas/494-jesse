@@ -16,7 +16,11 @@ import {
   Users,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
+import { useMemo } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
+
+import { chavePermissaoParaRotaSidebar } from './Profissionais/profissionalAcessoTypes'
+import { useContaMembro } from '../hooks/useContaMembro'
 
 type NavigationItem = {
   /** Prefixo da rota: mantém o item ativo para todas as URLs que começam com `to` ou `to/`. */
@@ -121,6 +125,48 @@ const sidebarSurfaceStyle = {
 
 export function Sidebar() {
   const { pathname } = useLocation()
+  const { isLoading, isMembroProfissional, permissoes } = useContaMembro()
+
+  const itensVisiveis = useMemo(() => {
+    if (!isMembroProfissional) return navigationItems
+
+    const filtrarSub = (subItems: NavigationItem['subItems']) =>
+      (subItems ?? []).filter((sub) => {
+        const chave = chavePermissaoParaRotaSidebar(sub.to)
+        if (!chave) return false
+        return Boolean(permissoes[chave])
+      })
+
+    const filtrados: NavigationItem[] = []
+
+    if (permissoes.minha_agenda) {
+      filtrados.push({
+        to: '/minha-agenda',
+        label: 'Minha Agenda',
+        icon: CalendarClock,
+      })
+    }
+
+    for (const item of navigationItems) {
+      if (item.to === '/usuarios' || item.to === '/configuracao' || item.to === '/financeiro') {
+        continue
+      }
+      const subItems = filtrarSub(item.subItems)
+      if (subItems.length === 0) continue
+      filtrados.push({ ...item, subItems })
+    }
+
+    return filtrados
+  }, [isMembroProfissional, permissoes])
+
+  if (isLoading) {
+    return (
+      <aside
+        style={sidebarSurfaceStyle}
+        className="no-print sticky top-0 z-30 hidden h-screen w-64 border-r border-black/15 md:flex md:flex-col print:hidden"
+      />
+    )
+  }
 
   return (
     <aside
@@ -145,7 +191,7 @@ export function Sidebar() {
 
       <nav className="flex-1 px-3 py-4">
         <ul className="space-y-1">
-          {navigationItems.map(({ to, label, icon: Icon, subItems }) => {
+          {itensVisiveis.map(({ to, label, icon: Icon, subItems }) => {
             const isActive = pathname === to || pathname.startsWith(`${to}/`)
             const parentHref = subItems?.[0]?.to ?? to
 
@@ -217,22 +263,24 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      <div className="border-t border-current/10 px-3 py-2">
-        <NavLink
-          to="/configuracao/marca"
-          className={({ isActive }) =>
-            cn(
-              'flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-              'text-current/80 hover:bg-current/10 hover:text-current',
-              isActive &&
-                'bg-current/15 text-current ring-1 ring-inset ring-current/25',
-            )
-          }
-        >
-          <Palette className="h-5 w-5 shrink-0" aria-hidden />
-          <span className="truncate">Marca da plataforma</span>
-        </NavLink>
-      </div>
+      {!isMembroProfissional ? (
+        <div className="border-t border-current/10 px-3 py-2">
+          <NavLink
+            to="/configuracao/marca"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                'text-current/80 hover:bg-current/10 hover:text-current',
+                isActive &&
+                  'bg-current/15 text-current ring-1 ring-inset ring-current/25',
+              )
+            }
+          >
+            <Palette className="h-5 w-5 shrink-0" aria-hidden />
+            <span className="truncate">Marca da plataforma</span>
+          </NavLink>
+        </div>
+      ) : null}
 
       <div className="border-t border-current/10 p-4">
         <p className="text-xs text-current/55">Projeto 494 - PlantaoCheck</p>

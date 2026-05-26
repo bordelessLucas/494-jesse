@@ -28,6 +28,7 @@ import {
   mergeFormIntoDetalhes,
   type ProfissionalQueryRow,
 } from '../lib/profissionais/mapProfissional'
+import { criarAcessoProfissional } from '../lib/profissionais/criarAcessoProfissional'
 import { supabase } from '../lib/supabase'
 
 const TAMANHO_PAGINA = 30
@@ -278,19 +279,61 @@ export function ProfissionaisPage() {
       detalhes.email = input.email
       detalhes.telefone = input.telefone
       detalhes.cpf = input.cpf
-      const { error } = await supabase.from('profissionais').insert({
-        user_id: user.id,
-        nome: input.nome,
-        profissao: input.profissao,
-        sigla_conselho: input.siglaConselho,
-        conselho_numero: input.conselhoNumero,
-        registro_uf: input.registroUf,
-        email: input.email.trim() || null,
-        telefone: input.telefone.trim() || null,
-        cpf: input.cpf.trim() || null,
-        detalhes: detalhesToJson(detalhes),
-      })
+
+      const { data: inserido, error } = await supabase
+        .from('profissionais')
+        .insert({
+          user_id: user.id,
+          nome: input.nome,
+          profissao: input.profissao,
+          sigla_conselho: input.siglaConselho,
+          conselho_numero: input.conselhoNumero,
+          registro_uf: input.registroUf,
+          email: input.email.trim() || null,
+          telefone: input.telefone.trim() || null,
+          cpf: input.cpf.trim() || null,
+          local_id: input.localId.trim() || null,
+          detalhes: detalhesToJson(detalhes),
+        })
+        .select('id')
+        .single()
+
       if (error) return { error: error.message }
+
+      const profissionalId = inserido.id
+
+      if (input.setoresVinculadosIds.length > 0) {
+        const { error: erroSetores } = await supabase.from('profissional_setores').insert(
+          input.setoresVinculadosIds.map((setor_id) => ({
+            user_id: user.id,
+            profissional_id: profissionalId,
+            setor_id,
+          })),
+        )
+        if (erroSetores) {
+          return {
+            error: `Profissional criado, mas falhou ao vincular setores: ${erroSetores.message}`,
+          }
+        }
+      }
+
+      if (input.criarAcesso && input.email.trim()) {
+        try {
+          await criarAcessoProfissional({
+            profissionalId,
+            email: input.email,
+            nome: input.nome,
+            permissoes: input.permissoes,
+          })
+        } catch (e) {
+          await carregar()
+          const msg = e instanceof Error ? e.message : 'Erro ao criar acesso.'
+          return {
+            error: `Profissional criado, mas o acesso não foi criado: ${msg}`,
+          }
+        }
+      }
+
       await carregar()
       return {}
     },
@@ -640,6 +683,8 @@ export function ProfissionaisPage() {
         open={isSlideOverOpen}
         onClose={() => setIsSlideOverOpen(false)}
         onCreate={handleCreate}
+        locaisOpcoes={opcoesLocais}
+        locaisComSetoresArvore={locaisComSetoresArvore}
       />
     </div>
   )

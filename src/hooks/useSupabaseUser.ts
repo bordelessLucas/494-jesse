@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 
-import { supabase } from '../lib/supabase'
+import { subscribeSupabaseAuth } from '../lib/auth/subscribeSupabaseAuth'
 
 type UseSupabaseUserState = {
   user: User | null
@@ -15,36 +15,17 @@ export function useSupabaseUser(): UseSupabaseUserState {
   useEffect(() => {
     let isMounted = true
 
-    async function loadInitialUser() {
-      const { data, error } = await supabase.auth.getSession()
+    const subscription = subscribeSupabaseAuth((_event, session) => {
       if (!isMounted) return
-
-      if (error) {
-        setUser(null)
-        setIsLoading(false)
-        return
-      }
-
-      setUser(data.session?.user ?? null)
+      setUser(session?.user ?? null)
       setIsLoading(false)
-    }
-
-    void loadInitialUser()
-
-    const { data: subscription } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        if (!isMounted) return
-        setUser(nextSession?.user ?? null)
-        setIsLoading(false)
-      },
-    )
+    })
 
     return () => {
       isMounted = false
-      subscription.subscription.unsubscribe()
+      subscription.unsubscribe()
     }
   }, [])
 
   return { user, isLoading }
 }
-

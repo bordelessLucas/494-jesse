@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 
-import { supabase } from '../supabase'
-import { useThemeBranding } from '../../theme/ThemeBrandingProvider'
+import { subscribeSupabaseAuth } from './subscribeSupabaseAuth'
 
 type AuthGateProps = {
   children?: React.ReactNode
@@ -11,40 +10,21 @@ type AuthGateProps = {
 
 export function RequireAuth({ children }: AuthGateProps) {
   const location = useLocation()
-  const { isReady: isBrandingReady } = useThemeBranding()
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     let isMounted = true
 
-    async function loadSession() {
-      const { data, error } = await supabase.auth.getSession()
+    const subscription = subscribeSupabaseAuth((_event, nextSession) => {
       if (!isMounted) return
-
-      if (error) {
-        setSession(null)
-        setIsLoading(false)
-        return
-      }
-
-      setSession(data.session ?? null)
+      setSession(nextSession)
       setIsLoading(false)
-    }
-
-    void loadSession()
-
-    const { data: subscription } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        if (!isMounted) return
-        setSession(nextSession)
-        setIsLoading(false)
-      },
-    )
+    })
 
     return () => {
       isMounted = false
-      subscription.subscription.unsubscribe()
+      subscription.unsubscribe()
     }
   }, [])
 
@@ -62,16 +42,6 @@ export function RequireAuth({ children }: AuthGateProps) {
     return <Navigate to="/login" replace state={{ from: location }} />
   }
 
-  if (!isBrandingReady) {
-    return (
-      <div className="grid min-h-dvh place-items-center bg-slate-50 px-4">
-        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-700 shadow-sm">
-          Carregando personalização...
-        </div>
-      </div>
-    )
-  }
-
   return children ? <>{children}</> : <Outlet />
 }
 
@@ -84,33 +54,15 @@ export function RedirectIfAuthenticated({ children }: AuthGateProps) {
   useEffect(() => {
     let isMounted = true
 
-    async function loadSession() {
-      const { data, error } = await supabase.auth.getSession()
+    const subscription = subscribeSupabaseAuth((_event, nextSession) => {
       if (!isMounted) return
-
-      if (error) {
-        setSession(null)
-        setIsLoading(false)
-        return
-      }
-
-      setSession(data.session ?? null)
+      setSession(nextSession)
       setIsLoading(false)
-    }
-
-    void loadSession()
-
-    const { data: subscription } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        if (!isMounted) return
-        setSession(nextSession)
-        setIsLoading(false)
-      },
-    )
+    })
 
     return () => {
       isMounted = false
-      subscription.subscription.unsubscribe()
+      subscription.unsubscribe()
     }
   }, [])
 
@@ -120,4 +72,3 @@ export function RedirectIfAuthenticated({ children }: AuthGateProps) {
 
   return children ? <>{children}</> : <Outlet />
 }
-

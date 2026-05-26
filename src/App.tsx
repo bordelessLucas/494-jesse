@@ -4,6 +4,7 @@ import { AuthLayout } from './layouts/AuthLayout'
 import { DashboardLayout } from './layouts/DashboardLayout'
 import { RedirectIfAuthenticated, RequireAuth } from './lib/auth/RequireAuth'
 import { ThemeBrandingProvider } from './theme/ThemeBrandingProvider'
+import { AlterarSenhaObrigatoriaPage } from './pages/AlterarSenhaObrigatoriaPage'
 import { CadastroPage } from './pages/CadastroPage'
 import { CadastrosEspecialidadesPage } from './pages/CadastrosEspecialidadesPage'
 import { CadastrosLocaisPage } from './pages/CadastrosLocaisPage'
@@ -120,6 +121,10 @@ function App() {
             <Route path="financeiro/extratos" element={<FinanceiroExtratosPage />} />
             <Route path="financeiro/repasses" element={<FinanceiroRepassesPage />} />
             <Route path="meus-dados" element={<MeusDadosPage />} />
+            <Route
+              path="alterar-senha-obrigatoria"
+              element={<AlterarSenhaObrigatoriaPage />}
+            />
             <Route path="configuracao/marca" element={<MarcaPlataformaPage />} />
             <Route path="configuracao" element={<ConfiguracaoPage />} />
             <Route path="configuracao/locais" element={<LocaisPage />} />

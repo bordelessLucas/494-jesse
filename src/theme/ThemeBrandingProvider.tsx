@@ -17,6 +17,10 @@ import {
   persistThemeColorForEarlyPaint,
   resetPrimaryCssVariables,
 } from '../lib/brandColors'
+import {
+  subscribeSupabaseAuth,
+  tenantUserIdFromSession,
+} from '../lib/auth/subscribeSupabaseAuth'
 import { supabase } from '../lib/supabase'
 
 type PersistInput = {
@@ -39,11 +43,12 @@ type ThemeBrandingContextValue = {
 const ThemeBrandingContext =
   createContext<ThemeBrandingContextValue | null>(null)
 
-async function fetchBrandingForUser(userId: string) {
+async function fetchBrandingForSession(session: Session) {
+  const brandingUserId = tenantUserIdFromSession(session)
   return supabase
     .from('user_branding')
     .select('primary_color, logo_url')
-    .eq('user_id', userId)
+    .eq('user_id', brandingUserId)
     .maybeSingle()
 }
 
@@ -92,17 +97,22 @@ export function ThemeBrandingProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      setIsReady(false)
       setLoadError(null)
-      const { data, error } = await fetchBrandingForUser(session.user.id)
-      if (error) {
-        console.error(error)
-        setLoadError('Não foi possível carregar sua marca. Usando padrões.')
+      try {
+        const { data, error } = await fetchBrandingForSession(session)
+        if (error) {
+          console.error(error)
+          setLoadError('Não foi possível carregar sua marca. Usando padrões.')
+          applyFetched(null)
+        } else {
+          applyFetched(data)
+        }
+      } catch (e) {
+        console.error(e)
         applyFetched(null)
-      } else {
-        applyFetched(data)
+      } finally {
+        setIsReady(true)
       }
-      setIsReady(true)
     },
     [applyFetched, clearBranding],
   )
@@ -110,14 +120,7 @@ export function ThemeBrandingProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true
 
-    void supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!active) return
-      void handleSession(session)
-    })
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const subscription = subscribeSupabaseAuth((_event, session) => {
       if (!active) return
       void handleSession(session)
     })

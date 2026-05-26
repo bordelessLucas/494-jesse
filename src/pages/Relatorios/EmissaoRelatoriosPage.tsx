@@ -14,6 +14,10 @@ import type {
 import { EditorBlocosRelatorio } from '../../features/relatorios/components/EditorBlocosRelatorio'
 import { HistoricoRelatoriosPanel } from '../../features/relatorios/components/HistoricoRelatoriosPanel'
 import { useBlocosRelatorio } from '../../features/relatorios/hooks/useBlocosRelatorio'
+import {
+  lerEmissaoRelatorioRascunho,
+  salvarEmissaoRelatorioRascunho,
+} from '../../features/relatorios/utils/emissaoRelatorioRascunho'
 import { FrequenciaCoordenacaoTemplate } from '../../features/relatorios/templates/FrequenciaCoordenacaoTemplate'
 import { FrequenciaSetorTemplate } from '../../features/relatorios/templates/FrequenciaSetorTemplate'
 import { RelatorioAtividadesTemplate } from '../../features/relatorios/templates/RelatorioAtividadesTemplate'
@@ -233,31 +237,45 @@ export function EmissaoRelatoriosPage() {
   const { user } = useSupabaseUser()
   const { logoUrl } = useThemeBranding()
   const competencias = useMemo(() => gerarCompetencias(), [])
+  const rascunhoGuardado = useMemo(() => lerEmissaoRelatorioRascunho(), [])
 
   const [tipoSelecionado, setTipoSelecionado] = useState<TipoRelatorio>(
-    TIPOS_RELATORIO[0].id,
+    () => rascunhoGuardado?.tipoSelecionado ?? TIPOS_RELATORIO[0].id,
   )
   const [competenciaId, setCompetenciaId] = useState<string>(
-    competencias[0]?.id ?? '',
+    () => rascunhoGuardado?.competenciaId ?? (competencias[0]?.id ?? ''),
   )
-  const [localId, setLocalId] = useState<LocalContratoId>(LOCAIS_OPCOES[0].id)
+  const [localId, setLocalId] = useState<LocalContratoId>(
+    () => rascunhoGuardado?.localId ?? LOCAIS_OPCOES[0].id,
+  )
 
-  const blocosRelatorio = useBlocosRelatorio(BLOCOS_INICIAIS_SCIRAS)
+  const blocosRelatorio = useBlocosRelatorio(
+    rascunhoGuardado?.blocosSCIRAS ?? BLOCOS_INICIAIS_SCIRAS,
+  )
 
   const [rotulosTurnosFrequenciaSetor, setRotulosTurnosFrequenciaSetor] =
-    useState<TurnoFrequencia[]>(() =>
-      LOCAIS_DETALHE[LOCAIS_OPCOES[0].id].turnosFrequencia.slice(),
-    )
+    useState<TurnoFrequencia[]>(() => {
+      if (rascunhoGuardado?.rotulosTurnosFrequenciaSetor.length) {
+        return rascunhoGuardado.rotulosTurnosFrequenciaSetor.slice()
+      }
+      const localInicial = rascunhoGuardado?.localId ?? LOCAIS_OPCOES[0].id
+      return LOCAIS_DETALHE[localInicial].turnosFrequencia.slice()
+    })
 
   const [cabecalhoTexto, setCabecalhoTexto] = useState<CabecalhoTextoEditavel>(
-    () =>
-      extrairTextoCabecalho(
-        montarCabecalho(
-          LOCAIS_DETALHE[LOCAIS_OPCOES[0].id],
-          competencias[0]?.cabecalho ?? '',
-          null,
-        ),
-      ),
+    () => {
+      if (rascunhoGuardado?.cabecalhoTexto) {
+        return rascunhoGuardado.cabecalhoTexto
+      }
+      const localInicial = rascunhoGuardado?.localId ?? LOCAIS_OPCOES[0].id
+      const competenciaInicial =
+        rascunhoGuardado?.competenciaId ?? competencias[0]?.id ?? ''
+      const competenciaCab =
+        competencias.find((c) => c.id === competenciaInicial)?.cabecalho ?? ''
+      return extrairTextoCabecalho(
+        montarCabecalho(LOCAIS_DETALHE[localInicial], competenciaCab, null),
+      )
+    },
   )
 
   const [indicadorUtiRelatorio, setIndicadorUtiRelatorio] =
@@ -280,30 +298,28 @@ export function EmissaoRelatoriosPage() {
 
   const detalhe = LOCAIS_DETALHE[localId]
 
-  useEffect(() => {
-    const detalheContrato = LOCAIS_DETALHE[localId]
-    setCabecalhoTexto(
-      extrairTextoCabecalho(
-        montarCabecalho(
-          detalheContrato,
-          competencia?.cabecalho ?? '',
-          null,
-        ),
-      ),
-    )
-  }, [localId, competenciaId, competencia?.cabecalho])
-
   const cabecalho = useMemo(
     (): CabecalhoContratualData => ({ ...cabecalhoTexto, logoUrl }),
     [cabecalhoTexto, logoUrl],
   )
 
   useEffect(() => {
-    if (tipoSelecionado !== 'FrequenciaSetor') return
-    setRotulosTurnosFrequenciaSetor(
-      LOCAIS_DETALHE[localId].turnosFrequencia.slice(),
-    )
-  }, [tipoSelecionado, localId])
+    salvarEmissaoRelatorioRascunho({
+      tipoSelecionado,
+      competenciaId,
+      localId,
+      cabecalhoTexto,
+      rotulosTurnosFrequenciaSetor,
+      blocosSCIRAS: blocosRelatorio.blocos,
+    })
+  }, [
+    blocosRelatorio.blocos,
+    cabecalhoTexto,
+    competenciaId,
+    localId,
+    rotulosTurnosFrequenciaSetor,
+    tipoSelecionado,
+  ])
 
   useEffect(() => {
     if (tipoSelecionado !== 'RelatorioSCIRAS') {
@@ -423,6 +439,37 @@ export function EmissaoRelatoriosPage() {
     )
   }
 
+  const aoMudarLocal = (novoLocal: LocalContratoId) => {
+    setLocalId(novoLocal)
+    const competenciaCab = competencia?.cabecalho ?? ''
+    setCabecalhoTexto(
+      extrairTextoCabecalho(
+        montarCabecalho(LOCAIS_DETALHE[novoLocal], competenciaCab, null),
+      ),
+    )
+    if (tipoSelecionado === 'FrequenciaSetor') {
+      setRotulosTurnosFrequenciaSetor(
+        LOCAIS_DETALHE[novoLocal].turnosFrequencia.slice(),
+      )
+    }
+  }
+
+  const aoMudarCompetencia = (novaCompetenciaId: string) => {
+    setCompetenciaId(novaCompetenciaId)
+    const competenciaNova =
+      competencias.find((opcao) => opcao.id === novaCompetenciaId) ??
+      competencias[0]
+    setCabecalhoTexto(
+      extrairTextoCabecalho(
+        montarCabecalho(
+          LOCAIS_DETALHE[localId],
+          competenciaNova?.cabecalho ?? '',
+          null,
+        ),
+      ),
+    )
+  }
+
   const mostrarEditorBlocos = tipoSelecionado === 'RelatorioSCIRAS'
 
   return (
@@ -431,10 +478,10 @@ export function EmissaoRelatoriosPage() {
         tipoSelecionado={tipoSelecionado}
         onChangeTipoSelecionado={setTipoSelecionado}
         competenciaId={competenciaId}
-        onChangeCompetencia={setCompetenciaId}
+        onChangeCompetencia={aoMudarCompetencia}
         competencias={competencias}
         localId={localId}
-        onChangeLocal={setLocalId}
+        onChangeLocal={aoMudarLocal}
         onImprimir={() => void handleImprimir()}
         aRegistarImpressao={aRegistarImpressao}
         avisoHistorico={avisoHistorico}

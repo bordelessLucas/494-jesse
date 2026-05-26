@@ -4,12 +4,10 @@ import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../lib/supabase'
-import { useThemeBranding } from '../theme/ThemeBrandingProvider'
 
 export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { reloadBranding } = useThemeBranding()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -25,10 +23,19 @@ export function LoginPage() {
     setErrorMessage(null)
     setIsSubmitting(true)
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const login = supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       })
+
+      const timeout = new Promise<never>((_, reject) => {
+        window.setTimeout(
+          () => reject(new Error('Tempo esgotado ao entrar. Tente novamente.')),
+          20_000,
+        )
+      })
+
+      const { data, error } = await Promise.race([login, timeout])
 
       if (error) {
         setErrorMessage(error.message)
@@ -36,14 +43,18 @@ export function LoginPage() {
       }
 
       if (data.session) {
-        await reloadBranding()
         const from =
           (location.state as { from?: { pathname?: string } } | null)?.from
             ?.pathname ?? '/'
         const target = from.startsWith('/') ? from : '/'
         navigate(target, { replace: true })
-        return
+      } else {
+        setErrorMessage('Login sem sessão. Verifique e-mail e senha.')
       }
+    } catch (e) {
+      setErrorMessage(
+        e instanceof Error ? e.message : 'Não foi possível entrar. Tente novamente.',
+      )
     } finally {
       setIsSubmitting(false)
     }

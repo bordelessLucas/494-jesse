@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 
+import { MembroAcessoGuard } from '../components/auth/MembroAcessoGuard'
 import { Sidebar } from '../components/Sidebar'
 import { SuporteChatWidget } from '../components/support/SuporteChatWidget'
 import { Topbar } from '../components/Topbar'
@@ -13,7 +14,9 @@ export function DashboardLayout() {
         <Topbar />
 
         <main className="p-8 print:p-0">
-          <Outlet />
+          <MembroAcessoGuard>
+            <Outlet />
+          </MembroAcessoGuard>
         </main>
       </div>
 

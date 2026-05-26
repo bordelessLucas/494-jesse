@@ -55,16 +55,38 @@ const ABAS: { id: AbaCoord; Icon: typeof UserRound; rotulo: string }[] = [
 ]
 
 const inputEdit =
-  'w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20'
+  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition-colors placeholder:text-slate-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-100'
 
 function FormLabel({ htmlFor, children }: { htmlFor?: string; children: ReactNode }) {
   return (
     <label
       htmlFor={htmlFor}
-      className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500"
+      className="mb-1.5 block text-sm font-medium text-slate-700"
     >
       {children}
     </label>
+  )
+}
+
+function SectionCard({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description?: string
+  children: ReactNode
+}) {
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="mb-5 border-b border-slate-100 pb-4">
+        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+        {description ? (
+          <p className="mt-1 text-sm leading-relaxed text-slate-500">{description}</p>
+        ) : null}
+      </div>
+      {children}
+    </section>
   )
 }
 
@@ -280,173 +302,163 @@ export function CoordenadorModal({
   switch (aba) {
     case 'informacoes':
       body = (
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(260px,0.42fr)]">
-          <div className="space-y-6">
-            <section className="space-y-4">
-              <h3 className="border-b border-slate-200 pb-2 text-sm font-semibold text-slate-800">
-                Dados pessoais
-              </h3>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div>
-                  <FormLabel htmlFor="cd-nome">Nome completo *</FormLabel>
-                  <input
-                    id="cd-nome"
-                    value={form.nomeCompleto}
-                    onChange={(e) => patch('nomeCompleto', e.target.value)}
-                    className={inputEdit}
-                  />
-                </div>
-                <div>
-                  <FormLabel htmlFor="cd-email">E-mail *</FormLabel>
-                  <input
-                    id="cd-email"
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => patch('email', e.target.value)}
-                    className={inputEdit}
-                  />
-                </div>
-                <div>
-                  <FormLabel htmlFor="cd-t1">Telefone 1</FormLabel>
-                  <input
-                    id="cd-t1"
-                    value={form.telefone1}
-                    onChange={(e) => patch('telefone1', e.target.value)}
-                    className={inputEdit}
-                  />
-                </div>
-                <div>
-                  <FormLabel htmlFor="cd-t2">Telefone 2</FormLabel>
-                  <input
-                    id="cd-t2"
-                    value={form.telefone2}
-                    onChange={(e) => patch('telefone2', e.target.value)}
-                    className={inputEdit}
-                  />
-                </div>
-                <div className="lg:col-span-4">
-                  <FormLabel htmlFor="cd-local-p">Local principal</FormLabel>
-                  <select
-                    id="cd-local-p"
-                    value={form.localId}
-                    onChange={(e) => patch('localId', e.target.value)}
-                    className={cn(inputEdit, 'cursor-pointer')}
-                  >
-                    <option value="">Selecione</option>
-                    {form.localId && !locaisOpcoes.some((l) => l.id === form.localId) ? (
-                      <option value={form.localId}>Local anterior (fora da lista)</option>
-                    ) : null}
-                    {locaisOpcoes.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.nome}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+        <div className="space-y-6">
+          <SectionCard title="Dados pessoais">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <FormLabel htmlFor="cd-nome">Nome completo *</FormLabel>
+                <input
+                  id="cd-nome"
+                  value={form.nomeCompleto}
+                  onChange={(e) => patch('nomeCompleto', e.target.value)}
+                  className={inputEdit}
+                  placeholder="Nome do coordenador"
+                />
               </div>
-            </section>
-
-            <section className="space-y-4">
-              <h3 className="border-b border-slate-200 pb-2 text-sm font-semibold text-slate-800">
-                Endereço
-              </h3>
-              <div className="grid gap-4 sm:grid-cols-12">
-                <div className="sm:col-span-3">
-                  <FormLabel htmlFor="cd-cep">CEP</FormLabel>
-                  <input
-                    id="cd-cep"
-                    value={form.enderecoCep}
-                    onChange={(e) => patch('enderecoCep', e.target.value)}
-                    placeholder="00000-000"
-                    className={inputEdit}
-                  />
-                </div>
-                <div className="sm:col-span-6">
-                  <FormLabel htmlFor="cd-rua">Rua</FormLabel>
-                  <input
-                    id="cd-rua"
-                    value={form.enderecoRua}
-                    onChange={(e) => patch('enderecoRua', e.target.value)}
-                    className={inputEdit}
-                  />
-                </div>
-                <div className="sm:col-span-3">
-                  <FormLabel htmlFor="cd-num">Número</FormLabel>
-                  <input
-                    id="cd-num"
-                    value={form.enderecoNumero}
-                    onChange={(e) => patch('enderecoNumero', e.target.value)}
-                    className={inputEdit}
-                  />
-                </div>
-                <div className="sm:col-span-6">
-                  <FormLabel htmlFor="cd-bai">Bairro</FormLabel>
-                  <input
-                    id="cd-bai"
-                    value={form.enderecoBairro}
-                    onChange={(e) => patch('enderecoBairro', e.target.value)}
-                    className={inputEdit}
-                  />
-                </div>
-                <div className="sm:col-span-6">
-                  <FormLabel htmlFor="cd-comp">Complemento</FormLabel>
-                  <input
-                    id="cd-comp"
-                    value={form.enderecoComplemento}
-                    onChange={(e) => patch('enderecoComplemento', e.target.value)}
-                    placeholder="Apartamento..."
-                    className={inputEdit}
-                  />
-                </div>
-                <div className="sm:col-span-3">
-                  <FormLabel htmlFor="cd-uf">UF *</FormLabel>
-                  <select
-                    id="cd-uf"
-                    value={form.enderecoUf}
-                    onChange={(e) => patch('enderecoUf', e.target.value)}
-                    className={cn(inputEdit, 'cursor-pointer')}
-                  >
-                    {UFS_BR.map((uf) => (
-                      <option key={uf} value={uf}>
-                        {uf}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="sm:col-span-9">
-                  <FormLabel htmlFor="cd-cidade">Cidade *</FormLabel>
-                  <input
-                    id="cd-cidade"
-                    list={cidadeListaId}
-                    value={form.enderecoCidade}
-                    onChange={(e) => patch('enderecoCidade', e.target.value)}
-                    className={inputEdit}
-                  />
-                  <datalist id={cidadeListaId}>
-                    {cidadesSuggestion.map((ci) => (
-                      <option key={ci} value={ci} />
-                    ))}
-                  </datalist>
-                </div>
+              <div className="sm:col-span-2">
+                <FormLabel htmlFor="cd-email">E-mail *</FormLabel>
+                <input
+                  id="cd-email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => patch('email', e.target.value)}
+                  className={inputEdit}
+                  placeholder="email@exemplo.com"
+                />
               </div>
-            </section>
-          </div>
+              <div>
+                <FormLabel htmlFor="cd-t1">Telefone 1</FormLabel>
+                <input
+                  id="cd-t1"
+                  value={form.telefone1}
+                  onChange={(e) => patch('telefone1', e.target.value)}
+                  className={inputEdit}
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+              <div>
+                <FormLabel htmlFor="cd-t2">Telefone 2</FormLabel>
+                <input
+                  id="cd-t2"
+                  value={form.telefone2}
+                  onChange={(e) => patch('telefone2', e.target.value)}
+                  className={inputEdit}
+                  placeholder="Opcional"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <FormLabel htmlFor="cd-local-p">Local principal</FormLabel>
+                <select
+                  id="cd-local-p"
+                  value={form.localId}
+                  onChange={(e) => patch('localId', e.target.value)}
+                  className={cn(inputEdit, 'cursor-pointer')}
+                >
+                  <option value="">Selecione um local</option>
+                  {form.localId && !locaisOpcoes.some((l) => l.id === form.localId) ? (
+                    <option value={form.localId}>Local anterior (fora da lista)</option>
+                  ) : null}
+                  {locaisOpcoes.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </SectionCard>
 
-          <div className="h-fit rounded-lg border border-slate-200 bg-slate-100/80 p-4">
-            <h3 className="mb-3 text-sm font-semibold text-slate-800">Senha</h3>
-            {ehCriar ? (
-              <p className="mb-3 text-xs text-slate-600">
-                Defina primeiro a conta no Auth do Supabase; estes campos são apenas uma
-                pré-visualização até termos fluxo automatizado de convite (limpe antes de
-                salvar se não usar).
-              </p>
-            ) : (
-              <p className="mb-3 text-xs text-slate-600">
-                Preferencialmente utilize <strong>Recuperar senha</strong> com o e-mail do
-                coordenador quando ele já tiver utilizador criado no Supabase Auth.
-              </p>
-            )}
-            <div className="space-y-3">
+          <SectionCard title="Endereço">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-12">
+              <div className="lg:col-span-3">
+                <FormLabel htmlFor="cd-cep">CEP</FormLabel>
+                <input
+                  id="cd-cep"
+                  value={form.enderecoCep}
+                  onChange={(e) => patch('enderecoCep', e.target.value)}
+                  placeholder="00000-000"
+                  className={inputEdit}
+                />
+              </div>
+              <div className="sm:col-span-2 lg:col-span-6">
+                <FormLabel htmlFor="cd-rua">Rua</FormLabel>
+                <input
+                  id="cd-rua"
+                  value={form.enderecoRua}
+                  onChange={(e) => patch('enderecoRua', e.target.value)}
+                  className={inputEdit}
+                />
+              </div>
+              <div className="lg:col-span-3">
+                <FormLabel htmlFor="cd-num">Número</FormLabel>
+                <input
+                  id="cd-num"
+                  value={form.enderecoNumero}
+                  onChange={(e) => patch('enderecoNumero', e.target.value)}
+                  className={inputEdit}
+                />
+              </div>
+              <div className="sm:col-span-2 lg:col-span-6">
+                <FormLabel htmlFor="cd-bai">Bairro</FormLabel>
+                <input
+                  id="cd-bai"
+                  value={form.enderecoBairro}
+                  onChange={(e) => patch('enderecoBairro', e.target.value)}
+                  className={inputEdit}
+                />
+              </div>
+              <div className="sm:col-span-2 lg:col-span-6">
+                <FormLabel htmlFor="cd-comp">Complemento</FormLabel>
+                <input
+                  id="cd-comp"
+                  value={form.enderecoComplemento}
+                  onChange={(e) => patch('enderecoComplemento', e.target.value)}
+                  placeholder="Apartamento, bloco, referência…"
+                  className={inputEdit}
+                />
+              </div>
+              <div className="lg:col-span-3">
+                <FormLabel htmlFor="cd-uf">UF *</FormLabel>
+                <select
+                  id="cd-uf"
+                  value={form.enderecoUf}
+                  onChange={(e) => patch('enderecoUf', e.target.value)}
+                  className={cn(inputEdit, 'cursor-pointer')}
+                >
+                  {UFS_BR.map((uf) => (
+                    <option key={uf} value={uf}>
+                      {uf}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="sm:col-span-2 lg:col-span-9">
+                <FormLabel htmlFor="cd-cidade">Cidade *</FormLabel>
+                <input
+                  id="cd-cidade"
+                  list={cidadeListaId}
+                  value={form.enderecoCidade}
+                  onChange={(e) => patch('enderecoCidade', e.target.value)}
+                  className={inputEdit}
+                />
+                <datalist id={cidadeListaId}>
+                  {cidadesSuggestion.map((ci) => (
+                    <option key={ci} value={ci} />
+                  ))}
+                </datalist>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Senha"
+            description={
+              ehCriar
+                ? 'Defina primeiro a conta no Auth do Supabase. Estes campos são apenas uma pré-visualização até termos fluxo automatizado de convite — limpe antes de salvar se não usar.'
+                : 'Preferencialmente utilize «Recuperar senha» com o e-mail do coordenador quando ele já tiver utilizador criado no Supabase Auth.'
+            }
+          >
+            <div className="grid max-w-2xl gap-5 sm:grid-cols-2">
               <div>
                 <FormLabel htmlFor="cd-sn">{ehCriar ? 'Senha *' : 'Nova senha'}</FormLabel>
                 <input
@@ -459,7 +471,9 @@ export function CoordenadorModal({
                 />
               </div>
               <div>
-                <FormLabel htmlFor="cd-sn2">{ehCriar ? 'Repetir senha *' : 'Repetir senha'}</FormLabel>
+                <FormLabel htmlFor="cd-sn2">
+                  {ehCriar ? 'Repetir senha *' : 'Repetir senha'}
+                </FormLabel>
                 <input
                   id="cd-sn2"
                   type="password"
@@ -469,30 +483,25 @@ export function CoordenadorModal({
                   className={inputEdit}
                 />
               </div>
-              {ehCriar ? (
-                <p className="text-xs text-slate-500">
-                  Digite a senha e clique em Salvar Alterações.
-                </p>
-              ) : (
-                <p className="text-xs text-slate-500">
-                  Deixe em branco para não tentar alterar. O fluxo atual altera apenas a conta
-                  com a qual você está ligado para recuperação Auth.
-                </p>
-              )}
             </div>
-          </div>
+            <p className="mt-4 text-sm text-slate-500">
+              {ehCriar
+                ? 'Digite a senha e clique em Salvar Alterações.'
+                : 'Deixe em branco para não tentar alterar. O fluxo atual altera apenas a conta com a qual você está ligado para recuperação Auth.'}
+            </p>
+          </SectionCard>
         </div>
       )
       break
     case 'permissoes':
       body = (
-        <div className="space-y-3">
-          <p className="text-sm text-slate-600">
-            Marque o que este coordenador poderá gerir dentro da conta.
-          </p>
-          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
+        <SectionCard
+          title="Permissões"
+          description="Marque o que este coordenador poderá gerir dentro da conta."
+        >
+          <ul className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200">
             {PERMISSOES_COORDENADOR.map((p) => (
-              <li key={p.key} className="flex items-start gap-3 px-4 py-3">
+              <li key={p.key} className="flex items-start gap-3 bg-white px-4 py-3.5">
                 <input
                   type="checkbox"
                   id={`perm-${p.key}`}
@@ -510,47 +519,49 @@ export function CoordenadorModal({
                         : prev,
                     )
                   }
-                  className="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                 />
-                <label htmlFor={`perm-${p.key}`} className="text-sm leading-snug text-slate-800">
+                <label htmlFor={`perm-${p.key}`} className="text-sm leading-relaxed text-slate-800">
                   {p.label}
                 </label>
               </li>
             ))}
           </ul>
-        </div>
+        </SectionCard>
       )
       break
     case 'areas':
       body = (
-        <div className="space-y-4">
-          <p className="text-sm text-slate-600">
-            Documente âmbitos adicionais (ex.: hospitais, programas ou frentes de trabalho).
-            O local principal também pode ser escolhido na aba Informações.
-          </p>
-          <div>
-            <FormLabel htmlFor="cd-areas-notas">Resumo das áreas</FormLabel>
-            <textarea
-              id="cd-areas-notas"
-              rows={8}
-              value={form.areasNotas}
-              onChange={(e) => patch('areasNotas', e.target.value)}
-              className={cn(inputEdit, 'min-h-[180px] resize-y')}
-              placeholder="Ex.: Plantão Pediatrico Roberto Macedo • Programa X..."
-            />
-          </div>
-        </div>
+        <SectionCard
+          title="Áreas de atuação"
+          description="Documente âmbitos adicionais (ex.: hospitais, programas ou frentes de trabalho). O local principal também pode ser escolhido na aba Informações."
+        >
+          <FormLabel htmlFor="cd-areas-notas">Resumo das áreas</FormLabel>
+          <textarea
+            id="cd-areas-notas"
+            rows={10}
+            value={form.areasNotas}
+            onChange={(e) => patch('areasNotas', e.target.value)}
+            className={cn(inputEdit, 'min-h-[220px] resize-y')}
+            placeholder="Ex.: Plantão Pediátrico Roberto Macedo • Programa X..."
+          />
+        </SectionCard>
       )
       break
     case 'grupos':
       body = (
-        <SelecaArvoreSetores
-          ids={form.setoresVinculadosIds}
-          onIdsChange={(next) =>
-            setForm((prev) => (prev ? { ...prev, setoresVinculadosIds: next } : prev))
-          }
-          locaisComSetoresArvore={locaisComSetoresArvore}
-        />
+        <SectionCard
+          title="Grupos e setores"
+          description="Selecione os setores em que este coordenador atua."
+        >
+          <SelecaArvoreSetores
+            ids={form.setoresVinculadosIds}
+            onIdsChange={(next) =>
+              setForm((prev) => (prev ? { ...prev, setoresVinculadosIds: next } : prev))
+            }
+            locaisComSetoresArvore={locaisComSetoresArvore}
+          />
+        </SectionCard>
       )
       break
     default:
@@ -562,7 +573,7 @@ export function CoordenadorModal({
       type="button"
       onClick={() => void aoSalvar()}
       disabled={salvando}
-      className="inline-flex items-center gap-2 rounded-md bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white shadow hover:bg-[#1d4ed8] disabled:opacity-70"
+      className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:opacity-70"
     >
       {salvando ? (
         <>
@@ -577,10 +588,10 @@ export function CoordenadorModal({
   )
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6">
       <button
         type="button"
-        className="absolute inset-0 bg-black/50 backdrop-blur-[1px]"
+        className="absolute inset-0 bg-slate-900/55 backdrop-blur-[2px]"
         aria-label="Fechar"
         onClick={onClose}
       />
@@ -588,22 +599,27 @@ export function CoordenadorModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="coordenador-dialog-titulo"
-        className="relative z-10 flex max-h-[min(92vh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/10"
+        className="relative z-10 flex max-h-[min(94vh,920px)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/10"
       >
         {ehCriar ? (
           <>
-            <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-5">
-              <h2
-                id="coordenador-dialog-titulo"
-                className="min-w-0 text-lg font-semibold text-[#2563eb]"
-              >
-                Adicionar Coordenador
-              </h2>
+            <header className="flex shrink-0 flex-wrap items-center justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Novo cadastro
+                </p>
+                <h2
+                  id="coordenador-dialog-titulo"
+                  className="text-xl font-semibold text-slate-900"
+                >
+                  Adicionar Coordenador
+                </h2>
+              </div>
               <div className="ml-auto flex shrink-0 items-center gap-2">
                 {botaoSalvar}
                 <button
                   type="button"
-                  className="rounded-md p-2 text-slate-500 hover:bg-slate-100"
+                  className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100"
                   onClick={onClose}
                   aria-label="Fechar"
                 >
@@ -612,37 +628,37 @@ export function CoordenadorModal({
               </div>
             </header>
             {saveError ? (
-              <div className="border-b border-slate-200 bg-white px-4 py-2 sm:px-5">
-                <p className="w-full rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{saveError}</p>
+              <div className="border-b border-slate-200 bg-red-50 px-5 py-3 sm:px-6">
+                <p className="text-sm text-red-800">{saveError}</p>
               </div>
             ) : null}
           </>
         ) : (
           <>
-            <header className="flex shrink-0 items-start justify-between border-b border-slate-200 px-4 py-3 sm:px-5">
+            <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
               <div className="min-w-0">
-                <p className="truncate text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Alterar coordenador
                 </p>
-                <h2 id="coordenador-dialog-titulo" className="truncate text-lg font-semibold text-[#2563eb]">
+                <h2 id="coordenador-dialog-titulo" className="truncate text-xl font-semibold text-slate-900">
                   {c.nome}
                 </h2>
               </div>
-              <button type="button" className="rounded-md p-2 text-slate-500 hover:bg-slate-100" onClick={onClose} aria-label="Fechar">
+              <button type="button" className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100" onClick={onClose} aria-label="Fechar">
                 <X className="h-5 w-5" />
               </button>
             </header>
 
-            <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 py-2 sm:gap-3 sm:px-5">
+            <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50 px-5 py-3 sm:gap-3 sm:px-6">
               {saveError ? (
-                <p className="w-full rounded border border-red-200 bg-red-50 px-2 py-1.5 text-sm text-red-800 sm:flex-1">{saveError}</p>
+                <p className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 sm:flex-1">{saveError}</p>
               ) : null}
               {recuperacaoAuth ? (
                 <p
                   className={
                     recuperacaoAuth.tipo === 'ok'
-                      ? 'w-full rounded border border-green-200 bg-green-50 px-2 py-1.5 text-sm text-green-900 sm:flex-1'
-                      : 'w-full rounded border border-red-200 bg-red-50 px-2 py-1.5 text-sm text-red-800 sm:flex-1'
+                      ? 'w-full rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900 sm:flex-1'
+                      : 'w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 sm:flex-1'
                   }
                 >
                   {recuperacaoAuth.mensagem}
@@ -653,7 +669,7 @@ export function CoordenadorModal({
                   type="button"
                   onClick={() => void aoRecuperarSenha()}
                   disabled={salvando || recuperandoSenha}
-                  className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-60"
                 >
                   {recuperandoSenha ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
                   Recuperar Senha
@@ -662,7 +678,7 @@ export function CoordenadorModal({
                   type="button"
                   onClick={() => void aoRemover()}
                   disabled={salvando || !onDelete}
-                  className="inline-flex items-center gap-2 rounded-md border border-red-300 bg-white px-3 py-2 text-sm text-red-700 shadow-sm hover:bg-red-50 disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-700 shadow-sm hover:bg-red-50 disabled:opacity-60"
                 >
                   <Trash2 className="h-4 w-4" aria-hidden /> Remover Coordenador
                 </button>
@@ -672,19 +688,19 @@ export function CoordenadorModal({
           </>
         )}
 
-        <div className="flex min-h-[400px] flex-1 overflow-hidden md:min-h-0">
-          <nav className="w-52 shrink-0 border-b border-slate-200 bg-white p-2 md:border-b-0 md:border-r">
-            <ul className="space-y-0.5">
+        <div className="flex min-h-[480px] flex-1 flex-col overflow-hidden md:min-h-0 md:flex-row">
+          <nav className="shrink-0 border-b border-slate-200 bg-slate-50/80 p-3 md:w-60 md:border-b-0 md:border-r md:p-4">
+            <ul className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
               {ABAS.map(({ id, Icon, rotulo }) => (
-                <li key={id}>
+                <li key={id} className="shrink-0 md:shrink">
                   <button
                     type="button"
                     onClick={() => setAba(id)}
                     className={cn(
-                      'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors',
+                      'flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors md:px-4',
                       aba === id
-                        ? 'bg-blue-50 text-[#2563eb]'
-                        : 'text-slate-600 hover:bg-slate-50',
+                        ? 'bg-white text-primary-700 shadow-sm ring-1 ring-slate-200'
+                        : 'text-slate-600 hover:bg-white/70 hover:text-slate-900',
                     )}
                   >
                     <Icon className="h-4 w-4 shrink-0" /> {rotulo}
@@ -693,8 +709,8 @@ export function CoordenadorModal({
               ))}
             </ul>
           </nav>
-          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-5">
-            <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">{body}</div>
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6">
+            {body}
           </div>
         </div>
       </div>

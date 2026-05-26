@@ -125,10 +125,47 @@ export type Database = {
           },
         ]
       }
+      contas_membros: {
+        Row: {
+          id: string
+          tenant_user_id: string
+          auth_user_id: string
+          profissional_id: string
+          role: string
+          permissoes: Json
+          must_change_password: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_user_id: string
+          auth_user_id: string
+          profissional_id: string
+          role?: string
+          permissoes?: Json
+          must_change_password?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_user_id?: string
+          auth_user_id?: string
+          profissional_id?: string
+          role?: string
+          permissoes?: Json
+          must_change_password?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profissionais: {
         Row: {
           id: string
           user_id: string
+          auth_user_id: string | null
           nome: string
           profissao: string
           sigla_conselho: string
@@ -145,6 +182,7 @@ export type Database = {
         Insert: {
           id?: string
           user_id: string
+          auth_user_id?: string | null
           nome: string
           profissao: string
           sigla_conselho?: string
@@ -161,6 +199,7 @@ export type Database = {
         Update: {
           id?: string
           user_id?: string
+          auth_user_id?: string | null
           nome?: string
           profissao?: string
           sigla_conselho?: string
