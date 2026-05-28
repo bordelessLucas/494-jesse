@@ -33,7 +33,7 @@ export function calcularDuracaoMinutos(horaInicio: string, horaFim: string): num
       (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0)
     )
   }
-  let a = parse(horaInicio)
+  const a = parse(horaInicio)
   let b = parse(horaFim)
   if (b <= a) b += 24 * 60
   return b - a

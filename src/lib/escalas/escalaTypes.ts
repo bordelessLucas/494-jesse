@@ -1,6 +1,11 @@
 export type TomCartao = 'util' | 'fds'
 
-export type StatusPlantaoEscala = 'vago' | 'confirmado' | 'pendente' | 'realizado'
+export type StatusPlantaoEscala =
+  | 'vago'
+  | 'confirmado'
+  | 'pendente'
+  | 'realizado'
+  | 'pendente_troca'
 
 export type PlantaoCartao = {
   id: string

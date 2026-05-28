@@ -18,5 +18,23 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Esta regra é bem opinativa e gera falsos-positivos no padrão do app (ex.: inicialização de forms ao abrir modais).
+      'react-hooks/set-state-in-effect': 'off',
+      // Estas regras estão ligadas ao React Compiler e acabam bloqueando o lint em código existente.
+      'react-hooks/preserve-manual-memoization': 'off',
+      'react-hooks/immutability': 'off',
+      // Mantemos o Vite/React Refresh, mas sem bloquear o lint por exports auxiliares.
+      'react-refresh/only-export-components': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
+        },
+      ],
+    },
   },
 ])

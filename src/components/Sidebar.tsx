@@ -4,6 +4,7 @@ import {
   Award,
   Banknote,
   CalendarClock,
+  ArrowLeftRight,
   ChevronRight,
   Eye,
   FileText,
@@ -62,6 +63,7 @@ const navigationItems: NavigationItem[] = [
       { to: '/escalas/mensal', label: 'Mensal' },
       { to: '/escalas/semanal', label: 'Semanal' },
       { to: '/escalas/modelos', label: 'Modelos' },
+      { to: '/escalas/mural-trocas', label: 'Mural de Trocas', icon: ArrowLeftRight },
     ],
   },
   {

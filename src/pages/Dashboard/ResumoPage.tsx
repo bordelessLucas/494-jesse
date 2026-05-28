@@ -1,9 +1,12 @@
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { Filter, Loader2, SlidersHorizontal } from 'lucide-react'
 import { addDays, format, startOfMonth, subMonths } from 'date-fns'
+import toast from 'react-hot-toast'
 
 import { cn } from '../../lib/cn'
 import { useSupabaseUser } from '../../hooks/useSupabaseUser'
+import { useContaMembro } from '../../hooks/useContaMembro'
+import { supabase } from '../../lib/supabase'
 import { buscarPlantoesIntervaloComLocaisSetores } from '../../lib/dashboard/dashboardQueries'
 import {
   agregarContagens48h,
@@ -19,6 +22,25 @@ import {
 } from '../../lib/dashboard/resumoPainel'
 import { buscarSetoresEscala } from '../../lib/escalas/plantoesDb'
 import type { PlantaoDashboardRow } from '../../lib/dashboard/dashboardQueries'
+
+type TrocaPendenteRow = {
+  id: string
+  status: string
+  created_at: string
+  plantao_id: string
+  anunciante_profissional_id: string
+  candidato_profissional_id: string
+  plantoes?: {
+    id: string
+    data_plantao: string
+    hora_inicio: string
+    hora_fim: string
+    locais?: { nome_fantasia: string } | null
+    setores?: { nome: string } | null
+  } | null
+  anunciante?: { nome: string } | null
+  candidato?: { nome: string } | null
+}
 
 type PeriodoResumo = 'hoje' | 'semana' | 'mes'
 
@@ -334,6 +356,7 @@ export function ResumoPage() {
   const idPeriodo = useId()
   const idSetor = useId()
   const { user, isLoading: isLoadingUser } = useSupabaseUser()
+  const { isMembroProfissional } = useContaMembro()
   const [periodo, setPeriodo] = useState<PeriodoResumo>('mes')
   const [setor, setSetor] = useState('')
   const [aba48h, setAba48h] = useState<Aba48h>('anunciados')
@@ -343,6 +366,8 @@ export function ResumoPage() {
   )
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
+  const [trocasPendentes, setTrocasPendentes] = useState<TrocaPendenteRow[]>([])
+  const [carregandoTrocas, setCarregandoTrocas] = useState(false)
 
   useEffect(() => {
     if (isLoadingUser || !user) return
@@ -377,6 +402,58 @@ export function ResumoPage() {
       cancelado = true
     }
   }, [user, isLoadingUser])
+
+  useEffect(() => {
+    if (isLoadingUser || !user) return
+    if (isMembroProfissional) return
+    let cancelado = false
+
+    async function loadTrocas() {
+      setCarregandoTrocas(true)
+      try {
+        const { data, error } = await supabase
+          .from('plantoes_trocas_solicitacoes')
+          .select(
+            `
+            id,
+            status,
+            created_at,
+            plantao_id,
+            anunciante_profissional_id,
+            candidato_profissional_id,
+            plantoes (
+              id,
+              data_plantao,
+              hora_inicio,
+              hora_fim,
+              locais ( nome_fantasia ),
+              setores ( nome )
+            ),
+            anunciante:profissionais!plantoes_trocas_solicitacoes_anunciante_profissional_id_fkey ( nome ),
+            candidato:profissionais!plantoes_trocas_solicitacoes_candidato_profissional_id_fkey ( nome )
+          `,
+          )
+          .eq('status', 'aguardando_aprovacao_coordenador')
+          .order('created_at', { ascending: false })
+
+        if (error) throw new Error(error.message)
+        if (!cancelado) {
+          setTrocasPendentes((data ?? []) as unknown as TrocaPendenteRow[])
+        }
+      } catch (_e) {
+        if (!cancelado) {
+          setTrocasPendentes([])
+        }
+      } finally {
+        if (!cancelado) setCarregandoTrocas(false)
+      }
+    }
+
+    void loadTrocas()
+    return () => {
+      cancelado = true
+    }
+  }, [isLoadingUser, isMembroProfissional, user])
 
   const agora = useMemo(() => new Date(), [plantoesRaw])
 
@@ -538,6 +615,133 @@ export function ResumoPage() {
           </div>
         </div>
       </header>
+
+      {!isMembroProfissional ? (
+        <CardShell
+          titulo={
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Coordenação
+              </p>
+              <h2 className="text-base font-semibold text-slate-900">Trocas pendentes</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Aprovações para repasse de plantões anunciados no mural.
+              </p>
+            </div>
+          }
+          acaoTopo={
+            <button
+              type="button"
+              onClick={() => {
+                // força recarregar via efeito (mudança de referência simples)
+                setTrocasPendentes((t) => [...t])
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+            >
+              {carregandoTrocas ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              ) : null}
+              Atualizar
+            </button>
+          }
+        >
+          {carregandoTrocas ? (
+            <p className="text-sm text-slate-500">Carregando solicitações…</p>
+          ) : trocasPendentes.length === 0 ? (
+            <p className="text-sm text-slate-500">Nenhuma troca pendente.</p>
+          ) : (
+            <ul className="space-y-3">
+              {trocasPendentes.map((s) => {
+                const data = s.plantoes?.data_plantao ?? ''
+                const horario = `${s.plantoes?.hora_inicio?.slice(0, 5) ?? '--:--'}–${s.plantoes?.hora_fim?.slice(0, 5) ?? '--:--'}`
+                const local = s.plantoes?.locais?.nome_fantasia ?? 'Local'
+                const setorNome = s.plantoes?.setores?.nome ?? 'Setor'
+                const anunciante = s.anunciante?.nome ?? 'Profissional'
+                const candidato = s.candidato?.nome ?? 'Candidato'
+
+                return (
+                  <li
+                    key={s.id}
+                    className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                  >
+                    <p className="text-sm font-semibold text-slate-900">
+                      {anunciante} quer repassar o plantão de {setorNome} para {candidato}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {data} · {horario} · {local}
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
+                        onClick={async () => {
+                          if (!s.plantao_id) return
+                          try {
+                            const { error: e1 } = await supabase
+                              .from('plantoes')
+                              .update({
+                                profissional_id: s.candidato_profissional_id,
+                                status: 'confirmado',
+                                disponivel_mural: false,
+                                updated_at: new Date().toISOString(),
+                              })
+                              .eq('id', s.plantao_id)
+
+                            if (e1) throw new Error(e1.message)
+
+                            const { error: e2 } = await supabase
+                              .from('plantoes_trocas_solicitacoes')
+                              .update({
+                                status: 'aprovada',
+                                updated_at: new Date().toISOString(),
+                              })
+                              .eq('id', s.id)
+
+                            if (e2) throw new Error(e2.message)
+
+                            toast.success('Troca aprovada e plantão atualizado.')
+                            setTrocasPendentes((prev) => prev.filter((x) => x.id !== s.id))
+                          } catch (e) {
+                            toast.error(e instanceof Error ? e.message : 'Erro ao aprovar.')
+                          }
+                        }}
+                      >
+                        Aprovar
+                      </button>
+
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+                        onClick={async () => {
+                          try {
+                            const { error } = await supabase
+                              .from('plantoes_trocas_solicitacoes')
+                              .update({
+                                status: 'reprovada',
+                                updated_at: new Date().toISOString(),
+                              })
+                              .eq('id', s.id)
+
+                            if (error) throw new Error(error.message)
+
+                            toast.success('Solicitação reprovada.')
+                            setTrocasPendentes((prev) => prev.filter((x) => x.id !== s.id))
+                          } catch (e) {
+                            toast.error(e instanceof Error ? e.message : 'Erro ao reprovar.')
+                          }
+                        }}
+                      >
+                        Reprovar
+                      </button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </CardShell>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <CardShell

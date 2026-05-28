@@ -22,9 +22,11 @@ import {
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import toast from 'react-hot-toast'
 
 import { useSupabaseUser } from '../../hooks/useSupabaseUser'
 import { cn } from '../../lib/cn'
+import { supabase } from '../../lib/supabase'
 import {
   buscarPlantoesDoProfissional,
   buscarProfissionaisComLocal,
@@ -64,6 +66,7 @@ const STATUS_LABELS: Record<StatusAgenda, string> = {
   vago: 'Vago',
   pendente: 'Pendente',
   realizado: 'Realizado',
+  pendente_troca: 'Troca/Repasse',
 }
 
 const STATUS_STYLES: Record<StatusAgenda, string> = {
@@ -71,6 +74,7 @@ const STATUS_STYLES: Record<StatusAgenda, string> = {
   vago: 'border-rose-200 bg-rose-50 text-rose-700',
   pendente: 'border-amber-200 bg-amber-50 text-amber-700',
   realizado: 'border-sky-200 bg-sky-50 text-sky-800',
+  pendente_troca: 'border-violet-200 bg-violet-50 text-violet-700',
 }
 
 function capitalizar(texto: string): string {
@@ -127,14 +131,20 @@ function agruparPorMes(plantoes: PlantaoAgenda[]): GrupoAgenda[] {
   }))
 }
 
-function ModalEmDesenvolvimento({
+function ModalSolicitarTrocaRepasse({
   aberto,
+  plantao,
   onFechar,
+  onConfirmado,
 }: {
   aberto: boolean
+  plantao: PlantaoAgenda | null
   onFechar: () => void
+  onConfirmado: () => void
 }) {
-  if (!aberto) return null
+  const [salvando, setSalvando] = useState(false)
+  const isAberto = aberto && plantao !== null
+  if (!isAberto) return null
 
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
@@ -163,18 +173,43 @@ function ModalEmDesenvolvimento({
               Solicitar troca / repasse
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              Em desenvolvimento. Esta ação será integrada ao fluxo de troca do
-              plantão.
+              Ao confirmar, este plantão será anunciado no mural para que outro
+              profissional se candidate. A coordenação aprova a troca.
             </p>
           </div>
         </div>
 
         <button
           type="button"
-          onClick={onFechar}
+          disabled={salvando}
+          onClick={async () => {
+            if (!plantao) return
+            setSalvando(true)
+            try {
+              const { error } = await supabase
+                .from('plantoes')
+                .update({
+                  status: 'pendente_troca',
+                  disponivel_mural: true,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', plantao.id)
+
+              if (error) {
+                toast.error(error.message)
+                return
+              }
+
+              toast.success('Plantão anunciado no mural com sucesso!')
+              onConfirmado()
+              onFechar()
+            } finally {
+              setSalvando(false)
+            }
+          }}
           className="mt-6 inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
         >
-          Entendi
+          {salvando ? 'Anunciando…' : 'Confirmar anúncio'}
         </button>
       </div>
     </div>
@@ -201,6 +236,9 @@ export function MinhaAgendaPage() {
   const { user, isLoading: isLoadingUser } = useSupabaseUser()
   const [dataReferencia, setDataReferencia] = useState(() => new Date())
   const [modalAberto, setModalAberto] = useState(false)
+  const [plantaoSelecionado, setPlantaoSelecionado] = useState<PlantaoAgenda | null>(
+    null,
+  )
 
   const [profissionaisDetalhe, setProfissionaisDetalhe] = useState<
     ProfissionalCargaRow[]
@@ -559,16 +597,21 @@ export function MinhaAgendaPage() {
                         </div>
                       </div>
 
-                      <div className="mt-4 border-t border-slate-200 pt-4">
-                        <button
-                          type="button"
-                          onClick={() => setModalAberto(true)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
-                        >
-                          <ArrowLeftRight className="h-4 w-4" aria-hidden />
-                          Solicitar Troca/Repasse
-                        </button>
-                      </div>
+                      {plantao.data.getTime() > Date.now() ? (
+                        <div className="mt-4 border-t border-slate-200 pt-4">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPlantaoSelecionado(plantao)
+                              setModalAberto(true)
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
+                          >
+                            <ArrowLeftRight className="h-4 w-4" aria-hidden />
+                            Solicitar Troca/Repasse
+                          </button>
+                        </div>
+                      ) : null}
                     </article>
                   ))}
                 </div>
@@ -586,7 +629,18 @@ export function MinhaAgendaPage() {
         dias no mês exibido.
       </div>
 
-      <ModalEmDesenvolvimento aberto={modalAberto} onFechar={() => setModalAberto(false)} />
+      <ModalSolicitarTrocaRepasse
+        aberto={modalAberto}
+        plantao={plantaoSelecionado}
+        onFechar={() => {
+          setModalAberto(false)
+          setPlantaoSelecionado(null)
+        }}
+        onConfirmado={() => {
+          // Recarrega os dados para refletir o anúncio.
+          setPlantoesRows((rows) => [...rows])
+        }}
+      />
     </div>
   )
 }

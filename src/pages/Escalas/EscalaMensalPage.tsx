@@ -16,9 +16,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { cn } from '../../lib/cn'
 import { useSupabaseUser } from '../../hooks/useSupabaseUser'
 import type { StatusPlantaoEscala } from '../../lib/escalas/escalaTypes'
+import { buscarPlantoesMensais } from '../../lib/plantoesDb'
 import {
   buscarLocaisEscala,
-  buscarPlantoesIntervalo,
   buscarProfissionaisEscala,
   buscarSetoresEscala,
   dataLocalAPartirDeIsoData,
@@ -46,6 +46,7 @@ const STATUS_LABELS: Record<StatusPlantaoEscala, string> = {
   confirmado: 'Confirmado',
   pendente: 'Pendente',
   realizado: 'Realizado',
+  pendente_troca: 'Troca/Repasse',
 }
 
 const STATUS_STYLES: Record<StatusPlantaoEscala, string> = {
@@ -56,6 +57,8 @@ const STATUS_STYLES: Record<StatusPlantaoEscala, string> = {
     'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100',
   realizado:
     'border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100',
+  pendente_troca:
+    'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100',
 }
 
 const TODOS_LOCAIS = 'todos-locais'
@@ -142,15 +145,6 @@ export function EscalaMensalPage() {
     [fimMes, inicioMes],
   )
 
-  const dataMinGrade = useMemo(
-    () => format(diasCalendario[0], 'yyyy-MM-dd'),
-    [diasCalendario],
-  )
-  const dataMaxGrade = useMemo(
-    () => format(diasCalendario[diasCalendario.length - 1], 'yyyy-MM-dd'),
-    [diasCalendario],
-  )
-
   const nomesLocais = useMemo(
     () => new Map(locais.map((l) => [l.id, l.nome] as const)),
     [locais],
@@ -204,20 +198,24 @@ export function EscalaMensalPage() {
       setPlantoesRows([])
       return
     }
+
+    const mes = dataReferencia.getMonth() + 1
+    const ano = dataReferencia.getFullYear()
+    const localId =
+      localSelecionado !== TODOS_LOCAIS ? localSelecionado : ''
+    const setorId =
+      setorSelecionado !== TODOS_SETORES ? setorSelecionado : ''
+
     setCarregandoPlantoes(true)
     try {
-      const rows = await buscarPlantoesIntervalo(
-        user.id,
-        dataMinGrade,
-        dataMaxGrade,
-      )
+      const rows = await buscarPlantoesMensais(mes, ano, localId, setorId, user.id)
       setPlantoesRows(rows)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao carregar plantões')
     } finally {
       setCarregandoPlantoes(false)
     }
-  }, [dataMaxGrade, dataMinGrade, user?.id])
+  }, [dataReferencia, localSelecionado, setorSelecionado, user?.id])
 
   useEffect(() => {
     void carregarPlantoesGrade()
@@ -283,26 +281,35 @@ export function EscalaMensalPage() {
     setores,
   ])
 
-  const plantoesFiltrados = useMemo(() => {
-    return plantoes.filter((plantao) => {
-      const combinaLocal =
-        localSelecionado === TODOS_LOCAIS || plantao.localId === localSelecionado
-      const combinaSetor =
-        setorSelecionado === TODOS_SETORES || plantao.setorId === setorSelecionado
-      return combinaLocal && combinaSetor
-    })
-  }, [localSelecionado, plantoes, setorSelecionado])
-
   const plantoesPorDia = useMemo(() => {
     const mapa = new Map<string, PlantaoMensal[]>()
-    plantoesFiltrados.forEach((plantao) => {
+    plantoes.forEach((plantao) => {
       const chave = format(plantao.dia, 'yyyy-MM-dd')
       const lista = mapa.get(chave) ?? []
       lista.push(plantao)
       mapa.set(chave, lista)
     })
     return mapa
-  }, [plantoesFiltrados])
+  }, [plantoes])
+
+  const regrasCoberturaSetor = useMemo(() => {
+    if (setorSelecionado === TODOS_SETORES) return null
+    // TODO: substituir por regras reais vindas do cadastro de setores (Supabase).
+    return { minimoPlantonistas: 2 }
+  }, [setorSelecionado])
+
+  const calcularCoberturaDia = useCallback(
+    (plantoesDoDia: PlantaoMensal[]) => {
+      if (!regrasCoberturaSetor) return { isCoberturaOk: true }
+      const alocados = plantoesDoDia.filter(
+        (p) => p.status !== 'vago' && Boolean(p.profissionalId),
+      ).length
+      return {
+        isCoberturaOk: alocados >= regrasCoberturaSetor.minimoPlantonistas,
+      }
+    },
+    [regrasCoberturaSetor],
+  )
 
   const setoresModal = useMemo(
     () =>
@@ -441,6 +448,7 @@ export function EscalaMensalPage() {
                 const ehHoje = isToday(dia)
                 const chave = format(dia, 'yyyy-MM-dd')
                 const listaDia = plantoesPorDia.get(chave) ?? []
+                const { isCoberturaOk } = calcularCoberturaDia(listaDia)
 
                 return (
                   <article
@@ -449,8 +457,11 @@ export function EscalaMensalPage() {
                     className={cn(
                       'min-h-30 bg-white p-3 transition-colors',
                       foraDoMes && 'bg-slate-50 text-slate-400',
+                      !foraDoMes &&
+                        !isCoberturaOk &&
+                        'bg-red-50/60 ring-1 ring-inset ring-danger-200',
                       ehHoje &&
-                        'relative z-[1] ring-2 ring-inset ring-primary-600 bg-primary-50/80 shadow-[inset_0_0_0_1px] shadow-primary-500/30',
+                        'relative z-1 ring-2 ring-inset ring-primary-600 bg-primary-50/80 shadow-[inset_0_0_0_1px] shadow-primary-500/30',
                     )}
                   >
                     <div className="mb-2 flex items-start justify-between gap-2">
@@ -491,7 +502,7 @@ export function EscalaMensalPage() {
                         const textoBadge = `${formatarPeriodoBadge(
                           plantao.horaInicio,
                           plantao.horaFim,
-                        )} ${setorNome} - ${plantao.profissional}`
+                        )} Dr. ${plantao.profissional}`
 
                         return (
                           <button
@@ -504,7 +515,7 @@ export function EscalaMensalPage() {
                               'group flex w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-left text-[11px] font-medium shadow-sm transition-colors',
                               statusClassName(plantao.status),
                             )}
-                            title={`${localNome} · ${STATUS_LABELS[plantao.status]}`}
+                            title={`${localNome} · ${setorNome} · ${STATUS_LABELS[plantao.status]}`}
                           >
                             <span className="min-w-0 flex-1 truncate">{textoBadge}</span>
                             <span className="shrink-0 rounded-full bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">

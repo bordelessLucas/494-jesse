@@ -50,8 +50,13 @@ export async function buscarContaMembroAtual(
   if (!data) return null
 
   return {
-    ...data,
+    id: data.id,
+    tenant_user_id: data.tenant_user_id,
+    auth_user_id: data.auth_user_id,
+    profissional_id: data.profissional_id,
+    role: 'profissional',
     permissoes: (data.permissoes as Record<string, boolean>) ?? {},
+    must_change_password: data.must_change_password,
   }
 }
 

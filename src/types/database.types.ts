@@ -515,6 +515,7 @@ export type Database = {
           valor_plantao: number
           ajuste_financeiro: number
           observacao_ajuste: string | null
+          disponivel_mural: boolean
           created_at: string
           updated_at: string
         }
@@ -532,6 +533,7 @@ export type Database = {
           valor_plantao?: number
           ajuste_financeiro?: number
           observacao_ajuste?: string | null
+          disponivel_mural?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -549,6 +551,7 @@ export type Database = {
           valor_plantao?: number
           ajuste_financeiro?: number
           observacao_ajuste?: string | null
+          disponivel_mural?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -570,6 +573,61 @@ export type Database = {
           {
             foreignKeyName: 'plantoes_profissional_id_fkey'
             columns: ['profissional_id']
+            isOneToOne: false
+            referencedRelation: 'profissionais'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      plantoes_trocas_solicitacoes: {
+        Row: {
+          id: string
+          tenant_user_id: string
+          plantao_id: string
+          anunciante_profissional_id: string
+          candidato_profissional_id: string
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_user_id: string
+          plantao_id: string
+          anunciante_profissional_id: string
+          candidato_profissional_id: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_user_id?: string
+          plantao_id?: string
+          anunciante_profissional_id?: string
+          candidato_profissional_id?: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'plantoes_trocas_solicitacoes_plantao_id_fkey'
+            columns: ['plantao_id']
+            isOneToOne: false
+            referencedRelation: 'plantoes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'plantoes_trocas_solicitacoes_anunciante_profissional_id_fkey'
+            columns: ['anunciante_profissional_id']
+            isOneToOne: false
+            referencedRelation: 'profissionais'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'plantoes_trocas_solicitacoes_candidato_profissional_id_fkey'
+            columns: ['candidato_profissional_id']
             isOneToOne: false
             referencedRelation: 'profissionais'
             referencedColumns: ['id']
@@ -703,7 +761,20 @@ export type Database = {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      auth_tenant_user_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      membro_profissional_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      auth_is_titular_conta: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+    }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
   }

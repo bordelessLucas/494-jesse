@@ -12,7 +12,7 @@ export const PERMISSOES_PROFISSIONAL = [
 export type ChavePermissaoProfissional =
   (typeof PERMISSOES_PROFISSIONAL)[number]['key']
 
-export const SENHA_PADRAO_PROFISSIONAL = 'PlantaoCheck@2026'
+export const SENHA_PADRAO_PROFISSIONAL = 'PlantaoCheck@'
 
 export function permissoesProfissionalPadrao(): Record<string, boolean> {
   const base: Record<string, boolean> = {}

@@ -6,7 +6,7 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type',
 }
 
-const DEFAULT_MEMBER_PASSWORD = 'PlantaoCheck@2026'
+const DEFAULT_MEMBER_PASSWORD = 'PlantaoCheck@'
 
 type CreateProfessionalAccessBody = {
   profissionalId: string
@@ -16,6 +16,8 @@ type CreateProfessionalAccessBody = {
   senha?: string
 }
 
+const PLANTAOCHECK_SERVICE_ROLE_SECRET = 'PLANTAOCHECK_SERVICE_ROLE_KEY'
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -23,7 +25,7 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    const serviceRoleKey = Deno.env.get(PLANTAOCHECK_SERVICE_ROLE_SECRET)
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
 
     if (!supabaseUrl || !serviceRoleKey || !anonKey) {

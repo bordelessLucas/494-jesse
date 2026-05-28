@@ -16,6 +16,7 @@ export type PlantaoRowDb = {
   hora_inicio: string
   hora_fim: string
   status: StatusPlantaoEscala
+  disponivel_mural?: boolean
   observacoes: string | null
   valor_plantao?: number
   ajuste_financeiro?: number

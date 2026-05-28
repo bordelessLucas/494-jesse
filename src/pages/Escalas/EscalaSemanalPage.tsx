@@ -21,7 +21,9 @@ import {
   X,
 } from 'lucide-react'
 import { format, isToday, parseISO } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import toast from 'react-hot-toast'
 
 import { cn } from '../../lib/cn'
 import {
@@ -43,6 +45,7 @@ import type {
 } from '../../lib/escalas/escalaTypes'
 import { supabase } from '../../lib/supabase'
 import { useSupabaseUser } from '../../hooks/useSupabaseUser'
+import { useNotificacoes } from '../../hooks/useNotificacoes'
 import { SeletorModeloEscala } from './components/SeletorModeloEscala'
 
 const MESES_PT_MAIUSC = [
@@ -143,7 +146,7 @@ function diferencaHoras(ini: string, fim: string): string {
     const [h, m] = s.split(':').map(Number)
     return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0)
   }
-  let start = parse(ini)
+  const start = parse(ini)
   let end = parse(fim)
   if (end < start) end += 24 * 60
   const diff = Math.max(0, end - start)
@@ -172,6 +175,11 @@ function habilidadesDemoParaNome(nome: string): string[] {
   let s = 0
   for (let i = 0; i < nome.length; i++) s += nome.charCodeAt(i)
   return HABILIDADES_DEMO[s % HABILIDADES_DEMO.length]
+}
+
+function capitalizeFirstLetter(value: string): string {
+  if (!value) return value
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
 type AbaPlantaoModal =
@@ -218,6 +226,7 @@ export function ModalAlterarPlantao({
   profissionais,
   onPlantaoMutado,
 }: ModalAlterarPlantaoProps) {
+  const { enviarNotificacaoNovaEscala } = useNotificacoes()
   const tituloModalId = useId()
   const [aba, setAba] = useState<AbaPlantaoModal>('informacoes')
   const [informarProfissionais, setInformarProfissionais] = useState(false)
@@ -430,6 +439,21 @@ export function ModalAlterarPlantao({
         }
       }
       onPlantaoMutado()
+
+      if (profId) {
+        const setorNome = setores.find((s) => s.id === setorSel)?.nome ?? 'Setor'
+        const dia = parseISO(dataIso)
+        const mes = capitalizeFirstLetter(format(dia, 'MMMM', { locale: ptBR }))
+        const dataRotulo = `${format(dia, 'dd', { locale: ptBR })}/${mes}`
+
+        enviarNotificacaoNovaEscala({
+          profissionalId: profId,
+          setor: setorNome,
+          data: dataRotulo,
+        })
+        toast.success('Profissional notificado com sucesso!')
+      }
+
       onFechar()
     } finally {
       setSalvando(false)
@@ -460,7 +484,7 @@ export function ModalAlterarPlantao({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 no-print"
+      className="fixed inset-0 z-100 flex items-center justify-center p-4 no-print"
       role="presentation"
     >
       <button

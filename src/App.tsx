@@ -23,6 +23,7 @@ import { FinanceiroRepassesPage } from './pages/FinanceiroRepassesPage'
 import { LoginPage } from './pages/LoginPage'
 import { LocaisPage } from './pages/LocaisPage'
 import { MeusDadosPage } from './pages/MeusDadosPage'
+import { NotificacoesPage } from './pages/NotificacoesPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { ProfissionaisPage } from './pages/ProfissionaisPage'
 import { CargaHorariaPage } from './pages/Dashboard/CargaHorariaPage'
@@ -31,6 +32,7 @@ import { DocumentosUsuarioPage, VisualizadoresPage } from './pages/UsuariosEmBre
 import { EmissaoRelatoriosPage } from './pages/Relatorios/EmissaoRelatoriosPage'
 import { HistoricoRelatoriosPage } from './pages/Relatorios/HistoricoRelatoriosPage'
 import { IndicadoresScirasPage } from './pages/Relatorios/IndicadoresScirasPage'
+import { MuralTrocasPage } from './pages/Escalas/MuralTrocasPage'
 
 function App() {
   return (
@@ -78,6 +80,7 @@ function App() {
             <Route path="escalas/mensal" element={<EscalaMensalPage />} />
             <Route path="escalas/semanal" element={<EscalaSemanalPage />} />
             <Route path="escalas/modelos" element={<EscalasModelosPage />} />
+            <Route path="escalas/mural-trocas" element={<MuralTrocasPage />} />
             <Route path="minha-agenda" element={<MinhaAgendaPage />} />
 
             <Route
@@ -121,6 +124,7 @@ function App() {
             <Route path="financeiro/extratos" element={<FinanceiroExtratosPage />} />
             <Route path="financeiro/repasses" element={<FinanceiroRepassesPage />} />
             <Route path="meus-dados" element={<MeusDadosPage />} />
+            <Route path="notificacoes" element={<NotificacoesPage />} />
             <Route
               path="alterar-senha-obrigatoria"
               element={<AlterarSenhaObrigatoriaPage />}
