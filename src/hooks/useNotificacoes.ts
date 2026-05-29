@@ -9,6 +9,7 @@ type UseNotificacoesState = {
     setor: string
     data: string
   }) => void
+  notificarNovoPlantaoMural: (params?: { dataPlantao?: string }) => void
   marcarComoLida: (id: string) => void
   marcarTodasComoLidas: () => void
 }
@@ -70,6 +71,32 @@ export const useNotificacoes = create<UseNotificacoesState>((set) => ({
           lida: false,
           criadoEm: now.toISOString(),
           linkAcao: '/minha-agenda',
+        },
+        ...state.notificacoes,
+      ],
+    }))
+  },
+  notificarNovoPlantaoMural: ({ dataPlantao } = {}) => {
+    const now = new Date()
+    const id = `notificacao-mural-${now.getTime()}`
+    const dataRotulo = dataPlantao
+      ? new Date(`${String(dataPlantao).slice(0, 10)}T12:00:00`).toLocaleDateString(
+          'pt-BR',
+        )
+      : 'nova data'
+    const titulo = `Novo plantão no Mural de Trocas`
+
+    set((state) => ({
+      notificacoes: [
+        {
+          id,
+          usuario_id: 'tenant',
+          titulo,
+          mensagem: `Um colega anunciou um plantão (${dataRotulo}) no mural. Veja quem pode assumir.`,
+          tipo: 'novo_mural',
+          lida: false,
+          criadoEm: now.toISOString(),
+          linkAcao: '/escalas/mural-trocas',
         },
         ...state.notificacoes,
       ],

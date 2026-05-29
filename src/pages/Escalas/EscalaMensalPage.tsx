@@ -39,6 +39,7 @@ type PlantaoMensal = {
   horaFim: string
   status: StatusPlantaoEscala
   profissionalId: string | null
+  disponivelMural: boolean
 }
 
 const STATUS_LABELS: Record<StatusPlantaoEscala, string> = {
@@ -88,6 +89,7 @@ function rowParaPlantaoMensal(row: PlantaoRowDb): PlantaoMensal {
     horaFim: cartao.horaFim,
     status: row.status,
     profissionalId: row.profissional_id,
+    disponivelMural: row.disponivel_mural ?? false,
   }
 }
 
@@ -107,6 +109,7 @@ function contextoParaPlantao(plantao: PlantaoMensal): ContextoModalPlantao {
     setorId: plantao.setorId,
     plantaoId: plantao.id,
     profissionalId: plantao.profissionalId,
+    disponivelMural: plantao.disponivelMural,
   }
 }
 

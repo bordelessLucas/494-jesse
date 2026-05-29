@@ -88,6 +88,7 @@ export async function buscarPlantoesIntervalo(
       hora_inicio,
       hora_fim,
       status,
+      disponivel_mural,
       observacoes,
       valor_plantao,
       ajuste_financeiro,

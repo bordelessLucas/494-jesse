@@ -43,7 +43,18 @@ import type {
   PlantaoCartao,
   StatusPlantaoEscala,
 } from '../../lib/escalas/escalaTypes'
+import { marcarAnuncioProprio } from '../../lib/escalas/muralTrocasAlertas'
+import {
+  anunciarPlantaoNoMural,
+  aprovarTrocaPlantao,
+  buscarCandidatosPlantao,
+  cancelarAnuncioPlantaoMural,
+  candidatarSePlantao,
+  substituirProfissionalPlantao,
+  type CandidatoTrocaPlantao,
+} from '../../lib/escalas/muralTrocasDb'
 import { supabase } from '../../lib/supabase'
+import { useContaMembro } from '../../hooks/useContaMembro'
 import { useSupabaseUser } from '../../hooks/useSupabaseUser'
 import { useNotificacoes } from '../../hooks/useNotificacoes'
 import { SeletorModeloEscala } from './components/SeletorModeloEscala'
@@ -227,6 +238,10 @@ export function ModalAlterarPlantao({
   onPlantaoMutado,
 }: ModalAlterarPlantaoProps) {
   const { enviarNotificacaoNovaEscala } = useNotificacoes()
+  const { isTitular, isMembroProfissional, profissionalId: profissionalIdMembro } =
+    useContaMembro()
+  const isCoordenador = isTitular
+  const isProfissional = isMembroProfissional
   const tituloModalId = useId()
   const [aba, setAba] = useState<AbaPlantaoModal>('informacoes')
   const [informarProfissionais, setInformarProfissionais] = useState(false)
@@ -252,6 +267,12 @@ export function ModalAlterarPlantao({
   const [saidaHora, setSaidaHora] = useState('')
   const [outrasInformacoes, setOutrasInformacoes] = useState('')
   const [observacaoInterna, setObservacaoInterna] = useState('')
+  const [disponivelMural, setDisponivelMural] = useState(false)
+  const [salvandoAnuncio, setSalvandoAnuncio] = useState(false)
+  const [candidatosMural, setCandidatosMural] = useState<CandidatoTrocaPlantao[]>([])
+  const [repasseProfissionalId, setRepasseProfissionalId] = useState('')
+  const [salvandoTroca, setSalvandoTroca] = useState(false)
+  const [carregandoCandidatos, setCarregandoCandidatos] = useState(false)
 
   const setoresDoLocal = useMemo(
     () => setores.filter((s) => s.local_id === localSel),
@@ -285,7 +306,38 @@ export function ModalAlterarPlantao({
       : dia
     setSaidaData(formatarDataBrasileira(diaSaida))
     setSaidaHora(cartao.horaFim)
+    setDisponivelMural(contexto.disponivelMural ?? false)
+    setCandidatosMural([])
+    setRepasseProfissionalId('')
   }, [aberto, contexto])
+
+  const carregarCandidatosMural = useCallback(async (plantaoId: string) => {
+    setCarregandoCandidatos(true)
+    try {
+      const rows = await buscarCandidatosPlantao(plantaoId)
+      setCandidatosMural(rows)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao carregar candidatos.')
+      setCandidatosMural([])
+    } finally {
+      setCarregandoCandidatos(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!aberto || !contexto?.plantaoId || !disponivelMural) {
+      if (!disponivelMural) setCandidatosMural([])
+      return
+    }
+    if (aba !== 'trocas' && aba !== 'anunciar') return
+    void carregarCandidatosMural(contexto.plantaoId)
+  }, [
+    aba,
+    aberto,
+    carregarCandidatosMural,
+    contexto?.plantaoId,
+    disponivelMural,
+  ])
 
   useEffect(() => {
     if (!aberto || !contexto || !dataPlantaoIso) return
@@ -351,6 +403,33 @@ export function ModalAlterarPlantao({
   const isNovo = !plantaoIdReal
 
   const { cartao } = contexto
+  const plantaoProfissionalId = profissionalSel || contexto.profissionalId || null
+  const nomeProfissionalPlantao =
+    profissionais.find((p) => p.id === plantaoProfissionalId)?.nome ?? cartao.nome
+  const podeAnunciarPlantao =
+    Boolean(plantaoIdReal) &&
+    situacao !== 'vago' &&
+    Boolean(plantaoProfissionalId) &&
+    isProfissional &&
+    plantaoProfissionalId === profissionalIdMembro
+
+  const isDonoProfissionalPlantao =
+    isProfissional && plantaoProfissionalId === profissionalIdMembro
+  const podeCancelarAnuncioMural = isDonoProfissionalPlantao && disponivelMural
+  const veListaCandidatosMural =
+    disponivelMural && (isCoordenador || isDonoProfissionalPlantao)
+  const veInteressePlantao =
+    disponivelMural &&
+    isProfissional &&
+    Boolean(plantaoProfissionalId) &&
+    plantaoProfissionalId !== profissionalIdMembro
+  const jaCandidatou =
+    Boolean(profissionalIdMembro) &&
+    candidatosMural.some((c) => c.profissionalId === profissionalIdMembro)
+  const profissionaisRepasseDireto = profissionais.filter(
+    (p) => p.id !== plantaoProfissionalId,
+  )
+
   const diaPlantaoExibicao =
     dataPlantaoIso && /^\d{4}-\d{2}-\d{2}$/.test(dataPlantaoIso)
       ? parseISO(dataPlantaoIso)
@@ -479,6 +558,121 @@ export function ModalAlterarPlantao({
       onFechar()
     } finally {
       setSalvando(false)
+    }
+  }
+
+  async function anunciarNoMural() {
+    if (!userId || !plantaoIdReal || !podeAnunciarPlantao) return
+    setSalvandoAnuncio(true)
+    setErroSalvar(null)
+    try {
+      marcarAnuncioProprio(plantaoIdReal)
+      await anunciarPlantaoNoMural(plantaoIdReal)
+
+      setDisponivelMural(true)
+      setSituacao('pendente_troca')
+      onPlantaoMutado()
+      toast.success('Plantão anunciado no Mural de Trocas!')
+      void carregarCandidatosMural(plantaoIdReal)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao anunciar plantão.')
+    } finally {
+      setSalvandoAnuncio(false)
+    }
+  }
+
+  async function cancelarAnuncioMural() {
+    if (!userId || !plantaoIdReal || !podeCancelarAnuncioMural) return
+    setSalvandoAnuncio(true)
+    setErroSalvar(null)
+    try {
+      const statusRevertido: StatusPlantaoEscala = plantaoProfissionalId
+        ? 'confirmado'
+        : 'pendente'
+      await cancelarAnuncioPlantaoMural(plantaoIdReal, statusRevertido)
+
+      setDisponivelMural(false)
+      setSituacao(statusRevertido)
+      setCandidatosMural([])
+      onPlantaoMutado()
+      toast.success('Anúncio cancelado com sucesso.')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao cancelar anúncio.')
+    } finally {
+      setSalvandoAnuncio(false)
+    }
+  }
+
+  async function aprovarCandidato(candidato: CandidatoTrocaPlantao) {
+    if (!userId || !plantaoIdReal || !isCoordenador) return
+    setSalvandoTroca(true)
+    setErroSalvar(null)
+    try {
+      await aprovarTrocaPlantao({
+        plantaoId: plantaoIdReal,
+        solicitacaoId: candidato.id,
+        candidatoProfissionalId: candidato.profissionalId,
+      })
+
+      setProfissionalSel(candidato.profissionalId)
+      setSituacao('confirmado')
+      setDisponivelMural(false)
+      setCandidatosMural([])
+      onPlantaoMutado()
+      toast.success('Troca aprovada com sucesso!')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao aprovar troca.')
+    } finally {
+      setSalvandoTroca(false)
+    }
+  }
+
+  async function registrarInteressePlantao() {
+    if (
+      !profissionalIdMembro ||
+      !veInteressePlantao ||
+      jaCandidatou ||
+      !plantaoIdReal ||
+      !plantaoProfissionalId
+    ) {
+      return
+    }
+    setSalvandoTroca(true)
+    try {
+      await candidatarSePlantao({
+        plantaoId: plantaoIdReal,
+        anuncianteProfissionalId: plantaoProfissionalId,
+      })
+      await carregarCandidatosMural(plantaoIdReal)
+      toast.success('Interesse registrado! Aguarde aprovação da coordenação.')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao registrar interesse.')
+    } finally {
+      setSalvandoTroca(false)
+    }
+  }
+
+  async function substituirProfissionalDireto() {
+    if (!userId || !plantaoIdReal || !isCoordenador || !repasseProfissionalId) return
+    setSalvandoTroca(true)
+    setErroSalvar(null)
+    try {
+      await substituirProfissionalPlantao({
+        plantaoId: plantaoIdReal,
+        novoProfissionalId: repasseProfissionalId,
+      })
+
+      setProfissionalSel(repasseProfissionalId)
+      setSituacao('confirmado')
+      setDisponivelMural(false)
+      setCandidatosMural([])
+      setRepasseProfissionalId('')
+      onPlantaoMutado()
+      toast.success('Profissional substituído com sucesso!')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao substituir profissional.')
+    } finally {
+      setSalvandoTroca(false)
     }
   }
 
@@ -1042,10 +1236,234 @@ export function ModalAlterarPlantao({
               </div>
             )}
 
-            {(aba === 'trocas' || aba === 'anunciar') && (
-              <div className="flex min-h-[12rem] items-center justify-center p-8 text-center text-sm text-slate-500">
-                Secção «{ABAS_PLANTAO.find((a) => a.id === aba)?.rotulo}» —
-                conteúdo em desenvolvimento.
+            {aba === 'trocas' && (
+              <div className="p-6 sm:p-8">
+                {isNovo ? (
+                  <p className="text-center text-sm text-slate-500">
+                    Salve o plantão antes de gerir trocas.
+                  </p>
+                ) : veInteressePlantao ? (
+                  <div className="mx-auto flex max-w-lg flex-col items-center gap-6 text-center">
+                    <p className="text-sm text-slate-600">
+                      Este plantão está anunciado no Mural de Trocas. Deseja assumi-lo?
+                    </p>
+                    {jaCandidatou ? (
+                      <div className="w-full rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800">
+                        Você já demonstrou interesse. Aguarde aprovação da
+                        coordenação.
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={salvandoTroca}
+                        onClick={() => void registrarInteressePlantao()}
+                        className="inline-flex h-11 w-full max-w-sm items-center justify-center rounded-lg bg-primary-600 px-6 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:opacity-50"
+                      >
+                        Tenho Interesse / Assumir Plantão
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mx-auto flex w-full max-w-xl flex-col gap-8">
+                    {veListaCandidatosMural ? (
+                      <section>
+                        <h3 className="text-sm font-semibold text-slate-900">
+                          Profissionais Interessados
+                        </h3>
+                        {isDonoProfissionalPlantao && !isCoordenador ? (
+                          <p className="mt-2 text-sm text-slate-600">
+                            A aguardar aprovação da coordenação.
+                          </p>
+                        ) : null}
+                        {carregandoCandidatos ? (
+                          <p className="mt-4 inline-flex items-center gap-2 text-sm text-slate-500">
+                            <Loader2
+                              className="h-4 w-4 animate-spin text-slate-400"
+                              aria-hidden
+                            />
+                            Carregando candidatos…
+                          </p>
+                        ) : candidatosMural.length === 0 ? (
+                          <p className="mt-4 text-sm text-slate-500">
+                            Nenhum colega se candidatou ainda.
+                          </p>
+                        ) : (
+                          <ul className="mt-4 divide-y divide-slate-100 rounded-lg border border-slate-200">
+                            {candidatosMural.map((candidato) => (
+                              <li
+                                key={candidato.id}
+                                className="flex items-center justify-between gap-4 px-4 py-3"
+                              >
+                                <span className="text-sm font-medium text-slate-800">
+                                  {candidato.nome}
+                                </span>
+                                {isCoordenador ? (
+                                  <button
+                                    type="button"
+                                    disabled={salvandoTroca}
+                                    onClick={() => void aprovarCandidato(candidato)}
+                                    className="inline-flex shrink-0 items-center justify-center rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-50 disabled:opacity-50"
+                                  >
+                                    Aprovar
+                                  </button>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </section>
+                    ) : !isCoordenador ? (
+                      <p className="text-center text-sm text-slate-500">
+                        {disponivelMural
+                          ? 'Sem permissão para gerir trocas deste plantão.'
+                          : 'Anuncie o plantão na aba Anunciar para receber candidatos do mural.'}
+                      </p>
+                    ) : null}
+
+                    {isCoordenador ? (
+                      <>
+                        {veListaCandidatosMural ? (
+                          <div className="relative flex items-center py-1">
+                            <div className="grow border-t border-slate-200" />
+                            <span className="mx-4 shrink-0 text-xs font-medium uppercase tracking-wide text-slate-400">
+                              ou
+                            </span>
+                            <div className="grow border-t border-slate-200" />
+                          </div>
+                        ) : null}
+
+                        <section>
+                          <h3 className="text-sm font-semibold text-slate-900">
+                            Repasse Direto
+                          </h3>
+                          <p className="mt-1 text-sm text-slate-600">
+                            Substitua o profissional do plantão imediatamente, sem
+                            passar pelo mural de anúncios.
+                          </p>
+                          <div className="mt-4 space-y-4">
+                            <div>
+                              <label className="mb-1 block text-xs font-medium uppercase text-slate-500">
+                                Novo profissional
+                              </label>
+                              <select
+                                className={INPUT_MODAL}
+                                value={repasseProfissionalId}
+                                onChange={(e) =>
+                                  setRepasseProfissionalId(e.target.value)
+                                }
+                                disabled={
+                                  salvandoTroca ||
+                                  profissionaisRepasseDireto.length === 0
+                                }
+                              >
+                                <option value="">Selecione um profissional</option>
+                                {profissionaisRepasseDireto.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.nome}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={
+                                salvandoTroca ||
+                                !repasseProfissionalId ||
+                                profissionaisRepasseDireto.length === 0
+                              }
+                              onClick={() => void substituirProfissionalDireto()}
+                              className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-slate-800 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-900 disabled:opacity-50 sm:w-auto"
+                            >
+                              {salvandoTroca
+                                ? 'Substituindo…'
+                                : 'Substituir Profissional'}
+                            </button>
+                          </div>
+                        </section>
+                      </>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {aba === 'anunciar' && (
+              <div className="flex min-h-[16rem] flex-col items-center justify-center p-6 sm:p-8">
+                {isNovo ? (
+                  <p className="max-w-md text-center text-sm text-slate-500">
+                    Salve o plantão antes de anunciá-lo no Mural de Trocas.
+                  </p>
+                ) : situacao === 'vago' || !plantaoProfissionalId ? (
+                  <p className="max-w-md text-center text-sm text-slate-500">
+                    Atribua um profissional ao plantão para poder anunciá-lo no
+                    mural.
+                  </p>
+                ) : !podeAnunciarPlantao && !disponivelMural ? (
+                  <p className="max-w-md text-center text-sm text-slate-500">
+                    Apenas o profissional escalado neste plantão pode anunciá-lo no
+                    Mural de Trocas.
+                  </p>
+                ) : disponivelMural ? (
+                  <div className="flex w-full max-w-lg flex-col items-center gap-6 text-center">
+                    <div
+                      className="w-full rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800"
+                      role="status"
+                    >
+                      Este plantão está atualmente anunciado no Mural de Trocas.
+                    </div>
+                    <p className="text-sm text-slate-600">
+                      Situação atual:{' '}
+                      <span className="font-semibold text-violet-700">
+                        Pendente de Troca
+                      </span>
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Anunciado por{' '}
+                      <span className="font-medium text-slate-700">
+                        {nomeProfissionalPlantao}
+                      </span>
+                      .
+                    </p>
+                    {podeCancelarAnuncioMural ? (
+                      <button
+                        type="button"
+                        disabled={salvandoAnuncio}
+                        onClick={() => void cancelarAnuncioMural()}
+                        className="inline-flex h-10 items-center justify-center rounded-lg border border-danger-200 bg-white px-5 text-sm font-semibold text-danger-600 shadow-sm transition-colors hover:bg-danger-50 disabled:opacity-50"
+                      >
+                        {salvandoAnuncio ? 'Cancelando…' : 'Cancelar Anúncio'}
+                      </button>
+                    ) : (
+                      <p className="text-xs text-slate-500">
+                        Somente o profissional escalado pode cancelar este anúncio.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex w-full max-w-lg flex-col items-center gap-6 text-center">
+                    <Megaphone
+                      className="h-14 w-14 text-primary-500"
+                      strokeWidth={1.25}
+                      aria-hidden
+                    />
+                    <p className="text-sm leading-relaxed text-slate-600">
+                      Deseja repassar este plantão? Ao anunciar, ele ficará
+                      visível no Mural para que outros colegas possam demonstrar
+                      interesse.
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      O anúncio será publicado em seu nome no Mural de Trocas.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={salvandoAnuncio}
+                      onClick={() => void anunciarNoMural()}
+                      className="inline-flex h-10 items-center justify-center rounded-lg bg-primary-600 px-6 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:opacity-50"
+                    >
+                      {salvandoAnuncio ? 'Anunciando…' : 'Anunciar no Mural'}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1061,13 +1479,15 @@ function CartaoPlantao({ cartao, onClick, linhaAuxiliar }: CartaoPlantaoProps) {
       ? 'bg-rose-500'
       : cartao.status === 'pendente'
         ? 'bg-amber-500'
-        : cartao.status === 'confirmado'
-          ? 'bg-emerald-600'
-          : cartao.status === 'realizado'
-            ? 'bg-sky-600'
-            : cartao.tom === 'util'
-              ? 'bg-emerald-500'
-              : 'bg-orange-500'
+        : cartao.status === 'pendente_troca'
+          ? 'bg-violet-500'
+          : cartao.status === 'confirmado'
+            ? 'bg-emerald-600'
+            : cartao.status === 'realizado'
+              ? 'bg-sky-600'
+              : cartao.tom === 'util'
+                ? 'bg-emerald-500'
+                : 'bg-orange-500'
 
   return (
     <button
@@ -1567,6 +1987,7 @@ export function EscalaSemanalPage() {
                           profissionalId: c.profissionalId ?? null,
                           valorPlantao:
                             row != null ? Number(row.valor_plantao ?? 0) : 0,
+                          disponivelMural: row?.disponivel_mural ?? false,
                         })
                       }}
                     />

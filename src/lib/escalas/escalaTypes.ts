@@ -27,4 +27,6 @@ export type ContextoModalPlantao = {
   profissionalId?: string | null
   /** Valor bruto cadastrado (persistido em `plantoes.valor_plantao`). */
   valorPlantao?: number
+  /** Plantão visível no Mural de Trocas (`plantoes.disponivel_mural`). */
+  disponivelMural?: boolean
 }

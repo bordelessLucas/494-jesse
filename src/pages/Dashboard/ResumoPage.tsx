@@ -21,6 +21,10 @@ import {
   type PontoGraficoMeses,
 } from '../../lib/dashboard/resumoPainel'
 import { buscarSetoresEscala } from '../../lib/escalas/plantoesDb'
+import {
+  aprovarTrocaPlantao,
+  reprovarSolicitacaoTroca,
+} from '../../lib/escalas/muralTrocasDb'
 import type { PlantaoDashboardRow } from '../../lib/dashboard/dashboardQueries'
 
 type TrocaPendenteRow = {
@@ -678,27 +682,11 @@ export function ResumoPage() {
                         onClick={async () => {
                           if (!s.plantao_id) return
                           try {
-                            const { error: e1 } = await supabase
-                              .from('plantoes')
-                              .update({
-                                profissional_id: s.candidato_profissional_id,
-                                status: 'confirmado',
-                                disponivel_mural: false,
-                                updated_at: new Date().toISOString(),
-                              })
-                              .eq('id', s.plantao_id)
-
-                            if (e1) throw new Error(e1.message)
-
-                            const { error: e2 } = await supabase
-                              .from('plantoes_trocas_solicitacoes')
-                              .update({
-                                status: 'aprovada',
-                                updated_at: new Date().toISOString(),
-                              })
-                              .eq('id', s.id)
-
-                            if (e2) throw new Error(e2.message)
+                            await aprovarTrocaPlantao({
+                              plantaoId: s.plantao_id,
+                              solicitacaoId: s.id,
+                              candidatoProfissionalId: s.candidato_profissional_id,
+                            })
 
                             toast.success('Troca aprovada e plantão atualizado.')
                             setTrocasPendentes((prev) => prev.filter((x) => x.id !== s.id))
@@ -715,15 +703,7 @@ export function ResumoPage() {
                         className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
                         onClick={async () => {
                           try {
-                            const { error } = await supabase
-                              .from('plantoes_trocas_solicitacoes')
-                              .update({
-                                status: 'reprovada',
-                                updated_at: new Date().toISOString(),
-                              })
-                              .eq('id', s.id)
-
-                            if (error) throw new Error(error.message)
+                            await reprovarSolicitacaoTroca(s.id)
 
                             toast.success('Solicitação reprovada.')
                             setTrocasPendentes((prev) => prev.filter((x) => x.id !== s.id))

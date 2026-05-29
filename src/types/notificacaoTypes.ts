@@ -1,4 +1,8 @@
-export type TipoNotificacao = 'nova_escala' | 'alteracao_escala' | 'aviso'
+export type TipoNotificacao =
+  | 'nova_escala'
+  | 'alteracao_escala'
+  | 'novo_mural'
+  | 'aviso'
 
 export type Notificacao = {
   id: string

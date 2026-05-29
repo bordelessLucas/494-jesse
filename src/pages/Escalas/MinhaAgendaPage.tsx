@@ -26,7 +26,8 @@ import toast from 'react-hot-toast'
 
 import { useSupabaseUser } from '../../hooks/useSupabaseUser'
 import { cn } from '../../lib/cn'
-import { supabase } from '../../lib/supabase'
+import { marcarAnuncioProprio } from '../../lib/escalas/muralTrocasAlertas'
+import { anunciarPlantaoNoMural } from '../../lib/escalas/muralTrocasDb'
 import {
   buscarPlantoesDoProfissional,
   buscarProfissionaisComLocal,
@@ -186,23 +187,13 @@ function ModalSolicitarTrocaRepasse({
             if (!plantao) return
             setSalvando(true)
             try {
-              const { error } = await supabase
-                .from('plantoes')
-                .update({
-                  status: 'pendente_troca',
-                  disponivel_mural: true,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('id', plantao.id)
-
-              if (error) {
-                toast.error(error.message)
-                return
-              }
-
+              marcarAnuncioProprio(plantao.id)
+              await anunciarPlantaoNoMural(plantao.id)
               toast.success('Plantão anunciado no mural com sucesso!')
               onConfirmado()
               onFechar()
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : 'Erro ao anunciar plantão.')
             } finally {
               setSalvando(false)
             }

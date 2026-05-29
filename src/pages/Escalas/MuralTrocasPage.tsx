@@ -1,47 +1,33 @@
-import { ArrowLeftRight, Calendar, Clock3, DollarSign, Loader2, MapPin } from 'lucide-react'
-import { format, isAfter, parseISO } from 'date-fns'
+import {
+  ArrowLeftRight,
+  Calendar,
+  Clock3,
+  DollarSign,
+  Loader2,
+  MapPin,
+  RefreshCw,
+} from 'lucide-react'
+import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 
 import { cn } from '../../lib/cn'
+import { dataLocalAPartirDeIsoData } from '../../lib/escalas/plantoesDb'
+import {
+  buscarPlantoesMural,
+  candidatarSePlantao,
+  type PlantaoMuralRow,
+} from '../../lib/escalas/muralTrocasDb'
 import { supabase } from '../../lib/supabase'
 import { useSupabaseUser } from '../../hooks/useSupabaseUser'
-
-type PlantaoMuralRow = {
-  id: string
-  user_id: string
-  local_id: string
-  setor_id: string
-  profissional_id: string | null
-  data_plantao: string
-  hora_inicio: string
-  hora_fim: string
-  status: string
-  valor_plantao: number | null
-  disponivel_mural: boolean
-  locais?: { nome_fantasia: string } | null
-  setores?: { nome: string } | null
-}
-
-async function buscarTenantUserId(): Promise<string | null> {
-  const { data, error } = await supabase.rpc('auth_tenant_user_id')
-  if (error) return null
-  return typeof data === 'string' ? data : (data as unknown as string | null)
-}
-
-async function buscarProfissionalIdMembro(): Promise<string | null> {
-  const { data, error } = await supabase.rpc('membro_profissional_id')
-  if (error) return null
-  return typeof data === 'string' ? data : (data as unknown as string | null)
-}
 
 function capitalizar(texto: string): string {
   return texto.slice(0, 1).toUpperCase() + texto.slice(1)
 }
 
 function formatarDataLonga(isoData: string): string {
-  const d = parseISO(String(isoData).slice(0, 10))
+  const d = dataLocalAPartirDeIsoData(isoData)
   return capitalizar(format(d, "dd 'de' MMMM", { locale: ptBR }))
 }
 
@@ -71,32 +57,8 @@ export function MuralTrocasPage() {
     setCarregando(true)
     setErro(null)
     try {
-      const hojeIso = format(new Date(), 'yyyy-MM-dd')
-      const { data, error } = await supabase
-        .from('plantoes')
-        .select(
-          `
-          id,
-          user_id,
-          local_id,
-          setor_id,
-          profissional_id,
-          data_plantao,
-          hora_inicio,
-          hora_fim,
-          status,
-          valor_plantao,
-          disponivel_mural,
-          locais ( nome_fantasia ),
-          setores ( nome )
-        `,
-        )
-        .eq('disponivel_mural', true)
-        .gte('data_plantao', hojeIso)
-        .order('data_plantao', { ascending: true })
-
-      if (error) throw new Error(error.message)
-      setItens((data ?? []) as PlantaoMuralRow[])
+      const rows = await buscarPlantoesMural()
+      setItens(rows)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao carregar mural.')
     } finally {
@@ -109,55 +71,59 @@ export function MuralTrocasPage() {
     void carregar()
   }, [carregar, isLoading])
 
-  const itensFuturos = useMemo(() => {
-    const agora = new Date()
-    return itens.filter((p) => {
-      const d = parseISO(String(p.data_plantao).slice(0, 10))
-      return isAfter(d, new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - 1))
-    })
-  }, [itens])
+  useEffect(() => {
+    if (isLoading || !user?.id) return
+
+    const canal = supabase
+      .channel(`mural-trocas-lista-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'plantoes',
+        },
+        (payload) => {
+          const novo = payload.new as { disponivel_mural?: boolean } | null
+          const antigo = payload.old as { disponivel_mural?: boolean } | null
+          const entrouNoMural = novo?.disponivel_mural === true
+          const saiuDoMural = antigo?.disponivel_mural === true && !novo?.disponivel_mural
+
+          if (entrouNoMural || saiuDoMural || payload.eventType === 'DELETE') {
+            void carregar()
+          }
+        },
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(canal)
+    }
+  }, [carregar, isLoading, user?.id])
 
   const assumirPlantao = useCallback(
     async (plantao: PlantaoMuralRow) => {
       if (!user?.id) return
       setAssumindoId(plantao.id)
       try {
-        const [tenantUserId, candidatoProfissionalId] = await Promise.all([
-          buscarTenantUserId(),
-          buscarProfissionalIdMembro(),
-        ])
-
-        if (!tenantUserId || !candidatoProfissionalId) {
-          toast.error('Não foi possível identificar seu vínculo de profissional.')
-          return
-        }
-
         if (!plantao.profissional_id) {
           toast.error('Este plantão não tem anunciante vinculado.')
           return
         }
 
-        const { error } = await supabase.from('plantoes_trocas_solicitacoes').insert({
-          tenant_user_id: tenantUserId,
-          plantao_id: plantao.id,
-          anunciante_profissional_id: plantao.profissional_id,
-          candidato_profissional_id: candidatoProfissionalId,
-          status: 'aguardando_aprovacao_coordenador',
-          updated_at: new Date().toISOString(),
+        await candidatarSePlantao({
+          plantaoId: plantao.id,
+          anuncianteProfissionalId: plantao.profissional_id,
         })
 
-        if (error) {
-          toast.error(error.message)
-          return
-        }
-
         toast.success('Solicitação enviada! Aguarde aprovação da coordenação.')
-        void carregar()
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Erro ao enviar solicitação.')
       } finally {
         setAssumindoId(null)
       }
     },
-    [carregar, user?.id],
+    [user?.id],
   )
 
   return (
@@ -179,12 +145,19 @@ export function MuralTrocasPage() {
             </div>
           </div>
 
-          {carregando ? (
-            <div className="inline-flex items-center gap-2 text-sm text-slate-600">
+          <button
+            type="button"
+            onClick={() => void carregar()}
+            disabled={carregando}
+            className="inline-flex items-center gap-2 self-start rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50 md:self-auto"
+          >
+            {carregando ? (
               <Loader2 className="h-4 w-4 animate-spin text-slate-400" aria-hidden />
-              Atualizando…
-            </div>
-          ) : null}
+            ) : (
+              <RefreshCw className="h-4 w-4 text-slate-500" aria-hidden />
+            )}
+            Atualizar
+          </button>
         </div>
       </header>
 
@@ -199,14 +172,15 @@ export function MuralTrocasPage() {
           <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
             Carregando plantões…
           </div>
-        ) : itensFuturos.length === 0 ? (
+        ) : itens.length === 0 ? (
           <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
             Nenhum plantão anunciado no momento.
           </div>
         ) : (
-          itensFuturos.map((plantao) => {
+          itens.map((plantao) => {
             const hospital = plantao.locais?.nome_fantasia?.trim() ?? 'Hospital'
             const setor = plantao.setores?.nome?.trim() ?? 'Setor'
+            const anunciante = plantao.profissionais?.nome?.trim()
             const valor = plantao.valor_plantao ?? 0
             const isAssumindo = assumindoId === plantao.id
 
@@ -224,6 +198,11 @@ export function MuralTrocasPage() {
                       {hospital}
                     </h2>
                     <p className="mt-1 text-sm font-medium text-slate-700">{setor}</p>
+                    {anunciante ? (
+                      <p className="mt-1 text-xs text-slate-500">
+                        Anunciado por {anunciante}
+                      </p>
+                    ) : null}
                   </div>
 
                   <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
@@ -270,4 +249,3 @@ export function MuralTrocasPage() {
     </div>
   )
 }
-
