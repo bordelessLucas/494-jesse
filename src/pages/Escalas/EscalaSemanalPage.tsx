@@ -44,6 +44,8 @@ import type {
   StatusPlantaoEscala,
 } from '../../lib/escalas/escalaTypes'
 import { marcarAnuncioProprio } from '../../lib/escalas/muralTrocasAlertas'
+import { carregarMapaConselhoValidado } from '../../lib/documentos/documentosUsuariosDb'
+import { MENSAGEM_BLOQUEIO_DOCUMENTOS_CONSELHO } from '../../lib/documentos/documentosUsuariosTypes'
 import {
   anunciarPlantaoNoMural,
   aprovarTrocaPlantao,
@@ -212,6 +214,7 @@ type ModalAlterarPlantaoProps = {
   locais: ItemLocalModal[]
   setores: ItemSetorModal[]
   profissionais: ItemProfModal[]
+  conselhoValidadoPorProf: Map<string, boolean>
   onPlantaoMutado: () => void
 }
 
@@ -235,6 +238,7 @@ export function ModalAlterarPlantao({
   locais,
   setores,
   profissionais,
+  conselhoValidadoPorProf,
   onPlantaoMutado,
 }: ModalAlterarPlantaoProps) {
   const { enviarNotificacaoNovaEscala } = useNotificacoes()
@@ -242,6 +246,33 @@ export function ModalAlterarPlantao({
     useContaMembro()
   const isCoordenador = isTitular
   const isProfissional = isMembroProfissional
+
+  function profissionalPodeAssumirPlantao(profId: string | null | undefined): boolean {
+    if (!profId || !isCoordenador) return true
+    return conselhoValidadoPorProf.get(profId) === true
+  }
+
+  function alertarDocumentosPendentes(): void {
+    setErroSalvar(MENSAGEM_BLOQUEIO_DOCUMENTOS_CONSELHO)
+    window.alert(MENSAGEM_BLOQUEIO_DOCUMENTOS_CONSELHO)
+  }
+
+  function aoSelecionarProfissional(profId: string) {
+    if (profId && isCoordenador && !profissionalPodeAssumirPlantao(profId)) {
+      alertarDocumentosPendentes()
+      return
+    }
+    setProfissionalSel(profId)
+    setErroSalvar(null)
+  }
+
+  function aoSelecionarRepasse(profId: string) {
+    if (profId && isCoordenador && !profissionalPodeAssumirPlantao(profId)) {
+      alertarDocumentosPendentes()
+      return
+    }
+    setRepasseProfissionalId(profId)
+  }
   const tituloModalId = useId()
   const [aba, setAba] = useState<AbaPlantaoModal>('informacoes')
   const [informarProfissionais, setInformarProfissionais] = useState(false)
@@ -466,6 +497,11 @@ export function ModalAlterarPlantao({
       return
     }
 
+    if (profId && isCoordenador && !profissionalPodeAssumirPlantao(profId)) {
+      alertarDocumentosPendentes()
+      return
+    }
+
     if (!dataPlantaoIso || !/^\d{4}-\d{2}-\d{2}$/.test(dataPlantaoIso)) {
       setErroSalvar('Informe a data do plantão.')
       return
@@ -605,6 +641,10 @@ export function ModalAlterarPlantao({
 
   async function aprovarCandidato(candidato: CandidatoTrocaPlantao) {
     if (!userId || !plantaoIdReal || !isCoordenador) return
+    if (!profissionalPodeAssumirPlantao(candidato.profissionalId)) {
+      alertarDocumentosPendentes()
+      return
+    }
     setSalvandoTroca(true)
     setErroSalvar(null)
     try {
@@ -654,6 +694,10 @@ export function ModalAlterarPlantao({
 
   async function substituirProfissionalDireto() {
     if (!userId || !plantaoIdReal || !isCoordenador || !repasseProfissionalId) return
+    if (!profissionalPodeAssumirPlantao(repasseProfissionalId)) {
+      alertarDocumentosPendentes()
+      return
+    }
     setSalvandoTroca(true)
     setErroSalvar(null)
     try {
@@ -946,13 +990,16 @@ export function ModalAlterarPlantao({
                         <select
                           className={cn(INPUT_MODAL, 'pr-20')}
                           value={profissionalSel}
-                          onChange={(e) => setProfissionalSel(e.target.value)}
+                          onChange={(e) => aoSelecionarProfissional(e.target.value)}
                           disabled={salvando || situacao === 'vago'}
                         >
                           <option value="">—</option>
                           {profissionais.map((n) => (
                             <option key={n.id} value={n.id}>
                               {n.nome}
+                              {isCoordenador && conselhoValidadoPorProf.get(n.id) !== true
+                                ? ' (doc. pendente)'
+                                : ''}
                             </option>
                           ))}
                         </select>
@@ -1006,13 +1053,16 @@ export function ModalAlterarPlantao({
                         <select
                           className={cn(INPUT_MODAL, 'pr-20')}
                           value={profissionalSel}
-                          onChange={(e) => setProfissionalSel(e.target.value)}
+                          onChange={(e) => aoSelecionarProfissional(e.target.value)}
                           disabled={salvando || situacao === 'vago'}
                         >
                           <option value="">—</option>
                           {profissionais.map((n) => (
                             <option key={`p-${n.id}`} value={n.id}>
                               {n.nome}
+                              {isCoordenador && conselhoValidadoPorProf.get(n.id) !== true
+                                ? ' (doc. pendente)'
+                                : ''}
                             </option>
                           ))}
                         </select>
@@ -1348,9 +1398,7 @@ export function ModalAlterarPlantao({
                               <select
                                 className={INPUT_MODAL}
                                 value={repasseProfissionalId}
-                                onChange={(e) =>
-                                  setRepasseProfissionalId(e.target.value)
-                                }
+                                onChange={(e) => aoSelecionarRepasse(e.target.value)}
                                 disabled={
                                   salvandoTroca ||
                                   profissionaisRepasseDireto.length === 0
@@ -1360,6 +1408,9 @@ export function ModalAlterarPlantao({
                                 {profissionaisRepasseDireto.map((p) => (
                                   <option key={p.id} value={p.id}>
                                     {p.nome}
+                                    {conselhoValidadoPorProf.get(p.id) !== true
+                                      ? ' (doc. pendente)'
+                                      : ''}
                                   </option>
                                 ))}
                               </select>
@@ -1533,6 +1584,9 @@ export function EscalaSemanalPage() {
   const [profissionais, setProfissionais] = useState<{ id: string; nome: string }[]>(
     [],
   )
+  const [conselhoValidadoPorProf, setConselhoValidadoPorProf] = useState<
+    Map<string, boolean>
+  >(() => new Map())
   const [plantoes, setPlantoes] = useState<PlantaoRowDb[]>([])
   const [localId, setLocalId] = useState('')
   const [setorId, setSetorId] = useState('')
@@ -1571,6 +1625,7 @@ export function EscalaSemanalPage() {
       setLocais([])
       setSetores([])
       setProfissionais([])
+      setConselhoValidadoPorProf(new Map())
       setLocalId('')
       setSetorId('')
       setCarregandoCatalogo(false)
@@ -1579,14 +1634,16 @@ export function EscalaSemanalPage() {
     setCarregandoCatalogo(true)
     setErro(null)
     try {
-      const [L, S, P] = await Promise.all([
+      const [L, S, P, mapaDocs] = await Promise.all([
         buscarLocaisEscala(uid),
         buscarSetoresEscala(uid),
         buscarProfissionaisEscala(uid),
+        carregarMapaConselhoValidado(uid),
       ])
       setLocais(L)
       setSetores(S)
       setProfissionais(P)
+      setConselhoValidadoPorProf(mapaDocs)
       setLocalId((prev) => {
         if (prev && L.some((l) => l.id === prev)) return prev
         return L[0]?.id ?? ''
@@ -2038,6 +2095,7 @@ export function EscalaSemanalPage() {
         locais={locais}
         setores={setoresModal}
         profissionais={profissionais}
+        conselhoValidadoPorProf={conselhoValidadoPorProf}
         onPlantaoMutado={() => void carregarPlantoesSemana()}
       />
     </div>

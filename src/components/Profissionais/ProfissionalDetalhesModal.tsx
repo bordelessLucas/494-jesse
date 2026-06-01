@@ -24,6 +24,7 @@ import {
   Paperclip,
   Plus,
   Search,
+  ShieldCheck,
   Shuffle,
   Star,
   UserRound,
@@ -34,6 +35,8 @@ import {
 } from 'lucide-react'
 
 import { cn } from '../../lib/cn'
+import { DocumentosProfissionalPanel } from './DocumentosProfissionalPanel'
+import { useContaMembro } from '../../hooks/useContaMembro'
 import { supabase } from '../../lib/supabase'
 import type {
   ProfissionalCompleto,
@@ -54,6 +57,7 @@ type AbaPerfil =
   | 'afastamentos'
   | 'habilidades'
   | 'anexos'
+  | 'documentos'
 
 const ABAS: {
   id: AbaPerfil
@@ -69,6 +73,7 @@ const ABAS: {
   { id: 'afastamentos', rotulo: 'Afastamentos', Icon: Palmtree },
   { id: 'habilidades', rotulo: 'Habilidades', Icon: ListChecks },
   { id: 'anexos', rotulo: 'Anexos', Icon: Paperclip },
+  { id: 'documentos', rotulo: 'Documentos', Icon: ShieldCheck },
 ]
 
 export const UFS_BR = [
@@ -1996,6 +2001,7 @@ export function ProfissionalDetalhesModal({
     mensagem: string
   } | null>(null)
   const [recuperandoSenha, setRecuperandoSenha] = useState(false)
+  const { isTitular } = useContaMembro()
 
   useEffect(() => {
     if (open && profissional) setAba('informacoes')
@@ -2206,6 +2212,15 @@ export function ProfissionalDetalhesModal({
         formInformacoes ? (
           <AnexosFormulario form={formInformacoes} setForm={setFormInformacoes} />
         ) : null
+      break
+    case 'documentos':
+      conteudo = (
+        <DocumentosProfissionalPanel
+          profissionalId={profissionalAtual.id}
+          siglaConselho={profissionalAtual.detalhes.siglaConselho ?? d.siglaConselho}
+          podeValidar={isTitular}
+        />
+      )
       break
     default:
       conteudo = null

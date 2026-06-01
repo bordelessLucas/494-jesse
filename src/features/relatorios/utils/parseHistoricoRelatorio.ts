@@ -6,6 +6,10 @@ import type {
 import type {
   AssinaturaResponsavel,
   CabecalhoContratualData,
+  EscalaCoordenacaoEntrada,
+  EscalaFrequenciaSetorEntrada,
+  IndicadoresScirasEscala,
+  LinhaFrequenciaDetalhada,
   RelatorioAtividadesBloco,
   TurnoFrequencia,
 } from '../types'
@@ -100,9 +104,13 @@ export type DadosPreviewHistorico = {
   cabecalho: CabecalhoContratualData
   totalDias: number
   turnosFrequenciaSetor: TurnoFrequencia[]
+  linhasFrequencia: LinhaFrequenciaDetalhada[]
+  escalaSetor: EscalaFrequenciaSetorEntrada[]
+  escalaCoordenacao: EscalaCoordenacaoEntrada[]
   blocosSCIRAS: RelatorioAtividadesBloco[]
   indicadorUti: IndicadorUti | null
   indicadorCirurgico: IndicadorCirurgico | null
+  indicadoresEscala: IndicadoresScirasEscala | null
   dataEmissao: string
   competenciaRotulo: string
   assinatura: AssinaturaResponsavel
@@ -125,15 +133,37 @@ export function parseHistoricoParaPreview(
     ? (turnosRaw as TurnoFrequencia[])
     : []
 
+  const linhasRaw = snap.linhasFrequencia
+  const linhasFrequencia = Array.isArray(linhasRaw)
+    ? (linhasRaw as LinhaFrequenciaDetalhada[])
+    : []
+
+  const escalaSetorRaw = snap.escalaSetor
+  const escalaSetor = Array.isArray(escalaSetorRaw)
+    ? (escalaSetorRaw as EscalaFrequenciaSetorEntrada[])
+    : []
+
+  const escalaCoordRaw = snap.escalaCoordenacao
+  const escalaCoordenacao = Array.isArray(escalaCoordRaw)
+    ? (escalaCoordRaw as EscalaCoordenacaoEntrada[])
+    : []
+
+  const indicadoresEscala =
+    (snap.indicadoresEscala as IndicadoresScirasEscala | null) ?? null
+
   return {
     tipo: row.tipo_relatorio,
     cabecalho,
     totalDias: numero(snap.totalDias, 31),
     turnosFrequenciaSetor,
+    linhasFrequencia,
+    escalaSetor,
+    escalaCoordenacao,
     blocosSCIRAS,
     indicadorUti: (snap.indicadorUti as IndicadorUti | null) ?? null,
     indicadorCirurgico:
       (snap.indicadorCirurgico as IndicadorCirurgico | null) ?? null,
+    indicadoresEscala,
     dataEmissao: formatarDataEmissaoHistorico(row.impresso_em, cabecalho.competencia),
     competenciaRotulo: cabecalho.competencia,
     assinatura: montarAssinaturaAPartirDoCabecalho(cabecalho),

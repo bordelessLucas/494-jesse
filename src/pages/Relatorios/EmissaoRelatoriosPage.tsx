@@ -3,6 +3,19 @@ import { Loader2, Printer } from 'lucide-react'
 
 import { useTenantUserId } from '../../hooks/useTenantUserId'
 import { registrarRelatorioImpresso } from '../../lib/relatorios/relatoriosHistoricoDb'
+import {
+  buscarLocaisRelatorio,
+  buscarPlantoesRealizadosRelatorio,
+  type LocalRelatorioOpcao,
+  type PlantaoRelatorioRow,
+} from '../../lib/relatorios/plantoesRelatorioDb'
+import {
+  calcularIndicadoresScirasEscala,
+  detectarTurnosUnicos,
+  mapearEscalaCoordenacao,
+  mapearEscalaFrequenciaSetor,
+  mapearLinhasFrequenciaDetalhada,
+} from '../../lib/relatorios/mapearPlantoesRelatorio'
 import type { Json } from '../../types/database.types'
 
 import { carregarIndicadoresParaRelatorio } from '../../features/sciras/carregarIndicadoresRelatorio'
@@ -19,6 +32,7 @@ import {
   salvarEmissaoRelatorioRascunho,
 } from '../../features/relatorios/utils/emissaoRelatorioRascunho'
 import { FrequenciaCoordenacaoTemplate } from '../../features/relatorios/templates/FrequenciaCoordenacaoTemplate'
+import { FrequenciaListaDetalhadaTemplate } from '../../features/relatorios/templates/FrequenciaListaDetalhadaTemplate'
 import { FrequenciaSetorTemplate } from '../../features/relatorios/templates/FrequenciaSetorTemplate'
 import { RelatorioAtividadesTemplate } from '../../features/relatorios/templates/RelatorioAtividadesTemplate'
 import type {
@@ -26,6 +40,8 @@ import type {
   CabecalhoContratualData,
   EscalaCoordenacaoEntrada,
   EscalaFrequenciaSetorEntrada,
+  IndicadoresScirasEscala,
+  LinhaFrequenciaDetalhada,
   RelatorioAtividadesBloco,
   TurnoFrequencia,
 } from '../../features/relatorios/types'
@@ -45,7 +61,7 @@ type OpcaoSelect<T extends string> = {
   label: string
 }
 
-type LocalContratoId = 'hospital_estadual_xyz' | 'hospital_municipal_abc'
+type LocalContratoId = string
 
 type LocalContratoDetalhe = {
   nomeLocal: string
@@ -59,8 +75,36 @@ type LocalContratoDetalhe = {
   turnosFrequencia: TurnoFrequencia[]
 }
 
+const DEFAULT_TURNOS_FREQUENCIA: TurnoFrequencia[] = ['07-13H', '13-19H', '19-07H']
+
+const DETALHE_PADRAO: Omit<LocalContratoDetalhe, 'nomeLocal' | 'cnpj' | 'tomador'> = {
+  servico: 'UTI Pediátrica',
+  contratoGestao: '',
+  contratoPrestacao: '',
+  empresa: 'PlantãoCheck Serviços Médicos LTDA',
+  coordenador: '',
+  turnosFrequencia: DEFAULT_TURNOS_FREQUENCIA,
+}
+
+function montarDetalheLocal(local: LocalRelatorioOpcao | null): LocalContratoDetalhe {
+  if (!local) {
+    return {
+      nomeLocal: '—',
+      tomador: '—',
+      cnpj: '',
+      ...DETALHE_PADRAO,
+    }
+  }
+  return {
+    nomeLocal: local.nome,
+    tomador: `${local.cidade} — ${local.uf}`,
+    cnpj: local.cnpj ?? '',
+    ...DETALHE_PADRAO,
+  }
+}
+
 /* ============================================================
- * Opções estáticas (substituir por dados do backend ao integrar)
+ * Opções de relatório
  * ============================================================ */
 
 const TIPOS_RELATORIO: OpcaoSelect<TipoRelatorio>[] = [
@@ -72,38 +116,8 @@ const TIPOS_RELATORIO: OpcaoSelect<TipoRelatorio>[] = [
   { id: 'RelatorioSCIRAS', label: 'Relatório de Atividades — SCIRAS' },
 ]
 
-const LOCAIS_OPCOES: OpcaoSelect<LocalContratoId>[] = [
-  { id: 'hospital_estadual_xyz', label: 'Hospital Estadual XYZ' },
-  { id: 'hospital_municipal_abc', label: 'Hospital Municipal ABC' },
-]
-
-const LOCAIS_DETALHE: Record<LocalContratoId, LocalContratoDetalhe> = {
-  hospital_estadual_xyz: {
-    nomeLocal: 'Hospital Estadual XYZ',
-    servico: 'UTI Pediátrica',
-    tomador: 'Secretaria de Estado da Saúde',
-    contratoGestao: 'CG-001/2024',
-    contratoPrestacao: 'CPS-045/2024',
-    empresa: 'PlantãoCheck Serviços Médicos LTDA',
-    cnpj: '00.000.000/0001-00',
-    coordenador: 'Dr. Fulano de Tal',
-    turnosFrequencia: ['07-13H', '13-19H', '19-07H'],
-  },
-  hospital_municipal_abc: {
-    nomeLocal: 'Hospital Municipal ABC',
-    servico: 'UTI Pediátrica',
-    tomador: 'Município ABC',
-    contratoGestao: 'CG-117/2024',
-    contratoPrestacao: 'CPS-209/2024',
-    empresa: 'PlantãoCheck Serviços Médicos LTDA',
-    cnpj: '00.000.000/0001-00',
-    coordenador: 'Dra. Beltrana de Almeida',
-    turnosFrequencia: ['07-19H', '19-07H'],
-  },
-}
-
 /* ============================================================
- * Helpers de domínio (mock até a integração com o backend)
+ * Helpers de domínio
  * ============================================================ */
 
 type CompetenciaOpcao = {
@@ -214,10 +228,6 @@ function montarAssinaturaAPartirDoCabecalho(
   }
 }
 
-/** Listas de presença (modelos) — sem lançamentos; células vazias para preenchimento manual. */
-const ESCALA_SETOR_VAZIA: EscalaFrequenciaSetorEntrada[] = []
-const ESCALA_COORDENACAO_VAZIA: EscalaCoordenacaoEntrada[] = []
-
 /** Blocos iniciais vazios — o coordenador adiciona texto/imagem pelos botões. */
 const BLOCOS_INICIAIS_SCIRAS: RelatorioAtividadesBloco[] = []
 
@@ -239,6 +249,12 @@ export function EmissaoRelatoriosPage() {
   const competencias = useMemo(() => gerarCompetencias(), [])
   const rascunhoGuardado = useMemo(() => lerEmissaoRelatorioRascunho(), [])
 
+  const [locaisOpcoes, setLocaisOpcoes] = useState<LocalRelatorioOpcao[]>([])
+  const [carregandoLocais, setCarregandoLocais] = useState(true)
+  const [plantoesRelatorio, setPlantoesRelatorio] = useState<PlantaoRelatorioRow[]>([])
+  const [carregandoPlantoes, setCarregandoPlantoes] = useState(false)
+  const [erroPlantoes, setErroPlantoes] = useState<string | null>(null)
+
   const [tipoSelecionado, setTipoSelecionado] = useState<TipoRelatorio>(
     () => rascunhoGuardado?.tipoSelecionado ?? TIPOS_RELATORIO[0].id,
   )
@@ -246,7 +262,7 @@ export function EmissaoRelatoriosPage() {
     () => rascunhoGuardado?.competenciaId ?? (competencias[0]?.id ?? ''),
   )
   const [localId, setLocalId] = useState<LocalContratoId>(
-    () => rascunhoGuardado?.localId ?? LOCAIS_OPCOES[0].id,
+    () => rascunhoGuardado?.localId ?? '',
   )
 
   const blocosRelatorio = useBlocosRelatorio(
@@ -258,8 +274,7 @@ export function EmissaoRelatoriosPage() {
       if (rascunhoGuardado?.rotulosTurnosFrequenciaSetor.length) {
         return rascunhoGuardado.rotulosTurnosFrequenciaSetor.slice()
       }
-      const localInicial = rascunhoGuardado?.localId ?? LOCAIS_OPCOES[0].id
-      return LOCAIS_DETALHE[localInicial].turnosFrequencia.slice()
+      return DEFAULT_TURNOS_FREQUENCIA.slice()
     })
 
   const [cabecalhoTexto, setCabecalhoTexto] = useState<CabecalhoTextoEditavel>(
@@ -267,13 +282,12 @@ export function EmissaoRelatoriosPage() {
       if (rascunhoGuardado?.cabecalhoTexto) {
         return rascunhoGuardado.cabecalhoTexto
       }
-      const localInicial = rascunhoGuardado?.localId ?? LOCAIS_OPCOES[0].id
       const competenciaInicial =
         rascunhoGuardado?.competenciaId ?? competencias[0]?.id ?? ''
       const competenciaCab =
         competencias.find((c) => c.id === competenciaInicial)?.cabecalho ?? ''
       return extrairTextoCabecalho(
-        montarCabecalho(LOCAIS_DETALHE[localInicial], competenciaCab, null),
+        montarCabecalho(montarDetalheLocal(null), competenciaCab, null),
       )
     },
   )
@@ -296,7 +310,21 @@ export function EmissaoRelatoriosPage() {
     [competencias, competenciaId],
   )
 
-  const detalhe = LOCAIS_DETALHE[localId]
+  const localSelecionado = useMemo(
+    () => locaisOpcoes.find((l) => l.id === localId) ?? null,
+    [locaisOpcoes, localId],
+  )
+
+  const detalhe = useMemo(
+    () => montarDetalheLocal(localSelecionado),
+    [localSelecionado],
+  )
+
+  const locaisSelectOpcoes = useMemo(
+    (): OpcaoSelect<LocalContratoId>[] =>
+      locaisOpcoes.map((l) => ({ id: l.id, label: l.nome })),
+    [locaisOpcoes],
+  )
 
   const cabecalho = useMemo(
     (): CabecalhoContratualData => ({ ...cabecalhoTexto, logoUrl }),
@@ -320,6 +348,94 @@ export function EmissaoRelatoriosPage() {
     rotulosTurnosFrequenciaSetor,
     tipoSelecionado,
   ])
+
+  useEffect(() => {
+    if (!tenantUserId) {
+      setLocaisOpcoes([])
+      setCarregandoLocais(false)
+      return
+    }
+    let cancelado = false
+    setCarregandoLocais(true)
+    void buscarLocaisRelatorio(tenantUserId)
+      .then((lista) => {
+        if (cancelado) return
+        setLocaisOpcoes(lista)
+        setLocalId((atual) => {
+          if (atual && lista.some((l) => l.id === atual)) return atual
+          return lista[0]?.id ?? ''
+        })
+      })
+      .catch(() => {
+        if (!cancelado) setLocaisOpcoes([])
+      })
+      .finally(() => {
+        if (!cancelado) setCarregandoLocais(false)
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [tenantUserId])
+
+  useEffect(() => {
+    if (!tenantUserId || !localId || !competenciaId) {
+      setPlantoesRelatorio([])
+      setErroPlantoes(null)
+      return
+    }
+    let cancelado = false
+    setCarregandoPlantoes(true)
+    setErroPlantoes(null)
+    void buscarPlantoesRealizadosRelatorio(tenantUserId, competenciaId, localId)
+      .then((rows) => {
+        if (cancelado) return
+        setPlantoesRelatorio(rows)
+      })
+      .catch((e) => {
+        if (!cancelado) {
+          setPlantoesRelatorio([])
+          setErroPlantoes(
+            e instanceof Error ? e.message : 'Erro ao carregar plantões.',
+          )
+        }
+      })
+      .finally(() => {
+        if (!cancelado) setCarregandoPlantoes(false)
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [tenantUserId, localId, competenciaId])
+
+  const totalDias = useMemo(
+    () => (competencia ? obterDiasNoMes(competencia.id) : 31),
+    [competencia],
+  )
+
+  const linhasFrequencia = useMemo(
+    () => mapearLinhasFrequenciaDetalhada(plantoesRelatorio),
+    [plantoesRelatorio],
+  )
+
+  const escalaSetor = useMemo(
+    () =>
+      mapearEscalaFrequenciaSetor(
+        plantoesRelatorio,
+        rotulosTurnosFrequenciaSetor,
+        totalDias,
+      ),
+    [plantoesRelatorio, rotulosTurnosFrequenciaSetor, totalDias],
+  )
+
+  const escalaCoordenacao = useMemo(
+    () => mapearEscalaCoordenacao(plantoesRelatorio, totalDias),
+    [plantoesRelatorio, totalDias],
+  )
+
+  const indicadoresEscala = useMemo(
+    () => calcularIndicadoresScirasEscala(plantoesRelatorio),
+    [plantoesRelatorio],
+  )
 
   useEffect(() => {
     if (tipoSelecionado !== 'RelatorioSCIRAS') {
@@ -349,11 +465,6 @@ export function EmissaoRelatoriosPage() {
       cancelado = true
     }
   }, [tipoSelecionado, competenciaId, cabecalhoTexto.servico])
-
-  const totalDias = useMemo(
-    () => (competencia ? obterDiasNoMes(competencia.id) : 31),
-    [competencia],
-  )
 
   const restaurarCabecalhoDoContrato = () => {
     setCabecalhoTexto(
@@ -395,6 +506,16 @@ export function EmissaoRelatoriosPage() {
             localId,
             cabecalho,
             totalDias,
+            linhasFrequencia:
+              tipoSelecionado !== 'RelatorioSCIRAS' ? linhasFrequencia : undefined,
+            escalaSetor:
+              tipoSelecionado === 'FrequenciaSetor' ? escalaSetor : undefined,
+            escalaCoordenacao:
+              tipoSelecionado === 'FrequenciaCoordenacao'
+                ? escalaCoordenacao
+                : undefined,
+            indicadoresEscala:
+              tipoSelecionado === 'RelatorioSCIRAS' ? indicadoresEscala : undefined,
             rotulosTurnosFrequenciaSetor:
               tipoSelecionado === 'FrequenciaSetor'
                 ? rotulosTurnosFrequenciaSetor
@@ -434,24 +555,21 @@ export function EmissaoRelatoriosPage() {
   }
 
   const restaurarRotulosTurnosPadrao = () => {
+    const detectados = detectarTurnosUnicos(plantoesRelatorio)
     setRotulosTurnosFrequenciaSetor(
-      LOCAIS_DETALHE[localId].turnosFrequencia.slice(),
+      detectados.length > 0 ? detectados : DEFAULT_TURNOS_FREQUENCIA.slice(),
     )
   }
 
   const aoMudarLocal = (novoLocal: LocalContratoId) => {
     setLocalId(novoLocal)
+    const local = locaisOpcoes.find((l) => l.id === novoLocal) ?? null
     const competenciaCab = competencia?.cabecalho ?? ''
     setCabecalhoTexto(
       extrairTextoCabecalho(
-        montarCabecalho(LOCAIS_DETALHE[novoLocal], competenciaCab, null),
+        montarCabecalho(montarDetalheLocal(local), competenciaCab, null),
       ),
     )
-    if (tipoSelecionado === 'FrequenciaSetor') {
-      setRotulosTurnosFrequenciaSetor(
-        LOCAIS_DETALHE[novoLocal].turnosFrequencia.slice(),
-      )
-    }
   }
 
   const aoMudarCompetencia = (novaCompetenciaId: string) => {
@@ -462,7 +580,7 @@ export function EmissaoRelatoriosPage() {
     setCabecalhoTexto(
       extrairTextoCabecalho(
         montarCabecalho(
-          LOCAIS_DETALHE[localId],
+          detalhe,
           competenciaNova?.cabecalho ?? '',
           null,
         ),
@@ -482,6 +600,11 @@ export function EmissaoRelatoriosPage() {
         competencias={competencias}
         localId={localId}
         onChangeLocal={aoMudarLocal}
+        locaisOpcoes={locaisSelectOpcoes}
+        carregandoLocais={carregandoLocais}
+        carregandoPlantoes={carregandoPlantoes}
+        erroPlantoes={erroPlantoes}
+        totalPlantoesRealizados={plantoesRelatorio.length}
         onImprimir={() => void handleImprimir()}
         aRegistarImpressao={aRegistarImpressao}
         avisoHistorico={avisoHistorico}
@@ -510,10 +633,18 @@ export function EmissaoRelatoriosPage() {
           cabecalho={cabecalho}
           totalDias={totalDias}
           turnosFrequenciaSetor={rotulosTurnosFrequenciaSetor}
+          linhasFrequencia={linhasFrequencia}
+          escalaSetor={escalaSetor}
+          escalaCoordenacao={escalaCoordenacao}
+          carregandoPlantoes={carregandoPlantoes}
+          totalPlantoesRealizados={plantoesRelatorio.length}
           blocosSCIRAS={blocosRelatorio.blocos}
           indicadorUtiRelatorio={indicadorUtiRelatorio}
           indicadorCirurgicoRelatorio={indicadorCirurgicoRelatorio}
-          indicadoresRelatorioCarregando={indicadoresRelatorioCarregando}
+          indicadoresEscala={indicadoresEscala}
+          indicadoresRelatorioCarregando={
+            indicadoresRelatorioCarregando || carregandoPlantoes
+          }
         />
       </PainelPreview>
     </div>
@@ -532,6 +663,11 @@ type PainelConfiguracaoProps = {
   competencias: CompetenciaOpcao[]
   localId: LocalContratoId
   onChangeLocal: (valor: LocalContratoId) => void
+  locaisOpcoes: OpcaoSelect<LocalContratoId>[]
+  carregandoLocais?: boolean
+  carregandoPlantoes?: boolean
+  erroPlantoes?: string | null
+  totalPlantoesRealizados?: number
   onImprimir: () => void
   aRegistarImpressao?: boolean
   avisoHistorico?: string | null
@@ -558,6 +694,11 @@ function PainelConfiguracao({
   competencias,
   localId,
   onChangeLocal,
+  locaisOpcoes,
+  carregandoLocais = false,
+  carregandoPlantoes = false,
+  erroPlantoes,
+  totalPlantoesRealizados = 0,
   onImprimir,
   aRegistarImpressao = false,
   avisoHistorico,
@@ -601,8 +742,28 @@ function PainelConfiguracao({
           label="Local / Contrato"
           value={localId}
           onChange={(valor) => onChangeLocal(valor as LocalContratoId)}
-          opcoes={LOCAIS_OPCOES}
+          opcoes={
+            locaisOpcoes.length > 0
+              ? locaisOpcoes
+              : [{ id: '', label: carregandoLocais ? 'A carregar locais…' : 'Nenhum local' }]
+          }
         />
+
+        <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs text-slate-600">
+          {carregandoPlantoes ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              A carregar plantões realizados…
+            </span>
+          ) : erroPlantoes ? (
+            <span className="text-red-700">{erroPlantoes}</span>
+          ) : (
+            <span>
+              <strong className="text-slate-800">{totalPlantoesRealizados}</strong>{' '}
+              plantão(ões) com status «realizado» nesta competência e local.
+            </span>
+          )}
+        </div>
 
         <div className="max-h-[min(380px,52vh)] overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
           <p className="text-sm font-semibold text-slate-900">
@@ -742,9 +903,15 @@ type PreviewRelatorioSelecionadoProps = {
   cabecalho: CabecalhoContratualData
   totalDias: number
   turnosFrequenciaSetor: TurnoFrequencia[]
+  linhasFrequencia: LinhaFrequenciaDetalhada[]
+  escalaSetor: EscalaFrequenciaSetorEntrada[]
+  escalaCoordenacao: EscalaCoordenacaoEntrada[]
+  carregandoPlantoes: boolean
+  totalPlantoesRealizados: number
   blocosSCIRAS: RelatorioAtividadesBloco[]
   indicadorUtiRelatorio: IndicadorUti | null
   indicadorCirurgicoRelatorio: IndicadorCirurgico | null
+  indicadoresEscala: IndicadoresScirasEscala
   indicadoresRelatorioCarregando: boolean
 }
 
@@ -753,29 +920,55 @@ function PreviewRelatorioSelecionado({
   cabecalho,
   totalDias,
   turnosFrequenciaSetor,
+  linhasFrequencia,
+  escalaSetor,
+  escalaCoordenacao,
+  carregandoPlantoes,
+  totalPlantoesRealizados,
   blocosSCIRAS,
   indicadorUtiRelatorio,
   indicadorCirurgicoRelatorio,
+  indicadoresEscala,
   indicadoresRelatorioCarregando,
 }: PreviewRelatorioSelecionadoProps) {
   switch (tipoSelecionado) {
     case 'FrequenciaSetor':
       return (
-        <FrequenciaSetorTemplate
-          cabecalho={cabecalho}
-          turnos={turnosFrequenciaSetor}
-          escala={ESCALA_SETOR_VAZIA}
-          totalDias={totalDias}
-        />
+        <div className="flex flex-col gap-8">
+          <FrequenciaListaDetalhadaTemplate
+            cabecalho={cabecalho}
+            titulo={`Lista de Frequência — ${cabecalho.servico}`}
+            linhas={linhasFrequencia}
+            carregando={carregandoPlantoes}
+            totalPlantoes={totalPlantoesRealizados}
+          />
+          {escalaSetor.length > 0 ? (
+            <FrequenciaSetorTemplate
+              cabecalho={cabecalho}
+              turnos={turnosFrequenciaSetor}
+              escala={escalaSetor}
+              totalDias={totalDias}
+            />
+          ) : null}
+        </div>
       )
 
     case 'FrequenciaCoordenacao':
       return (
-        <FrequenciaCoordenacaoTemplate
-          cabecalho={cabecalho}
-          escala={ESCALA_COORDENACAO_VAZIA}
-          totalDias={totalDias}
-        />
+        <div className="flex flex-col gap-8">
+          <FrequenciaListaDetalhadaTemplate
+            cabecalho={cabecalho}
+            titulo={`Lista de Frequência — Coordenação ${cabecalho.servico}`}
+            linhas={linhasFrequencia}
+            carregando={carregandoPlantoes}
+            totalPlantoes={totalPlantoesRealizados}
+          />
+          <FrequenciaCoordenacaoTemplate
+            cabecalho={cabecalho}
+            escala={escalaCoordenacao}
+            totalDias={totalDias}
+          />
+        </div>
       )
 
     case 'RelatorioSCIRAS':
@@ -787,6 +980,7 @@ function PreviewRelatorioSelecionado({
           competenciaRotulo={cabecalho.competencia}
           indicadorUti={indicadorUtiRelatorio}
           indicadorCirurgico={indicadorCirurgicoRelatorio}
+          indicadoresEscala={indicadoresEscala}
           indicadoresCarregando={indicadoresRelatorioCarregando}
           assinatura={montarAssinaturaAPartirDoCabecalho(cabecalho)}
         />

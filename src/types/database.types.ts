@@ -348,6 +348,59 @@ export type Database = {
           },
         ]
       }
+      documentos_usuarios: {
+        Row: {
+          id: string
+          user_id: string
+          profissional_id: string
+          tipo: string
+          nome_arquivo: string
+          storage_path: string
+          mime_type: string
+          status: string
+          motivo_rejeicao: string | null
+          uploaded_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          profissional_id: string
+          tipo: string
+          nome_arquivo: string
+          storage_path: string
+          mime_type?: string
+          status?: string
+          motivo_rejeicao?: string | null
+          uploaded_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          profissional_id?: string
+          tipo?: string
+          nome_arquivo?: string
+          storage_path?: string
+          mime_type?: string
+          status?: string
+          motivo_rejeicao?: string | null
+          uploaded_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'documentos_usuarios_profissional_id_fkey'
+            columns: ['profissional_id']
+            isOneToOne: false
+            referencedRelation: 'profissionais'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       escala_modelo_itens: {
         Row: {
           id: string

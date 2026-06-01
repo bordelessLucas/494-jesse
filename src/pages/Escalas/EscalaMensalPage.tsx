@@ -13,6 +13,7 @@ import {
 import { ptBR } from 'date-fns/locale'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { carregarMapaConselhoValidado } from '../../lib/documentos/documentosUsuariosDb'
 import { cn } from '../../lib/cn'
 import { useTenantUserId } from '../../hooks/useTenantUserId'
 import type { StatusPlantaoEscala } from '../../lib/escalas/escalaTypes'
@@ -131,6 +132,9 @@ export function EscalaMensalPage() {
   const [profissionais, setProfissionais] = useState<{ id: string; nome: string }[]>(
     [],
   )
+  const [conselhoValidadoPorProf, setConselhoValidadoPorProf] = useState<
+    Map<string, boolean>
+  >(() => new Map())
   const [plantoesRows, setPlantoesRows] = useState<PlantaoRowDb[]>([])
   const [carregando, setCarregando] = useState(true)
   const [carregandoPlantoes, setCarregandoPlantoes] = useState(false)
@@ -169,22 +173,25 @@ export function EscalaMensalPage() {
       setLocais([])
       setSetores([])
       setProfissionais([])
+      setConselhoValidadoPorProf(new Map())
       setCarregando(false)
       return
     }
     setCarregando(true)
     setErro(null)
     try {
-      const [L, S, P] = await Promise.all([
+      const [L, S, P, mapaDocs] = await Promise.all([
         buscarLocaisEscala(uid),
         buscarSetoresEscala(uid),
         buscarProfissionaisEscala(uid),
+        carregarMapaConselhoValidado(uid),
       ])
       setLocais(L)
       setSetores(
         S.map((s) => ({ id: s.id, nome: s.nome, local_id: s.local_id })),
       )
       setProfissionais(P)
+      setConselhoValidadoPorProf(mapaDocs)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao carregar')
     } finally {
@@ -561,10 +568,11 @@ export function EscalaMensalPage() {
         aberto={plantaoModal !== null}
         contexto={plantaoModal}
         onFechar={() => setPlantaoModal(null)}
-        userId={user?.id ?? null}
+        userId={tenantUserId ?? null}
         locais={locais}
         setores={setoresModal}
         profissionais={profissionais}
+        conselhoValidadoPorProf={conselhoValidadoPorProf}
         onPlantaoMutado={() => void carregarPlantoesGrade()}
       />
     </div>

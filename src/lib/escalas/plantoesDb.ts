@@ -138,17 +138,23 @@ export async function buscarSetoresEscala(userId: string): Promise<SetorEscalaDb
   return (data ?? []) as SetorEscalaDb[]
 }
 
+export type ProfissionalEscalaRow = {
+  id: string
+  nome: string
+  sigla_conselho: string
+}
+
 export async function buscarProfissionaisEscala(
   userId: string,
-): Promise<{ id: string; nome: string }[]> {
+): Promise<ProfissionalEscalaRow[]> {
   const { data, error } = await supabase
     .from('profissionais')
-    .select('id, nome')
+    .select('id, nome, sigla_conselho')
     .eq('user_id', userId)
     .order('nome', { ascending: true })
 
   if (error) throw new Error(error.message)
-  return (data ?? []) as { id: string; nome: string }[]
+  return (data ?? []) as ProfissionalEscalaRow[]
 }
 
 /** Dados extra para colunas Reg. Prof. e CPF em exportações (relatórios). */

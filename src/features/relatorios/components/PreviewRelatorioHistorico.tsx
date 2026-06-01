@@ -1,14 +1,8 @@
 import { FrequenciaCoordenacaoTemplate } from '../templates/FrequenciaCoordenacaoTemplate'
+import { FrequenciaListaDetalhadaTemplate } from '../templates/FrequenciaListaDetalhadaTemplate'
 import { FrequenciaSetorTemplate } from '../templates/FrequenciaSetorTemplate'
 import { RelatorioAtividadesTemplate } from '../templates/RelatorioAtividadesTemplate'
-import type {
-  EscalaCoordenacaoEntrada,
-  EscalaFrequenciaSetorEntrada,
-} from '../types'
 import type { DadosPreviewHistorico } from '../utils/parseHistoricoRelatorio'
-
-const ESCALA_SETOR_VAZIA: EscalaFrequenciaSetorEntrada[] = []
-const ESCALA_COORDENACAO_VAZIA: EscalaCoordenacaoEntrada[] = []
 
 type PreviewRelatorioHistoricoProps = {
   dados: DadosPreviewHistorico
@@ -18,21 +12,41 @@ export function PreviewRelatorioHistorico({ dados }: PreviewRelatorioHistoricoPr
   switch (dados.tipo) {
     case 'FrequenciaSetor':
       return (
-        <FrequenciaSetorTemplate
-          cabecalho={dados.cabecalho}
-          turnos={dados.turnosFrequenciaSetor}
-          escala={ESCALA_SETOR_VAZIA}
-          totalDias={dados.totalDias}
-        />
+        <div className="flex flex-col gap-8">
+          {dados.linhasFrequencia.length > 0 ? (
+            <FrequenciaListaDetalhadaTemplate
+              cabecalho={dados.cabecalho}
+              titulo={`Lista de Frequência — ${dados.cabecalho.servico}`}
+              linhas={dados.linhasFrequencia}
+              totalPlantoes={dados.linhasFrequencia.length}
+            />
+          ) : null}
+          <FrequenciaSetorTemplate
+            cabecalho={dados.cabecalho}
+            turnos={dados.turnosFrequenciaSetor}
+            escala={dados.escalaSetor}
+            totalDias={dados.totalDias}
+          />
+        </div>
       )
 
     case 'FrequenciaCoordenacao':
       return (
-        <FrequenciaCoordenacaoTemplate
-          cabecalho={dados.cabecalho}
-          escala={ESCALA_COORDENACAO_VAZIA}
-          totalDias={dados.totalDias}
-        />
+        <div className="flex flex-col gap-8">
+          {dados.linhasFrequencia.length > 0 ? (
+            <FrequenciaListaDetalhadaTemplate
+              cabecalho={dados.cabecalho}
+              titulo={`Lista de Frequência — Coordenação ${dados.cabecalho.servico}`}
+              linhas={dados.linhasFrequencia}
+              totalPlantoes={dados.linhasFrequencia.length}
+            />
+          ) : null}
+          <FrequenciaCoordenacaoTemplate
+            cabecalho={dados.cabecalho}
+            escala={dados.escalaCoordenacao}
+            totalDias={dados.totalDias}
+          />
+        </div>
       )
 
     case 'RelatorioSCIRAS':
@@ -44,6 +58,7 @@ export function PreviewRelatorioHistorico({ dados }: PreviewRelatorioHistoricoPr
           competenciaRotulo={dados.competenciaRotulo}
           indicadorUti={dados.indicadorUti}
           indicadorCirurgico={dados.indicadorCirurgico}
+          indicadoresEscala={dados.indicadoresEscala}
           indicadoresCarregando={false}
           assinatura={dados.assinatura}
         />

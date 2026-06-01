@@ -3,6 +3,7 @@ import { PaginaA4 } from '../components/PaginaA4'
 import type {
   AssinaturaResponsavel,
   CabecalhoContratualData,
+  IndicadoresScirasEscala,
   RelatorioAtividadesBloco,
 } from '../types'
 import type { IndicadorCirurgico, IndicadorUti } from '../../sciras/types'
@@ -19,6 +20,8 @@ type RelatorioAtividadesTemplateProps = {
   indicadorUti: IndicadorUti | null
   /** Indicadores cirúrgicos guardados para o período; `null` se inexistente. */
   indicadorCirurgico: IndicadorCirurgico | null
+  /** Métricas calculadas a partir dos plantões realizados na escala. */
+  indicadoresEscala?: IndicadoresScirasEscala | null
   /** Quando verdadeiro, os dados ainda estão a ser obtidos do servidor. */
   indicadoresCarregando?: boolean
   assinatura: AssinaturaResponsavel
@@ -45,6 +48,7 @@ export function RelatorioAtividadesTemplate({
   competenciaRotulo,
   indicadorUti,
   indicadorCirurgico,
+  indicadoresEscala = null,
   indicadoresCarregando = false,
   assinatura,
 }: RelatorioAtividadesTemplateProps) {
@@ -63,6 +67,12 @@ export function RelatorioAtividadesTemplate({
           <BlocoConteudoRelatorio key={bloco.clientKey} bloco={bloco} />
         ))}
       </section>
+
+      <SecaoIndicadoresEscala
+        competenciaRotulo={competenciaRotulo}
+        indicadores={indicadoresEscala}
+        carregando={indicadoresCarregando}
+      />
 
       <SecaoIndicadoresPeriodo
         competenciaRotulo={competenciaRotulo}
@@ -158,6 +168,106 @@ const tabelaIndicadoresClasse =
 const celulaIndicadoresClasse = 'border border-black px-2 py-1 align-top text-black'
 const celulaEtiquetaClasse = `${celulaIndicadoresClasse} w-[44%] font-semibold`
 const celulaValorClasse = celulaIndicadoresClasse
+
+function fmtHorasRelatorio(valor: number): string {
+  return valor.toLocaleString('pt-PT', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })
+}
+
+type SecaoIndicadoresEscalaProps = {
+  competenciaRotulo: string
+  indicadores: IndicadoresScirasEscala | null
+  carregando: boolean
+}
+
+function SecaoIndicadoresEscala({
+  competenciaRotulo,
+  indicadores,
+  carregando,
+}: SecaoIndicadoresEscalaProps) {
+  return (
+    <section className="bloco-impressao mt-8 space-y-3">
+      <header>
+        <h3 className="text-center text-sm font-bold uppercase tracking-wide text-black">
+          Indicadores da escala realizada
+        </h3>
+        <p className="mt-1 text-center text-xs text-black">
+          Competência {competenciaRotulo}
+          {carregando ? ' — A calcular…' : ' — plantões com status «realizado»'}
+        </p>
+      </header>
+
+      <table className={tabelaIndicadoresClasse}>
+        <tbody>
+          <tr>
+            <td className={celulaEtiquetaClasse}>Total de horas médicas na UTI</td>
+            <td className={celulaValorClasse}>
+              {carregando
+                ? '…'
+                : indicadores
+                  ? `${fmtHorasRelatorio(indicadores.totalHorasMedicasUti)} h`
+                  : '—'}
+            </td>
+          </tr>
+          <tr>
+            <td className={celulaEtiquetaClasse}>Plantões realizados (total)</td>
+            <td className={celulaValorClasse}>
+              {carregando
+                ? '…'
+                : indicadores
+                  ? fmtInteiroRelatorio(indicadores.totalPlantoesRealizados)
+                  : '—'}
+            </td>
+          </tr>
+          <tr>
+            <td className={celulaEtiquetaClasse}>Plantões realizados na UTI</td>
+            <td className={celulaValorClasse}>
+              {carregando
+                ? '…'
+                : indicadores
+                  ? fmtInteiroRelatorio(indicadores.totalPlantoesRealizadosUti)
+                  : '—'}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {indicadores && indicadores.horasPorSetor.length > 0 && !carregando ? (
+        <div>
+          <p className="mb-1.5 text-xs font-bold uppercase text-black">
+            Horas por setor
+          </p>
+          <table className={tabelaIndicadoresClasse}>
+            <thead>
+              <tr>
+                <th className={`${celulaEtiquetaClasse} bg-slate-100 print:bg-white`}>
+                  Setor
+                </th>
+                <th className={`${celulaValorClasse} bg-slate-100 print:bg-white`}>
+                  Horas
+                </th>
+                <th className={`${celulaValorClasse} bg-slate-100 print:bg-white`}>
+                  Plantões
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {indicadores.horasPorSetor.map((row) => (
+                <tr key={row.setor}>
+                  <td className={celulaEtiquetaClasse}>{row.setor}</td>
+                  <td className={celulaValorClasse}>{fmtHorasRelatorio(row.horas)} h</td>
+                  <td className={celulaValorClasse}>{fmtInteiroRelatorio(row.plantoes)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </section>
+  )
+}
 
 function SecaoIndicadoresPeriodo({
   competenciaRotulo,

@@ -33,6 +33,26 @@ export type EscalaFrequenciaSetorEntrada = {
   profissionalNome: string | null
 }
 
+/** Linha detalhada da lista de frequência (dados reais da escala). */
+export type LinhaFrequenciaDetalhada = {
+  profissionalNome: string
+  crm: string
+  data: string
+  horaEntrada: string
+  horaSaida: string
+  /** Entrada e saída formatadas num único campo. */
+  horario: string
+  setor: string
+}
+
+/** Indicadores SCIRAS calculados a partir da escala realizada. */
+export type IndicadoresScirasEscala = {
+  totalHorasMedicasUti: number
+  totalPlantoesRealizados: number
+  totalPlantoesRealizadosUti: number
+  horasPorSetor: { setor: string; horas: number; plantoes: number }[]
+}
+
 /** Lançamento de assinatura de coordenador em um dia. */
 export type EscalaCoordenacaoEntrada = {
   dia: number

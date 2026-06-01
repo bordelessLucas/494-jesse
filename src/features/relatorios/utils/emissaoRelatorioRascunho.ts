@@ -7,9 +7,7 @@ export type TipoRelatorioRascunho =
   | 'FrequenciaCoordenacao'
   | 'RelatorioSCIRAS'
 
-export type LocalContratoRascunho =
-  | 'hospital_estadual_xyz'
-  | 'hospital_municipal_abc'
+export type LocalContratoRascunho = string
 
 export type CabecalhoTextoRascunho = {
   contratoGestao: string
@@ -42,6 +40,11 @@ const LOCAIS_VALIDOS = new Set<LocalContratoRascunho>([
   'hospital_estadual_xyz',
   'hospital_municipal_abc',
 ])
+
+function localIdValido(localId: string): boolean {
+  if (LOCAIS_VALIDOS.has(localId as LocalContratoRascunho)) return true
+  return /^[0-9a-f-]{36}$/i.test(localId)
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -88,7 +91,7 @@ function parseRascunho(value: unknown): EmissaoRelatorioRascunho | null {
     typeof tipo !== 'string' ||
     !TIPOS_VALIDOS.has(tipo as TipoRelatorioRascunho) ||
     typeof localId !== 'string' ||
-    !LOCAIS_VALIDOS.has(localId as LocalContratoRascunho) ||
+    !localIdValido(localId) ||
     !competenciaId ||
     !cabecalhoTexto
   ) {
@@ -103,7 +106,7 @@ function parseRascunho(value: unknown): EmissaoRelatorioRascunho | null {
   return {
     tipoSelecionado: tipo as TipoRelatorioRascunho,
     competenciaId,
-    localId: localId as LocalContratoRascunho,
+    localId,
     cabecalhoTexto,
     rotulosTurnosFrequenciaSetor,
     blocosSCIRAS: parseBlocos(value.blocosSCIRAS),
