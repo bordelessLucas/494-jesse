@@ -8,7 +8,7 @@ import {
   startOfWeek,
 } from 'date-fns'
 
-import { useSupabaseUser } from '../../hooks/useSupabaseUser'
+import { useTenantUserId } from '../../hooks/useTenantUserId'
 import { cn } from '../../lib/cn'
 import {
   buscarPlantoesIntervaloComLocaisSetores,
@@ -98,7 +98,7 @@ function acumularHorasPorProfissional(
 export function CargaHorariaPage() {
   const periodoId = useId()
   const hospitalId = useId()
-  const { user, isLoading: isLoadingUser } = useSupabaseUser()
+  const { user, tenantUserId, isLoading: isLoadingUser } = useTenantUserId()
 
   const [periodo, setPeriodo] = useState<PeriodoCarga>('mes-atual')
   const [hospitalSetorFiltro, setHospitalSetorFiltro] = useState<string>('todos')
@@ -127,8 +127,8 @@ export function CargaHorariaPage() {
   }, [periodo])
 
   useEffect(() => {
-    if (isLoadingUser || !user) return
-    const userId = user.id
+    if (isLoadingUser || !user || !tenantUserId) return
+    const userId = tenantUserId
     let cancelado = false
 
     async function load() {
@@ -159,7 +159,7 @@ export function CargaHorariaPage() {
     return () => {
       cancelado = true
     }
-  }, [user, isLoadingUser, intervalo.minIso, intervalo.maxIso])
+  }, [user, tenantUserId, isLoadingUser, intervalo.minIso, intervalo.maxIso])
 
   const horasPorProf = useMemo(
     () => acumularHorasPorProfissional(plantoes),

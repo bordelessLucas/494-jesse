@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { AuthLayout } from './layouts/AuthLayout'
 import { DashboardLayout } from './layouts/DashboardLayout'
+import { RotaInicial } from './components/auth/RotaInicial'
 import { RedirectIfAuthenticated, RequireAuth } from './lib/auth/RequireAuth'
 import { ThemeBrandingProvider } from './theme/ThemeBrandingProvider'
 import { AlterarSenhaObrigatoriaPage } from './pages/AlterarSenhaObrigatoriaPage'
@@ -50,7 +51,7 @@ function App() {
 
         <Route element={<RequireAuth />}>
           <Route element={<DashboardLayout />}>
-            <Route index element={<Navigate to="/painel/resumo" replace />} />
+            <Route index element={<RotaInicial />} />
 
             <Route
               path="painel"

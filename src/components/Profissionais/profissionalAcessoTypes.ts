@@ -3,7 +3,10 @@ export const PERMISSOES_PROFISSIONAL = [
   { key: 'minha_agenda', label: 'Minha agenda' },
   { key: 'painel_resumo', label: 'Painel — Resumo' },
   { key: 'painel_carga_horaria', label: 'Painel — Carga horária' },
-  { key: 'escalas_visualizar', label: 'Visualizar escalas (mensal e semanal)' },
+  {
+    key: 'escalas_visualizar',
+    label: 'Visualizar escalas (mensal, semanal e mural)',
+  },
   { key: 'relatorios_emitir', label: 'Emitir relatórios' },
   { key: 'relatorios_historico', label: 'Histórico de relatórios' },
   { key: 'indicadores_sciras', label: 'Indicadores SCIRAS' },
@@ -42,6 +45,7 @@ export function rotaPermitidaParaMembro(
     { prefixo: '/painel/carga-horaria', chave: 'painel_carga_horaria' },
     { prefixo: '/escalas/mensal', chave: 'escalas_visualizar' },
     { prefixo: '/escalas/semanal', chave: 'escalas_visualizar' },
+    { prefixo: '/escalas/mural-trocas', chave: 'escalas_visualizar' },
     { prefixo: '/relatorios/emissao', chave: 'relatorios_emitir' },
     { prefixo: '/relatorios/historico', chave: 'relatorios_historico' },
     { prefixo: '/relatorios/indicadores-sciras', chave: 'indicadores_sciras' },
@@ -56,11 +60,29 @@ export function rotaPermitidaParaMembro(
   return false
 }
 
+/** Primeira rota acessível após login (membro profissional). */
+export function rotaInicialMembro(
+  permissoes: Record<string, boolean>,
+): string {
+  if (permissoes.minha_agenda) return '/minha-agenda'
+  if (permissoes.painel_resumo) return '/painel/resumo'
+  if (permissoes.painel_carga_horaria) return '/painel/carga-horaria'
+  if (permissoes.escalas_visualizar) return '/escalas/mensal'
+  if (permissoes.relatorios_emitir) return '/relatorios/emissao'
+  if (permissoes.relatorios_historico) return '/relatorios/historico'
+  if (permissoes.indicadores_sciras) return '/relatorios/indicadores-sciras'
+  return '/meus-dados'
+}
+
 export function chavePermissaoParaRotaSidebar(to: string): string | null {
   if (to.startsWith('/minha-agenda')) return 'minha_agenda'
   if (to.startsWith('/painel/resumo')) return 'painel_resumo'
   if (to.startsWith('/painel/carga-horaria')) return 'painel_carga_horaria'
-  if (to.startsWith('/escalas/mensal') || to.startsWith('/escalas/semanal')) {
+  if (
+    to.startsWith('/escalas/mensal') ||
+    to.startsWith('/escalas/semanal') ||
+    to.startsWith('/escalas/mural-trocas')
+  ) {
     return 'escalas_visualizar'
   }
   if (to.startsWith('/relatorios/emissao')) return 'relatorios_emitir'

@@ -14,7 +14,7 @@ import { ptBR } from 'date-fns/locale'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { cn } from '../../lib/cn'
-import { useSupabaseUser } from '../../hooks/useSupabaseUser'
+import { useTenantUserId } from '../../hooks/useTenantUserId'
 import type { StatusPlantaoEscala } from '../../lib/escalas/escalaTypes'
 import { buscarPlantoesMensais } from '../../lib/plantoesDb'
 import {
@@ -118,7 +118,7 @@ function statusClassName(status: StatusPlantaoEscala): string {
 }
 
 export function EscalaMensalPage() {
-  const { user, isLoading: authLoading } = useSupabaseUser()
+  const { user, tenantUserId, isLoading: authLoading } = useTenantUserId()
   const [dataReferencia, setDataReferencia] = useState(() => new Date())
   const [localSelecionado, setLocalSelecionado] = useState(TODOS_LOCAIS)
   const [setorSelecionado, setSetorSelecionado] = useState(TODOS_SETORES)
@@ -164,7 +164,7 @@ export function EscalaMensalPage() {
 
   const carregarCatalogo = useCallback(async () => {
     if (authLoading) return
-    const uid = user?.id
+    const uid = tenantUserId
     if (!uid) {
       setLocais([])
       setSetores([])
@@ -190,14 +190,14 @@ export function EscalaMensalPage() {
     } finally {
       setCarregando(false)
     }
-  }, [authLoading, user?.id])
+  }, [authLoading, tenantUserId])
 
   useEffect(() => {
     void carregarCatalogo()
   }, [carregarCatalogo])
 
   const carregarPlantoesGrade = useCallback(async () => {
-    if (!user?.id) {
+    if (!tenantUserId) {
       setPlantoesRows([])
       return
     }
@@ -211,14 +211,14 @@ export function EscalaMensalPage() {
 
     setCarregandoPlantoes(true)
     try {
-      const rows = await buscarPlantoesMensais(mes, ano, localId, setorId, user.id)
+      const rows = await buscarPlantoesMensais(mes, ano, localId, setorId, tenantUserId)
       setPlantoesRows(rows)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao carregar plantões')
     } finally {
       setCarregandoPlantoes(false)
     }
-  }, [dataReferencia, localSelecionado, setorSelecionado, user?.id])
+  }, [dataReferencia, localSelecionado, setorSelecionado, tenantUserId])
 
   useEffect(() => {
     void carregarPlantoesGrade()

@@ -3,6 +3,15 @@ import { useCallback, useEffect, useState } from 'react'
 import { buscarContaMembroAtual, type ContaMembroRow } from '../lib/auth/contaMembroDb'
 import { useSupabaseUser } from './useSupabaseUser'
 
+function normalizarPermissoes(raw: unknown): Record<string, boolean> {
+  if (!raw || typeof raw !== 'object') return {}
+  const out: Record<string, boolean> = {}
+  for (const [chave, valor] of Object.entries(raw as Record<string, unknown>)) {
+    out[chave] = valor === true || valor === 'true' || valor === 1
+  }
+  return out
+}
+
 export type ContaMembroContext = {
   isLoading: boolean
   /** Titular da conta (dono) — acesso total. */
@@ -52,7 +61,7 @@ export function useContaMembro(): ContaMembroContext {
     isTitular,
     isMembroProfissional,
     membro,
-    permissoes: membro?.permissoes ?? {},
+    permissoes: normalizarPermissoes(membro?.permissoes),
     mustChangePassword: membro?.must_change_password ?? false,
     profissionalId: membro?.profissional_id ?? null,
     tenantUserId: membro?.tenant_user_id ?? user?.id ?? null,

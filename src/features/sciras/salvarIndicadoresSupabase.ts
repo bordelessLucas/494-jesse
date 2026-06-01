@@ -1,3 +1,4 @@
+import { buscarTenantUserIdParaBranding } from '../../lib/auth/contaMembroDb'
 import { supabase } from '../../lib/supabase'
 import type { IndicadorCirurgico, IndicadorUti } from './types'
 
@@ -32,11 +33,12 @@ export async function salvarIndicadoresSupabase(
     throw new Error('É necessário iniciar sessão para guardar os indicadores.')
   }
 
+  const tenantUserId = await buscarTenantUserIdParaBranding(user.id)
   const mesSql = mesCompetenciaParaDataSql(indicadorUti.mesCompetencia)
 
   const { error: errorUti } = await supabase.from('sciras_indicadores_uti').upsert(
     {
-      user_id: user.id,
+      user_id: tenantUserId,
       mes_competencia: mesSql,
       setor: indicadorUti.setor,
       total_pacientes_dia: indicadorUti.totalPacientesDia,
@@ -54,7 +56,7 @@ export async function salvarIndicadoresSupabase(
     .from('sciras_indicadores_cirurgicos')
     .upsert(
       {
-        user_id: user.id,
+        user_id: tenantUserId,
         mes_competencia: mesSql,
         total_cirurgias: indicadorCirurgico.totalCirurgias,
         total_cirurgias_limpas: indicadorCirurgico.totalCirurgiasLimpas,

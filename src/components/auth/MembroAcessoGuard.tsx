@@ -1,7 +1,10 @@
 import { Loader2 } from 'lucide-react'
 import { Navigate, useLocation } from 'react-router-dom'
 
-import { rotaPermitidaParaMembro } from '../Profissionais/profissionalAcessoTypes'
+import {
+  rotaInicialMembro,
+  rotaPermitidaParaMembro,
+} from '../Profissionais/profissionalAcessoTypes'
 import { useContaMembro } from '../../hooks/useContaMembro'
 
 /** Bloqueia rotas não autorizadas para profissionais convidados. */
@@ -30,8 +33,7 @@ export function MembroAcessoGuard({ children }: { children: React.ReactNode }) {
 
   if (isMembroProfissional) {
     if (!rotaPermitidaParaMembro(location.pathname, permissoes)) {
-      const destino = permissoes.minha_agenda ? '/minha-agenda' : '/meus-dados'
-      return <Navigate to={destino} replace />
+      return <Navigate to={rotaInicialMembro(permissoes)} replace />
     }
   }
 

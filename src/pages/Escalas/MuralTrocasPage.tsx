@@ -7,12 +7,12 @@ import {
   MapPin,
   RefreshCw,
 } from 'lucide-react'
-import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 
 import { cn } from '../../lib/cn'
+import { formatarDataSegura } from '../../lib/datas/formatacaoSegura'
 import { dataLocalAPartirDeIsoData } from '../../lib/escalas/plantoesDb'
 import {
   buscarPlantoesMural,
@@ -22,13 +22,11 @@ import {
 import { supabase } from '../../lib/supabase'
 import { useSupabaseUser } from '../../hooks/useSupabaseUser'
 
-function capitalizar(texto: string): string {
-  return texto.slice(0, 1).toUpperCase() + texto.slice(1)
-}
-
 function formatarDataLonga(isoData: string): string {
   const d = dataLocalAPartirDeIsoData(isoData)
-  return capitalizar(format(d, "dd 'de' MMMM", { locale: ptBR }))
+  const texto = formatarDataSegura(d, "dd 'de' MMMM", { locale: ptBR, fallback: '—' })
+  if (!texto || texto === '—') return '—'
+  return texto.slice(0, 1).toUpperCase() + texto.slice(1)
 }
 
 function formatarHorario(inicio: string, fim: string): string {
@@ -58,7 +56,7 @@ export function MuralTrocasPage() {
     setErro(null)
     try {
       const rows = await buscarPlantoesMural()
-      setItens(rows)
+      setItens(Array.isArray(rows) ? rows : [])
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao carregar mural.')
     } finally {

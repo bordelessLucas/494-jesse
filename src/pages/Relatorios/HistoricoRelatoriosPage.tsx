@@ -16,7 +16,7 @@ import {
   ROTULOS_TIPO_RELATORIO,
   parseHistoricoParaPreview,
 } from '../../features/relatorios/utils/parseHistoricoRelatorio'
-import { useSupabaseUser } from '../../hooks/useSupabaseUser'
+import { useTenantUserId } from '../../hooks/useTenantUserId'
 import { cn } from '../../lib/cn'
 import {
   excluirHistoricoRelatorio,
@@ -40,7 +40,7 @@ function formatarDataHora(iso: string): string {
 }
 
 export function HistoricoRelatoriosPage() {
-  const { user, isLoading: authLoading } = useSupabaseUser()
+  const { user, tenantUserId, isLoading: authLoading } = useTenantUserId()
   const { logoUrl } = useThemeBranding()
 
   const [itens, setItens] = useState<RelatorioHistoricoRow[]>([])
@@ -52,14 +52,14 @@ export function HistoricoRelatoriosPage() {
   const [aExcluirId, setAExcluirId] = useState<string | null>(null)
 
   const carregar = useCallback(async () => {
-    if (!user?.id) {
+    if (!tenantUserId) {
       setItens([])
       return
     }
     setCarregando(true)
     setErro(null)
     try {
-      const lista = await listarHistoricoRelatorios(user.id, 200)
+      const lista = await listarHistoricoRelatorios(tenantUserId, 200)
       setItens(lista)
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro ao carregar histórico.'
@@ -72,7 +72,7 @@ export function HistoricoRelatoriosPage() {
     } finally {
       setCarregando(false)
     }
-  }, [user?.id])
+  }, [tenantUserId])
 
   useEffect(() => {
     if (authLoading) return
@@ -109,13 +109,13 @@ export function HistoricoRelatoriosPage() {
   }, [logoUrl, selecionado])
 
   async function aoExcluir(id: string) {
-    if (!user?.id) return
+    if (!tenantUserId) return
     const ok = window.confirm('Remover este registo do histórico?')
     if (!ok) return
 
     setAExcluirId(id)
     try {
-      await excluirHistoricoRelatorio(user.id, id)
+      await excluirHistoricoRelatorio(tenantUserId, id)
       setItens((prev) => prev.filter((x) => x.id !== id))
       if (selecionadoId === id) setSelecionadoId(null)
     } catch (e) {

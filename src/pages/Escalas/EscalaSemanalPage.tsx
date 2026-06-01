@@ -55,7 +55,7 @@ import {
 } from '../../lib/escalas/muralTrocasDb'
 import { supabase } from '../../lib/supabase'
 import { useContaMembro } from '../../hooks/useContaMembro'
-import { useSupabaseUser } from '../../hooks/useSupabaseUser'
+import { useTenantUserId } from '../../hooks/useTenantUserId'
 import { useNotificacoes } from '../../hooks/useNotificacoes'
 import { SeletorModeloEscala } from './components/SeletorModeloEscala'
 
@@ -678,7 +678,7 @@ export function ModalAlterarPlantao({
 
   return (
     <div
-      className="fixed inset-0 z-100 flex items-center justify-center p-4 no-print"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 no-print"
       role="presentation"
     >
       <button
@@ -1524,7 +1524,7 @@ function CartaoPlantao({ cartao, onClick, linhaAuxiliar }: CartaoPlantaoProps) {
 }
 
 export function EscalaSemanalPage() {
-  const { user, isLoading: authLoading } = useSupabaseUser()
+  const { tenantUserId, isLoading: authLoading } = useTenantUserId()
   const [inicioSemana, setInicioSemana] = useState(() =>
     inicioSemanaISO(new Date()),
   )
@@ -1566,7 +1566,7 @@ export function EscalaSemanalPage() {
 
   const carregarCatalogo = useCallback(async () => {
     if (authLoading) return
-    const uid = user?.id
+    const uid = tenantUserId
     if (!uid) {
       setLocais([])
       setSetores([])
@@ -1596,7 +1596,7 @@ export function EscalaSemanalPage() {
     } finally {
       setCarregandoCatalogo(false)
     }
-  }, [authLoading, user?.id])
+  }, [authLoading, tenantUserId])
 
   useEffect(() => {
     void carregarCatalogo()
@@ -1612,7 +1612,7 @@ export function EscalaSemanalPage() {
   }, [localId, setores])
 
   const carregarPlantoesSemana = useCallback(async () => {
-    if (authLoading || !user?.id) {
+    if (authLoading || !tenantUserId) {
       setPlantoes([])
       return
     }
@@ -1620,14 +1620,14 @@ export function EscalaSemanalPage() {
     const fim = chaveData(dias[6])
     setCarregandoPlantoes(true)
     try {
-      const rows = await buscarPlantoesIntervalo(user.id, ini, fim)
+      const rows = await buscarPlantoesIntervalo(tenantUserId, ini, fim)
       setPlantoes(rows)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao carregar plantões')
     } finally {
       setCarregandoPlantoes(false)
     }
-  }, [authLoading, dias, user?.id])
+  }, [authLoading, dias, tenantUserId])
 
   useEffect(() => {
     void carregarPlantoesSemana()
@@ -1694,7 +1694,7 @@ export function EscalaSemanalPage() {
   )
 
   const replicarSemana = useCallback(async () => {
-    const uid = user?.id
+    const uid = tenantUserId
     if (!uid || !localId) return
     if (setorId === TODOS_SETORES) {
       window.alert('Selecione um setor específico para replicar a semana.')
@@ -1751,7 +1751,7 @@ export function EscalaSemanalPage() {
     localId,
     plantoes,
     setorId,
-    user?.id,
+    tenantUserId,
   ])
 
   const setoresModal = useMemo(
@@ -1928,7 +1928,7 @@ export function EscalaSemanalPage() {
             <SeletorModeloEscala
               compacto
               className="mb-3"
-              userId={user?.id}
+              userId={tenantUserId ?? undefined}
               localId={localId}
               setorId={setorId === TODOS_SETORES ? '' : setorId}
               setorIndefinido={setorId === TODOS_SETORES || !localId}
@@ -1941,7 +1941,7 @@ export function EscalaSemanalPage() {
               type="button"
               disabled={
                 replicando ||
-                !user?.id ||
+                !tenantUserId ||
                 setorId === TODOS_SETORES ||
                 !localId ||
                 !setorId
@@ -2034,7 +2034,7 @@ export function EscalaSemanalPage() {
         aberto={plantaoModal !== null}
         contexto={plantaoModal}
         onFechar={() => setPlantaoModal(null)}
-        userId={user?.id ?? null}
+        userId={tenantUserId ?? null}
         locais={locais}
         setores={setoresModal}
         profissionais={profissionais}

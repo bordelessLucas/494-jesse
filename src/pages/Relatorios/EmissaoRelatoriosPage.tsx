@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Loader2, Printer } from 'lucide-react'
 
-import { useSupabaseUser } from '../../hooks/useSupabaseUser'
+import { useTenantUserId } from '../../hooks/useTenantUserId'
 import { registrarRelatorioImpresso } from '../../lib/relatorios/relatoriosHistoricoDb'
 import type { Json } from '../../types/database.types'
 
@@ -234,7 +234,7 @@ function formatarDataEmissao(competenciaCabecalho: string): string {
  * ============================================================ */
 
 export function EmissaoRelatoriosPage() {
-  const { user } = useSupabaseUser()
+  const { tenantUserId } = useTenantUserId()
   const { logoUrl } = useThemeBranding()
   const competencias = useMemo(() => gerarCompetencias(), [])
   const rascunhoGuardado = useMemo(() => lerEmissaoRelatorioRascunho(), [])
@@ -373,7 +373,7 @@ export function EmissaoRelatoriosPage() {
   const handleImprimir = async () => {
     setAvisoHistorico(null)
 
-    if (user) {
+    if (tenantUserId) {
       setARegistarImpressao(true)
       try {
         const titulo =
@@ -381,7 +381,7 @@ export function EmissaoRelatoriosPage() {
           tipoSelecionado
         const competenciaRotulo = competencia?.label ?? competenciaId
 
-        await registrarRelatorioImpresso(user.id, {
+        await registrarRelatorioImpresso(tenantUserId, {
           tipo_relatorio: tipoSelecionado,
           titulo,
           competencia: competenciaRotulo,
@@ -486,7 +486,7 @@ export function EmissaoRelatoriosPage() {
         aRegistarImpressao={aRegistarImpressao}
         avisoHistorico={avisoHistorico}
         painelHistorico={
-          <HistoricoRelatoriosPanel userId={user?.id} versaoLista={versaoHistorico} />
+          <HistoricoRelatoriosPanel userId={tenantUserId ?? undefined} versaoLista={versaoHistorico} />
         }
         cabecalhoTexto={cabecalhoTexto}
         onAlterarCampoCabecalho={alterarCampoCabecalho}

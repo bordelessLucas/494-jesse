@@ -4,8 +4,7 @@ import { addDays, format, startOfMonth, subMonths } from 'date-fns'
 import toast from 'react-hot-toast'
 
 import { cn } from '../../lib/cn'
-import { useSupabaseUser } from '../../hooks/useSupabaseUser'
-import { useContaMembro } from '../../hooks/useContaMembro'
+import { useTenantUserId } from '../../hooks/useTenantUserId'
 import { supabase } from '../../lib/supabase'
 import { buscarPlantoesIntervaloComLocaisSetores } from '../../lib/dashboard/dashboardQueries'
 import {
@@ -359,8 +358,8 @@ function ListaItens48h({
 export function ResumoPage() {
   const idPeriodo = useId()
   const idSetor = useId()
-  const { user, isLoading: isLoadingUser } = useSupabaseUser()
-  const { isMembroProfissional } = useContaMembro()
+  const { user, tenantUserId, isLoading: isLoadingUser, isMembroProfissional } =
+    useTenantUserId()
   const [periodo, setPeriodo] = useState<PeriodoResumo>('mes')
   const [setor, setSetor] = useState('')
   const [aba48h, setAba48h] = useState<Aba48h>('anunciados')
@@ -374,8 +373,8 @@ export function ResumoPage() {
   const [carregandoTrocas, setCarregandoTrocas] = useState(false)
 
   useEffect(() => {
-    if (isLoadingUser || !user) return
-    const userId = user.id
+    if (isLoadingUser || !user || !tenantUserId) return
+    const userId = tenantUserId
     let cancelado = false
 
     async function load() {
@@ -405,7 +404,7 @@ export function ResumoPage() {
     return () => {
       cancelado = true
     }
-  }, [user, isLoadingUser])
+  }, [user, isLoadingUser, tenantUserId])
 
   useEffect(() => {
     if (isLoadingUser || !user) return

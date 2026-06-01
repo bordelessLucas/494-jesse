@@ -231,10 +231,11 @@ export function Sidebar() {
               {subItems?.length ? (
                 <div
                   className={cn(
-                    'ml-4 mt-1 overflow-hidden rounded-md border border-current/10 bg-black/10',
-                    'max-h-0 opacity-0 transition-all duration-200',
-                    'group-hover:max-h-112 group-hover:opacity-100',
-                    isActive && 'max-h-112 opacity-100',
+                    'ml-4 mt-1 overflow-hidden rounded-md border border-current/10 bg-black/10 transition-all duration-200',
+                    isActive
+                      ? 'pointer-events-auto max-h-112 opacity-100'
+                      : 'pointer-events-none max-h-0 opacity-0',
+                    'group-hover:pointer-events-auto group-hover:max-h-112 group-hover:opacity-100',
                   )}
                 >
                   <ul className="space-y-1 p-2">
