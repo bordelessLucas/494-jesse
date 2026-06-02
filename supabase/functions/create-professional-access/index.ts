@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
 
     if (membroCaller) {
       return json(
-        { error: 'Apenas o titular da conta pode criar acessos de profissionais.' },
+        { error: 'Apenas o MASTER da empresa pode criar acessos de funcionários.' },
         403,
       )
     }
@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
         email_confirm: true,
         user_metadata: {
           full_name: nome,
-          role: 'profissional',
+          role: 'funcionario',
           tenant_user_id: caller.id,
           profissional_id: profissionalId,
           must_change_password: true,

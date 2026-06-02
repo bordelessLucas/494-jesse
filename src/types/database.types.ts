@@ -125,6 +125,30 @@ export type Database = {
           },
         ]
       }
+      empresas: {
+        Row: {
+          id: string
+          owner_user_id: string
+          nome: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_user_id: string
+          nome: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_user_id?: string
+          nome?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contas_membros: {
         Row: {
           id: string
@@ -553,6 +577,108 @@ export type Database = {
           },
         ]
       }
+      remuneracao_acrescimos: {
+        Row: {
+          id: string
+          user_id: string
+          nome: string
+          tipo_calculo: string
+          valor: number
+          gatilho: string
+          especialidade_contem: string | null
+          ativo: boolean
+          ordem: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          nome: string
+          tipo_calculo: string
+          valor?: number
+          gatilho: string
+          especialidade_contem?: string | null
+          ativo?: boolean
+          ordem?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          nome?: string
+          tipo_calculo?: string
+          valor?: number
+          gatilho?: string
+          especialidade_contem?: string | null
+          ativo?: boolean
+          ordem?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      remuneracao_feriados: {
+        Row: {
+          id: string
+          user_id: string
+          data_feriado: string
+          nome: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          data_feriado: string
+          nome?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          data_feriado?: string
+          nome?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      remuneracao_tipos_plantao: {
+        Row: {
+          id: string
+          user_id: string
+          nome: string
+          descricao: string | null
+          multiplicador: number
+          ativo: boolean
+          ordem: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          nome: string
+          descricao?: string | null
+          multiplicador?: number
+          ativo?: boolean
+          ordem?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          nome?: string
+          descricao?: string | null
+          multiplicador?: number
+          ativo?: boolean
+          ordem?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       plantoes: {
         Row: {
           id: string
@@ -566,6 +692,7 @@ export type Database = {
           status: string
           observacoes: string | null
           valor_plantao: number
+          remuneracao_tipo_id: string | null
           ajuste_financeiro: number
           observacao_ajuste: string | null
           disponivel_mural: boolean
@@ -584,6 +711,7 @@ export type Database = {
           status?: string
           observacoes?: string | null
           valor_plantao?: number
+          remuneracao_tipo_id?: string | null
           ajuste_financeiro?: number
           observacao_ajuste?: string | null
           disponivel_mural?: boolean
@@ -602,6 +730,7 @@ export type Database = {
           status?: string
           observacoes?: string | null
           valor_plantao?: number
+          remuneracao_tipo_id?: string | null
           ajuste_financeiro?: number
           observacao_ajuste?: string | null
           disponivel_mural?: boolean
@@ -609,6 +738,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: 'plantoes_remuneracao_tipo_id_fkey'
+            columns: ['remuneracao_tipo_id']
+            isOneToOne: false
+            referencedRelation: 'remuneracao_tipos_plantao'
+            referencedColumns: ['id']
+          },
           {
             foreignKeyName: 'plantoes_local_id_fkey'
             columns: ['local_id']
@@ -826,6 +962,14 @@ export type Database = {
       auth_is_titular_conta: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      auth_is_master: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      auth_empresa_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
     }
     Enums: Record<string, never>

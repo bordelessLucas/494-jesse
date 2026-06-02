@@ -1,4 +1,4 @@
-import { Lock, Mail, UserRound } from 'lucide-react'
+import { Building2, Lock, Mail, UserRound } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 
 export function CadastroPage() {
   const [fullName, setFullName] = useState('')
+  const [companyName, setCompanyName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -16,11 +17,12 @@ export function CadastroPage() {
   const canSubmit = useMemo(() => {
     return (
       fullName.trim().length > 0 &&
+      companyName.trim().length > 0 &&
       email.trim().length > 0 &&
       password.length >= 8 &&
       !isSubmitting
     )
-  }, [email, fullName, isSubmitting, password])
+  }, [companyName, email, fullName, isSubmitting, password])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -41,6 +43,8 @@ export function CadastroPage() {
         options: {
           data: {
             full_name: fullName.trim(),
+            company_name: companyName.trim(),
+            role: 'master',
           },
         },
       })
@@ -68,7 +72,9 @@ export function CadastroPage() {
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-slate-900">Criar conta</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Comece em segundos. Você completa seu perfil depois.
+          Você será o <strong className="font-medium text-slate-700">MASTER</strong> da sua
+          empresa: define marca, convida funcionários e todos os dados ficam isolados por
+          empresa.
         </p>
       </div>
 
@@ -112,6 +118,29 @@ export function CadastroPage() {
               required
               value={fullName}
               onChange={(event) => setFullName(event.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label
+            htmlFor="company"
+            className="text-sm font-medium text-slate-700"
+          >
+            Nome da empresa
+          </label>
+          <div className="relative">
+            <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              id="company"
+              name="company"
+              type="text"
+              autoComplete="organization"
+              placeholder="Ex.: Clínica São Lucas"
+              className="h-11 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-primary-300 focus:ring-2 focus:ring-primary-100"
+              required
+              value={companyName}
+              onChange={(event) => setCompanyName(event.target.value)}
             />
           </div>
         </div>

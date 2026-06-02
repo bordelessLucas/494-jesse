@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { BrandedLogoOrInitial } from './branding/BrandedLogoOrInitial'
 import { supabase } from '../lib/supabase'
+import { useContaMembro } from '../hooks/useContaMembro'
 import { useSupabaseUser } from '../hooks/useSupabaseUser'
 import { useNotificacoes } from '../hooks/useNotificacoes'
 
@@ -35,6 +36,7 @@ export function Topbar() {
   const menuId = useMemo(() => `user-menu-${dropdownId}`, [dropdownId])
   const buttonId = useMemo(() => `user-menu-button-${dropdownId}`, [dropdownId])
   const { user } = useSupabaseUser()
+  const { isMaster, empresa } = useContaMembro()
   const { notificacoes, marcarComoLida, marcarTodasComoLidas } = useNotificacoes()
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
@@ -53,7 +55,8 @@ export function Topbar() {
     return getFirstTwoInitialsFromLabel(label)
   }, [user?.email, user?.user_metadata])
 
-  const userSecondaryLabel = user?.email ? 'Conta' : 'Perfil'
+  const userSecondaryLabel =
+    empresa?.nome ?? (user?.email ? 'Conta' : 'Perfil')
 
   useEffect(() => {
     if (!isUserMenuOpen) return
@@ -307,8 +310,13 @@ export function Topbar() {
                 {userInitials}
               </div>
               <div className="hidden leading-tight sm:block">
-                <p className="text-sm font-medium text-slate-900">
+                <p className="flex items-center gap-2 text-sm font-medium text-slate-900">
                   {userDisplayName}
+                  {isMaster ? (
+                    <span className="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-800">
+                      Master
+                    </span>
+                  ) : null}
                 </p>
                 <p className="text-xs text-gray-500">{userSecondaryLabel}</p>
               </div>
@@ -336,15 +344,17 @@ export function Topbar() {
                 <span className="font-medium">Meus dados</span>
               </Link>
 
-              <Link
-                to="/configuracao"
-                role="menuitem"
-                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-slate-700 outline-none transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:bg-slate-50 focus-visible:text-slate-900"
-                onClick={closeUserMenu}
-              >
-                <Settings className="h-4 w-4 text-slate-500" />
-                <span className="font-medium">Configuração</span>
-              </Link>
+              {isMaster ? (
+                <Link
+                  to="/configuracao"
+                  role="menuitem"
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-slate-700 outline-none transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:bg-slate-50 focus-visible:text-slate-900"
+                  onClick={closeUserMenu}
+                >
+                  <Settings className="h-4 w-4 text-slate-500" />
+                  <span className="font-medium">Configuração</span>
+                </Link>
+              ) : null}
 
               <Link
                 to="/minha-agenda"

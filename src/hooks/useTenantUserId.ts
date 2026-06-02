@@ -2,8 +2,9 @@ import { useContaMembro } from './useContaMembro'
 import { useSupabaseUser } from './useSupabaseUser'
 
 /**
- * ID do titular da conta para queries em `plantoes`, `profissionais`, etc.
- * Membros profissionais usam `tenant_user_id`; titular usa o próprio `auth.uid()`.
+ * ID do MASTER (dono da empresa) para queries em `plantoes`, `profissionais`, etc.
+ * Funcionários usam `tenant_user_id` do titular; o MASTER usa o próprio `auth.uid()`.
+ * Todos os dados ficam isolados por este ID (um tenant por empresa).
  */
 export function useTenantUserId() {
   const { user, isLoading: authLoading } = useSupabaseUser()

@@ -1,35 +1,63 @@
 import { supabase } from '../supabase'
 import {
   calcularTotaisExtrato,
+  calcularValorBrutoComRegras,
+  REGRAS_REMUNERACAO_VAZIAS,
   valorFinalLinha,
   type LinhaExtratoFinanceiro,
   type TotaisExtratoFinanceiro,
 } from './extratoCalculos'
+import { buscarRegrasRemuneracao } from './remuneracaoDb'
+import type { RegrasRemuneracao } from './remuneracaoTypes'
 
 export type LinhaPlantaoFinanceiroRow = {
   id: string
   profissional_id: string | null
   data_plantao: string
+  hora_inicio: string
+  hora_fim: string
   valor_plantao: number | null
+  remuneracao_tipo_id?: string | null
   ajuste_financeiro: number | null
   observacao_ajuste: string | null
   locais: { nome_fantasia: string } | null
   setores: { nome: string } | null
-  profissionais: { nome: string } | null
+  profissionais: { nome: string; detalhes?: unknown } | null
+}
+
+function especialidadeDoProfissional(detalhes: unknown): string | null {
+  if (!detalhes || typeof detalhes !== 'object') return null
+  const e = (detalhes as { especialidade?: string }).especialidade
+  return typeof e === 'string' && e.trim() ? e.trim() : null
 }
 
 export function mapPlantaoParaLinhaExtrato(
   r: LinhaPlantaoFinanceiroRow,
+  regras: RegrasRemuneracao = REGRAS_REMUNERACAO_VAZIAS,
 ): LinhaExtratoFinanceiro {
+  const calculo = calcularValorBrutoComRegras(
+    {
+      dataPlantao: r.data_plantao,
+      horaInicio: r.hora_inicio,
+      horaFim: r.hora_fim,
+      valorPlantaoBase: Number(r.valor_plantao ?? 0),
+      remuneracaoTipoId: r.remuneracao_tipo_id ?? null,
+      especialidadeProfissional: especialidadeDoProfissional(r.profissionais?.detalhes),
+    },
+    regras,
+  )
+
   return {
     plantaoId: r.id,
     dataPlantao: r.data_plantao,
     localNome: r.locais?.nome_fantasia?.trim() ?? '—',
     setorNome: r.setores?.nome?.trim() ?? '—',
     profissionalNome: r.profissionais?.nome?.trim() ?? '—',
-    valorBruto: Number(r.valor_plantao ?? 0),
+    valorBase: calculo.valorBase,
+    valorBruto: calculo.valorBruto,
     ajusteFinanceiro: Number(r.ajuste_financeiro ?? 0),
     observacaoAjuste: (r.observacao_ajuste ?? '').trim(),
+    etiquetasRemuneracao: calculo.etiquetas,
   }
 }
 
@@ -39,6 +67,13 @@ export async function buscarLinhasExtratoCompetencia(
   dataFimIso: string,
   options?: { profissionalId?: string },
 ): Promise<LinhaExtratoFinanceiro[]> {
+  let regras = REGRAS_REMUNERACAO_VAZIAS
+  try {
+    regras = await buscarRegrasRemuneracao(userId)
+  } catch {
+    regras = REGRAS_REMUNERACAO_VAZIAS
+  }
+
   let q = supabase
     .from('plantoes')
     .select(
@@ -46,12 +81,15 @@ export async function buscarLinhasExtratoCompetencia(
       id,
       profissional_id,
       data_plantao,
+      hora_inicio,
+      hora_fim,
       valor_plantao,
+      remuneracao_tipo_id,
       ajuste_financeiro,
       observacao_ajuste,
       locais ( nome_fantasia ),
       setores ( nome ),
-      profissionais ( nome )
+      profissionais ( nome, detalhes )
     `,
     )
     .eq('user_id', userId)
@@ -65,9 +103,45 @@ export async function buscarLinhasExtratoCompetencia(
   }
 
   const { data, error } = await q
-  if (error) throw new Error(error.message)
-  const rows = (data ?? []) as LinhaPlantaoFinanceiroRow[]
-  return rows.map(mapPlantaoParaLinhaExtrato)
+  if (error) {
+    if (
+      error.message.includes('remuneracao_tipo_id') ||
+      error.message.includes('schema')
+    ) {
+      let fq = supabase
+        .from('plantoes')
+        .select(
+          `
+          id,
+          profissional_id,
+          data_plantao,
+          hora_inicio,
+          hora_fim,
+          valor_plantao,
+          ajuste_financeiro,
+          observacao_ajuste,
+          locais ( nome_fantasia ),
+          setores ( nome ),
+          profissionais ( nome, detalhes )
+        `,
+        )
+        .eq('user_id', userId)
+        .eq('status', 'realizado')
+        .gte('data_plantao', dataInicioIso)
+        .lte('data_plantao', dataFimIso)
+        .order('data_plantao', { ascending: true })
+      if (options?.profissionalId) {
+        fq = fq.eq('profissional_id', options.profissionalId)
+      }
+      const fallback = await fq
+      if (fallback.error) throw new Error(fallback.error.message)
+      const rows = (fallback.data ?? []) as unknown as LinhaPlantaoFinanceiroRow[]
+      return rows.map((r) => mapPlantaoParaLinhaExtrato(r, regras))
+    }
+    throw new Error(error.message)
+  }
+  const rows = (data ?? []) as unknown as LinhaPlantaoFinanceiroRow[]
+  return rows.map((r) => mapPlantaoParaLinhaExtrato(r, regras))
 }
 
 export type ExtratoPeriodoResumo = {
@@ -101,22 +175,34 @@ export type AgregadoProfissionalFinanceiro = {
   totalDescontosGlosas: number
 }
 
-/**
- * Agrupa plantões realizados por `profissional_id` com totais financeiros.
- */
 export async function buscarAgregadosFinanceirosPorProfissional(
   userId: string,
   dataInicioIso: string,
   dataFimIso: string,
 ): Promise<AgregadoProfissionalFinanceiro[]> {
+  let regras = REGRAS_REMUNERACAO_VAZIAS
+  try {
+    regras = await buscarRegrasRemuneracao(userId)
+  } catch {
+    regras = REGRAS_REMUNERACAO_VAZIAS
+  }
+
   const { data, error } = await supabase
     .from('plantoes')
     .select(
       `
+      id,
       profissional_id,
+      data_plantao,
+      hora_inicio,
+      hora_fim,
       valor_plantao,
+      remuneracao_tipo_id,
       ajuste_financeiro,
-      profissionais ( id, nome )
+      observacao_ajuste,
+      locais ( nome_fantasia ),
+      setores ( nome ),
+      profissionais ( nome, detalhes )
     `,
     )
     .eq('user_id', userId)
@@ -127,27 +213,20 @@ export async function buscarAgregadosFinanceirosPorProfissional(
 
   if (error) throw new Error(error.message)
 
-  type Row = {
-    profissional_id: string | null
-    valor_plantao: number | null
-    ajuste_financeiro: number | null
-    profissionais: { id: string; nome: string } | null
-  }
+  type Row = LinhaPlantaoFinanceiroRow & { profissional_id: string }
 
   const map = new Map<string, { nome: string; bruto: number; liquido: number; desc: number }>()
 
-  for (const raw of (data ?? []) as Row[]) {
+  for (const raw of (data ?? []) as unknown as Row[]) {
     const pid = raw.profissional_id
     if (!pid) continue
     const nome = raw.profissionais?.nome?.trim() ?? '—'
-    const bruto = Number(raw.valor_plantao ?? 0)
-    const ajuste = Number(raw.ajuste_financeiro ?? 0)
-    const liquido = valorFinalLinha(bruto, ajuste)
+    const linha = mapPlantaoParaLinhaExtrato(raw, regras)
     const cur = map.get(pid) ?? { nome, bruto: 0, liquido: 0, desc: 0 }
     cur.nome = nome
-    cur.bruto += bruto
-    cur.liquido += liquido
-    if (ajuste < 0) cur.desc += -ajuste
+    cur.bruto += linha.valorBruto
+    cur.liquido += valorFinalLinha(linha.valorBruto, linha.ajusteFinanceiro)
+    if (linha.ajusteFinanceiro < 0) cur.desc += -linha.ajusteFinanceiro
     map.set(pid, cur)
   }
 

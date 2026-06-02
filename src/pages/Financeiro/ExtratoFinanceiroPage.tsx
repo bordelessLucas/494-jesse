@@ -603,8 +603,24 @@ export function ExtratoFinanceiroPage() {
                         <span>{L.setorNome}</span>
                       </td>
                       <td className="px-3 py-3 text-slate-800">{L.profissionalNome}</td>
-                      <td className="px-3 py-3 text-right tabular-nums text-slate-900">
-                        {fmtBRL(L.valorBruto)}
+                      <td className="px-3 py-3 text-right align-top">
+                        <div className="tabular-nums text-slate-900">{fmtBRL(L.valorBruto)}</div>
+                        {L.valorBase !== L.valorBruto ? (
+                          <p className="mt-0.5 text-[11px] text-slate-500">
+                            Base {fmtBRL(L.valorBase)}
+                          </p>
+                        ) : null}
+                        {L.etiquetasRemuneracao.length > 0 ? (
+                          <ul className="mt-1.5 space-y-0.5">
+                            {L.etiquetasRemuneracao.map((etq) => (
+                              <li key={etq}>
+                                <span className="inline-block rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium leading-tight text-emerald-900 ring-1 ring-emerald-200/80">
+                                  {etq}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
                       </td>
                       <td className="px-3 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">

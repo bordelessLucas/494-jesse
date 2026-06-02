@@ -92,6 +92,11 @@ const navigationItems: NavigationItem[] = [
     icon: Settings2,
     subItems: [
       { to: '/configuracao/locais', label: 'Locais & Setores', icon: MapPin },
+      {
+        to: '/configuracao/avancadas',
+        label: 'Remuneração · Avançadas',
+        icon: Banknote,
+      },
       { to: '/configuracao/grupos', label: 'Grupos', icon: Users },
       { to: '/configuracao/tipos-plantao', label: 'Tipos de Plantão', icon: CalendarClock },
       {
