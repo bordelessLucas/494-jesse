@@ -1,4 +1,4 @@
-import { Bell, CalendarClock, ChevronDown, LogOut, Settings, User } from 'lucide-react'
+import { Bell, CalendarClock, ChevronDown, LogOut, Menu, Settings, User } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -30,7 +30,11 @@ function getFirstTwoInitialsFromLabel(label: string): string {
   return firstTwo.toUpperCase()
 }
 
-export function Topbar() {
+type TopbarProps = {
+  onAbrirMenuMobile?: () => void
+}
+
+export function Topbar({ onAbrirMenuMobile }: TopbarProps) {
   const navigate = useNavigate()
   const dropdownId = useId()
   const menuId = useMemo(() => `user-menu-${dropdownId}`, [dropdownId])
@@ -142,16 +146,26 @@ export function Topbar() {
   }
 
   return (
-    <header className="no-print sticky top-0 z-20 border-b border-gray-200 bg-white shadow-sm print:hidden">
-      <div className="flex h-14 items-center justify-between px-6">
-        <div className="flex min-w-0 items-center gap-4">
-          <div className="flex items-center gap-2">
+    <header className="no-print sticky top-0 z-20 border-b border-gray-200 bg-white shadow-sm print:hidden pt-[env(safe-area-inset-top)]">
+      <div className="flex h-14 items-center justify-between gap-2 px-4 sm:px-6">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
+          {onAbrirMenuMobile ? (
+            <button
+              type="button"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 md:hidden"
+              aria-label="Abrir menu de navegacao"
+              onClick={onAbrirMenuMobile}
+            >
+              <Menu className="h-5 w-5" aria-hidden />
+            </button>
+          ) : null}
+          <div className="flex min-w-0 items-center gap-2">
             <BrandedLogoOrInitial
               className="h-8 w-8 rounded-lg"
               surface="light"
               alt=""
             />
-            <p className="hidden text-sm font-semibold text-slate-900 sm:block">
+            <p className="truncate text-sm font-semibold text-slate-900">
               PlantaoCheck
             </p>
           </div>

@@ -1,7 +1,9 @@
+import { useCallback, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 
 import { MembroAcessoGuard } from '../components/auth/MembroAcessoGuard'
+import { MobileNavDrawer } from '../components/MobileNavDrawer'
 import { Sidebar } from '../components/Sidebar'
 import { SuporteChatWidget } from '../components/support/SuporteChatWidget'
 import { Topbar } from '../components/Topbar'
@@ -9,15 +11,19 @@ import { useMuralTrocasAlertas } from '../hooks/useMuralTrocasAlertas'
 
 export function DashboardLayout() {
   useMuralTrocasAlertas()
+  const [mobileNavAberto, setMobileNavAberto] = useState(false)
+  const abrirMobileNav = useCallback(() => setMobileNavAberto(true), [])
+  const fecharMobileNav = useCallback(() => setMobileNavAberto(false), [])
 
   return (
     <div className="flex min-h-dvh bg-slate-50 print:block print:min-h-0 print:bg-white">
       <Sidebar />
+      <MobileNavDrawer aberto={mobileNavAberto} onFechar={fecharMobileNav} />
 
       <div className="min-w-0 flex-1">
-        <Topbar />
+        <Topbar onAbrirMenuMobile={abrirMobileNav} />
 
-        <main className="p-8 print:p-0">
+        <main className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:p-8 print:p-0">
           <MembroAcessoGuard>
             <Outlet />
           </MembroAcessoGuard>
@@ -27,7 +33,7 @@ export function DashboardLayout() {
       <SuporteChatWidget />
 
       <Toaster
-        position="top-right"
+        position="top-center"
         toastOptions={{
           duration: 3500,
           style: {

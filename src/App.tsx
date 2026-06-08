@@ -36,6 +36,7 @@ import { EmissaoRelatoriosPage } from './pages/Relatorios/EmissaoRelatoriosPage'
 import { HistoricoRelatoriosPage } from './pages/Relatorios/HistoricoRelatoriosPage'
 import { IndicadoresScirasPage } from './pages/Relatorios/IndicadoresScirasPage'
 import { MuralTrocasPage } from './pages/Escalas/MuralTrocasPage'
+import { PwaUpdatePrompt } from './components/PwaUpdatePrompt'
 
 function App() {
   return (
@@ -147,6 +148,7 @@ function App() {
           </Route>
         </Route>
       </Routes>
+      <PwaUpdatePrompt />
       </ThemeBrandingProvider>
     </BrowserRouter>
   )

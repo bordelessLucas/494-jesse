@@ -255,6 +255,9 @@ export function applyPrimaryCssVariables(baseHex: string, root: HTMLElement = do
   root.style.setProperty('--pc-brand', normalized)
   root.style.setProperty('--pc-brand-foreground', fg.color)
   root.style.setProperty('--pc-brand-foreground-rgb', fg.rgb.join(' '))
+
+  const themeMeta = document.querySelector('meta[name="theme-color"]')
+  if (themeMeta) themeMeta.setAttribute('content', normalized)
 }
 
 export function resetPrimaryCssVariables(root: HTMLElement = document.documentElement) {

@@ -6,9 +6,10 @@ import {
   Loader2,
   Trash2,
   Upload,
+  X,
   XCircle,
 } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 
 import { cn } from '../../lib/cn'
@@ -77,6 +78,10 @@ export function DocumentosProfissionalPanel({
   const [tipoSelecionado, setTipoSelecionado] = useState<TipoDocumentoProfissional>('contrato')
   const [arrastando, setArrastando] = useState(false)
   const [processandoId, setProcessandoId] = useState<string | null>(null)
+  const [docRejeicao, setDocRejeicao] = useState<DocumentoUsuarioRow | null>(null)
+  const [motivoRejeicao, setMotivoRejeicao] = useState('')
+  const motivoRejeicaoRef = useRef<HTMLTextAreaElement>(null)
+  const tituloRejeicaoId = useId()
 
   const tipoConselho = tipoConselhoDocumentoObrigatorio(siglaConselho)
   const conselhoOk = profissionalPossuiConselhoValidado(documentos, siglaConselho)
@@ -97,6 +102,21 @@ export function DocumentosProfissionalPanel({
   useEffect(() => {
     void carregar()
   }, [carregar])
+
+  useEffect(() => {
+    if (!docRejeicao) return
+    motivoRejeicaoRef.current?.focus()
+    function aoTecla(e: KeyboardEvent) {
+      if (e.key === 'Escape') fecharModalRejeicao()
+    }
+    document.addEventListener('keydown', aoTecla)
+    return () => document.removeEventListener('keydown', aoTecla)
+  }, [docRejeicao])
+
+  function fecharModalRejeicao() {
+    setDocRejeicao(null)
+    setMotivoRejeicao('')
+  }
 
   async function processarFicheiro(file: File) {
     if (!file) return
@@ -135,14 +155,11 @@ export function DocumentosProfissionalPanel({
     }
   }
 
-  async function aoValidar(doc: DocumentoUsuarioRow, status: StatusDocumentoProfissional) {
-    let motivo: string | undefined
-    if (status === 'rejeitado') {
-      const resposta = window.prompt('Motivo da rejeição (opcional):')
-      if (resposta === null) return
-      motivo = resposta
-    }
-
+  async function executarAtualizacaoStatus(
+    doc: DocumentoUsuarioRow,
+    status: StatusDocumentoProfissional,
+    motivo?: string,
+  ) {
     setProcessandoId(doc.id)
     try {
       await atualizarStatusDocumento({
@@ -165,6 +182,23 @@ export function DocumentosProfissionalPanel({
     }
   }
 
+  function aoValidar(doc: DocumentoUsuarioRow, status: StatusDocumentoProfissional) {
+    if (status === 'rejeitado') {
+      setDocRejeicao(doc)
+      setMotivoRejeicao('')
+      return
+    }
+    void executarAtualizacaoStatus(doc, status)
+  }
+
+  async function confirmarRejeicao() {
+    if (!docRejeicao) return
+    const doc = docRejeicao
+    const motivo = motivoRejeicao
+    fecharModalRejeicao()
+    await executarAtualizacaoStatus(doc, 'rejeitado', motivo)
+  }
+
   async function aoExcluir(doc: DocumentoUsuarioRow) {
     if (!window.confirm(`Remover o documento "${doc.nome_arquivo}"?`)) return
     setProcessandoId(doc.id)
@@ -180,6 +214,7 @@ export function DocumentosProfissionalPanel({
   }
 
   return (
+    <>
     <div className="space-y-6">
       <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -373,5 +408,91 @@ export function DocumentosProfissionalPanel({
         )}
       </div>
     </div>
+
+    {docRejeicao ? (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <button
+          type="button"
+          className="absolute inset-0 bg-slate-900/55 backdrop-blur-[2px]"
+          aria-label="Fechar"
+          onClick={fecharModalRejeicao}
+        />
+        <div
+          className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-slate-200"
+          role="dialog"
+          aria-modal
+          aria-labelledby={tituloRejeicaoId}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50">
+                <XCircle className="h-5 w-5 text-red-600" aria-hidden />
+              </span>
+              <div>
+                <h2 id={tituloRejeicaoId} className="text-lg font-semibold text-slate-900">
+                  Rejeitar documento
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  <span className="font-medium text-slate-800">{docRejeicao.nome_arquivo}</span>
+                  {' · '}
+                  {ROTULOS_TIPO_DOCUMENTO[docRejeicao.tipo]}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={fecharModalRejeicao}
+              className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+              aria-label="Fechar"
+            >
+              <X className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
+
+          <div className="mt-5">
+            <label
+              htmlFor="motivo-rejeicao-doc"
+              className="mb-1.5 block text-sm font-medium text-slate-700"
+            >
+              Motivo da rejeição <span className="font-normal text-slate-500">(opcional)</span>
+            </label>
+            <textarea
+              ref={motivoRejeicaoRef}
+              id="motivo-rejeicao-doc"
+              rows={3}
+              value={motivoRejeicao}
+              onChange={(e) => setMotivoRejeicao(e.target.value)}
+              placeholder="Ex.: documento ilegível, registro divergente do cadastro…"
+              className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+
+          <div className="mt-6 flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={fecharModalRejeicao}
+              disabled={processandoId === docRejeicao.id}
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => void confirmarRejeicao()}
+              disabled={processandoId === docRejeicao.id}
+              className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+            >
+              {processandoId === docRejeicao.id ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <XCircle className="h-4 w-4" aria-hidden />
+              )}
+              Rejeitar documento
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    </>
   )
 }
