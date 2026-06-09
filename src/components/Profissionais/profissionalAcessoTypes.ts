@@ -1,6 +1,7 @@
 /** Áreas do sistema que o titular pode conceder a um profissional. */
 export const PERMISSOES_PROFISSIONAL = [
   { key: 'minha_agenda', label: 'Minha agenda' },
+  { key: 'registro_ponto', label: 'Ponto eletrónico' },
   { key: 'painel_resumo', label: 'Painel — Resumo' },
   { key: 'painel_carga_horaria', label: 'Painel — Carga horária' },
   {
@@ -20,7 +21,8 @@ export const SENHA_PADRAO_PROFISSIONAL = 'PlantaoCheck@'
 export function permissoesProfissionalPadrao(): Record<string, boolean> {
   const base: Record<string, boolean> = {}
   for (const { key } of PERMISSOES_PROFISSIONAL) {
-    base[key] = key === 'minha_agenda' || key === 'escalas_visualizar'
+    base[key] =
+      key === 'minha_agenda' || key === 'escalas_visualizar' || key === 'registro_ponto'
   }
   return base
 }
@@ -41,6 +43,7 @@ export function rotaPermitidaParaMembro(
 
   const regras: { prefixo: string; chave: string }[] = [
     { prefixo: '/minha-agenda', chave: 'minha_agenda' },
+    { prefixo: '/ponto', chave: 'registro_ponto' },
     { prefixo: '/painel/resumo', chave: 'painel_resumo' },
     { prefixo: '/painel/carga-horaria', chave: 'painel_carga_horaria' },
     { prefixo: '/escalas/mensal', chave: 'escalas_visualizar' },
@@ -65,6 +68,7 @@ export function rotaInicialMembro(
   permissoes: Record<string, boolean>,
 ): string {
   if (permissoes.minha_agenda) return '/minha-agenda'
+  if (permissoes.registro_ponto) return '/ponto'
   if (permissoes.painel_resumo) return '/painel/resumo'
   if (permissoes.painel_carga_horaria) return '/painel/carga-horaria'
   if (permissoes.escalas_visualizar) return '/escalas/mensal'
@@ -76,6 +80,7 @@ export function rotaInicialMembro(
 
 export function chavePermissaoParaRotaSidebar(to: string): string | null {
   if (to.startsWith('/minha-agenda')) return 'minha_agenda'
+  if (to.startsWith('/ponto')) return 'registro_ponto'
   if (to.startsWith('/painel/resumo')) return 'painel_resumo'
   if (to.startsWith('/painel/carga-horaria')) return 'painel_carga_horaria'
   if (

@@ -425,6 +425,75 @@ export type Database = {
           },
         ]
       }
+      registro_ponto: {
+        Row: {
+          id: string
+          user_id: string
+          profissional_id: string
+          plantao_id: string
+          entrada_em: string
+          saida_em: string | null
+          latitude_entrada: number
+          longitude_entrada: number
+          latitude_saida: number | null
+          longitude_saida: number | null
+          distancia_entrada_metros: number | null
+          distancia_saida_metros: number | null
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          profissional_id: string
+          plantao_id: string
+          entrada_em: string
+          saida_em?: string | null
+          latitude_entrada: number
+          longitude_entrada: number
+          latitude_saida?: number | null
+          longitude_saida?: number | null
+          distancia_entrada_metros?: number | null
+          distancia_saida_metros?: number | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          profissional_id?: string
+          plantao_id?: string
+          entrada_em?: string
+          saida_em?: string | null
+          latitude_entrada?: number
+          longitude_entrada?: number
+          latitude_saida?: number | null
+          longitude_saida?: number | null
+          distancia_entrada_metros?: number | null
+          distancia_saida_metros?: number | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'registro_ponto_profissional_id_fkey'
+            columns: ['profissional_id']
+            isOneToOne: false
+            referencedRelation: 'profissionais'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'registro_ponto_plantao_id_fkey'
+            columns: ['plantao_id']
+            isOneToOne: false
+            referencedRelation: 'plantoes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       escala_modelo_itens: {
         Row: {
           id: string

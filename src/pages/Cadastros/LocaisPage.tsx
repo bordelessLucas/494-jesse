@@ -21,6 +21,21 @@ import {
 } from 'react'
 
 import { cn } from '../../lib/cn'
+import {
+  buscarEmpresaPorCnpj,
+  formatarCnpjVisual,
+  normalizarCnpjDigitos,
+} from '../../lib/geo/buscarCnpjBrasilApi'
+import {
+  buscarEnderecoPorCep,
+  formatarCepVisual,
+  normalizarCepDigitos,
+} from '../../lib/geo/buscarCepViaCep'
+import {
+  geocodificarEndereco,
+  montarEnderecoCompleto,
+  urlGoogleMapsEndereco,
+} from '../../lib/geo/geocodificarEndereco'
 import { useSupabaseUser } from '../../hooks/useSupabaseUser'
 import { supabase } from '../../lib/supabase'
 
@@ -96,8 +111,6 @@ type LocalFormulario = {
   cnpj: string
   anotacoes: string
   fusoHorario: string
-  latitude: string
-  longitude: string
 }
 
 const UFS_SELECT = [
@@ -122,8 +135,6 @@ function localParaFormulario(local: LocalCadastro | null): LocalFormulario {
       cnpj: '',
       anotacoes: '',
       fusoHorario: '(UTC-03:00) Brasília',
-      latitude: '',
-      longitude: '',
     }
   }
   return {
@@ -140,8 +151,6 @@ function localParaFormulario(local: LocalCadastro | null): LocalFormulario {
     cnpj: local.cnpj,
     anotacoes: local.anotacoes,
     fusoHorario: local.fusoHorario,
-    latitude: local.latitude,
-    longitude: local.longitude,
   }
 }
 
@@ -179,13 +188,92 @@ function LocalModal({
 }: LocalModalProps) {
   const [form, setForm] = useState<LocalFormulario>(() => localParaFormulario(local))
   const [salvando, setSalvando] = useState(false)
+  const [geocodificando, setGeocodificando] = useState(false)
+  const [buscandoCep, setBuscandoCep] = useState(false)
+  const [buscandoCnpj, setBuscandoCnpj] = useState(false)
+  const [erroCep, setErroCep] = useState<string | null>(null)
+  const [erroCnpj, setErroCnpj] = useState<string | null>(null)
   const [erroSalvar, setErroSalvar] = useState<string | null>(null)
+  const ultimoCepBuscado = useRef('')
+  const ultimoCnpjBuscado = useRef('')
 
   useEffect(() => {
     if (!aberto) return
-    setForm(localParaFormulario(local))
+    const inicial = localParaFormulario(local)
+    setForm(inicial)
     setErroSalvar(null)
+    setErroCep(null)
+    setErroCnpj(null)
+    ultimoCepBuscado.current = normalizarCepDigitos(inicial.cep)
+    ultimoCnpjBuscado.current = normalizarCnpjDigitos(inicial.cnpj)
   }, [aberto, local])
+
+  const preencherEnderecoPorCep = useCallback(async (cep: string) => {
+    const digitos = normalizarCepDigitos(cep)
+    if (digitos.length !== 8 || digitos === ultimoCepBuscado.current) return
+
+    setBuscandoCep(true)
+    setErroCep(null)
+    try {
+      const endereco = await buscarEnderecoPorCep(cep)
+      ultimoCepBuscado.current = digitos
+      setForm((f) => ({
+        ...f,
+        cep: endereco.cep,
+        rua: endereco.rua || f.rua,
+        bairro: endereco.bairro || f.bairro,
+        cidade: endereco.cidade || f.cidade,
+        uf: endereco.uf || f.uf,
+        complemento: f.complemento.trim() ? f.complemento : endereco.complemento,
+      }))
+    } catch (e) {
+      setErroCep(e instanceof Error ? e.message : 'Erro ao buscar CEP.')
+    } finally {
+      setBuscandoCep(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!aberto) return
+    const digitos = normalizarCepDigitos(form.cep)
+    if (digitos.length !== 8) return
+    const timer = window.setTimeout(() => {
+      void preencherEnderecoPorCep(form.cep)
+    }, 450)
+    return () => window.clearTimeout(timer)
+  }, [aberto, form.cep, preencherEnderecoPorCep])
+
+  const preencherRazaoSocialPorCnpj = useCallback(async (cnpj: string) => {
+    const digitos = normalizarCnpjDigitos(cnpj)
+    if (digitos.length !== 14 || digitos === ultimoCnpjBuscado.current) return
+
+    setBuscandoCnpj(true)
+    setErroCnpj(null)
+    try {
+      const empresa = await buscarEmpresaPorCnpj(cnpj)
+      ultimoCnpjBuscado.current = digitos
+      setForm((f) => ({
+        ...f,
+        cnpj: empresa.cnpj,
+        razaoSocial: empresa.razaoSocial,
+        nomeFantasia: f.nomeFantasia.trim() ? f.nomeFantasia : empresa.nomeFantasia,
+      }))
+    } catch (e) {
+      setErroCnpj(e instanceof Error ? e.message : 'Erro ao buscar CNPJ.')
+    } finally {
+      setBuscandoCnpj(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!aberto) return
+    const digitos = normalizarCnpjDigitos(form.cnpj)
+    if (digitos.length !== 14) return
+    const timer = window.setTimeout(() => {
+      void preencherRazaoSocialPorCnpj(form.cnpj)
+    }, 500)
+    return () => window.clearTimeout(timer)
+  }, [aberto, form.cnpj, preencherRazaoSocialPorCnpj])
 
   if (!aberto) return null
 
@@ -221,6 +309,39 @@ function LocalModal({
 
     const codigoFinal = form.codigo.trim() || gerarCodigoLocalProvisorio()
 
+    setSalvando(true)
+    setGeocodificando(true)
+    setErroSalvar(null)
+
+    let latitude: string | null = null
+    let longitude: string | null = null
+
+    try {
+      const coords = await geocodificarEndereco({
+        nome,
+        rua,
+        numero,
+        complemento: form.complemento,
+        bairro,
+        cidade,
+        uf,
+        cep: form.cep,
+      })
+      latitude = coords.latitude
+      longitude = coords.longitude
+    } catch (e) {
+      setErroSalvar(
+        e instanceof Error
+          ? e.message
+          : 'Não foi possível localizar o endereço. Verifique os dados e tente novamente.',
+      )
+      setSalvando(false)
+      setGeocodificando(false)
+      return
+    } finally {
+      setGeocodificando(false)
+    }
+
     const agora = new Date().toISOString()
     const corpo = {
       codigo: codigoFinal,
@@ -237,13 +358,10 @@ function LocalModal({
       uf,
       anotacoes: form.anotacoes.trim() || null,
       fuso_horario: form.fusoHorario.trim() || null,
-      latitude: form.latitude.trim() || null,
-      longitude: form.longitude.trim() || null,
+      latitude,
+      longitude,
       updated_at: agora,
     }
-
-    setSalvando(true)
-    setErroSalvar(null)
 
     try {
       if (local) {
@@ -357,12 +475,35 @@ function LocalModal({
                   <label className="mb-1.5 block text-sm font-medium text-slate-600">
                     CEP
                   </label>
-                  <input
-                    type="text"
-                    className={inputClassName}
-                    value={form.cep}
-                    onChange={(e) => patch('cep', e.target.value)}
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="postal-code"
+                      placeholder="00000-000"
+                      maxLength={9}
+                      className={cn(inputClassName, buscandoCep && 'pr-10')}
+                      value={form.cep}
+                      onChange={(e) => {
+                        setErroCep(null)
+                        patch('cep', formatarCepVisual(e.target.value))
+                      }}
+                      onBlur={() => void preencherEnderecoPorCep(form.cep)}
+                    />
+                    {buscandoCep ? (
+                      <Loader2
+                        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary-600"
+                        aria-hidden
+                      />
+                    ) : null}
+                  </div>
+                  {erroCep ? (
+                    <p className="mt-1 text-xs text-red-600">{erroCep}</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-slate-500">
+                      O endereço é preenchido automaticamente ao informar o CEP.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -464,12 +605,35 @@ function LocalModal({
                   <label className="mb-1.5 block text-sm font-medium text-slate-600">
                     CNPJ
                   </label>
-                  <input
-                    type="text"
-                    className={inputClassName}
-                    value={form.cnpj}
-                    onChange={(e) => patch('cnpj', e.target.value)}
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder="00.000.000/0000-00"
+                      maxLength={18}
+                      className={cn(inputClassName, buscandoCnpj && 'pr-10')}
+                      value={form.cnpj}
+                      onChange={(e) => {
+                        setErroCnpj(null)
+                        patch('cnpj', formatarCnpjVisual(e.target.value))
+                      }}
+                      onBlur={() => void preencherRazaoSocialPorCnpj(form.cnpj)}
+                    />
+                    {buscandoCnpj ? (
+                      <Loader2
+                        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary-600"
+                        aria-hidden
+                      />
+                    ) : null}
+                  </div>
+                  {erroCnpj ? (
+                    <p className="mt-1 text-xs text-red-600">{erroCnpj}</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-slate-500">
+                      A razão social é preenchida automaticamente ao informar o CNPJ.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -502,51 +666,60 @@ function LocalModal({
                 </div>
               </div>
 
-              <section className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4">
-                <h3 className="text-base font-semibold text-slate-700">
-                  Adicione as coordenadas deste local
-                </h3>
-                <div className="mt-4 grid gap-4 md:grid-cols-[1fr_1fr_auto]">
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-600">
-                      Latitude
-                    </label>
-                    <input
-                      type="text"
-                      className={inputClassName}
-                      value={form.latitude}
-                      onChange={(e) => patch('latitude', e.target.value)}
-                    />
+              <section className="rounded-lg border border-primary-100 bg-primary-50/40 px-4 py-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base font-semibold text-slate-800">
+                      Localização para ponto eletrónico
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-600">
+                      O sistema usa o <strong>endereço completo</strong> acima para obter as
+                      coordenadas automaticamente ao salvar — sem precisar de latitude ou
+                      longitude manual.
+                    </p>
+                    <p className="mt-2 truncate text-xs text-slate-500">
+                      {montarEnderecoCompleto({
+                        nome: form.nomeFantasia,
+                        rua: form.rua,
+                        numero: form.numero,
+                        complemento: form.complemento,
+                        bairro: form.bairro,
+                        cidade: form.cidade,
+                        uf: form.uf,
+                        cep: form.cep,
+                      }) || 'Preencha o endereço para pré-visualizar.'}
+                    </p>
+                    {local?.latitude && local?.longitude ? (
+                      <p className="mt-2 text-xs text-emerald-700">
+                        Última localização guardada: {local.latitude}, {local.longitude}
+                      </p>
+                    ) : null}
                   </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-600">
-                      Longitude
-                    </label>
-                    <input
-                      type="text"
-                      className={inputClassName}
-                      value={form.longitude}
-                      onChange={(e) => patch('longitude', e.target.value)}
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <button
-                      type="button"
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-primary-400 bg-white px-4 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50"
-                    >
-                      <MapPin className="h-4 w-4" aria-hidden />
-                      Ir para Coordenadas
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-primary-400 bg-white px-4 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 disabled:opacity-50"
+                    disabled={!form.rua.trim() || !form.cidade.trim()}
+                    onClick={() => {
+                      window.open(
+                        urlGoogleMapsEndereco({
+                          nome: form.nomeFantasia,
+                          rua: form.rua,
+                          numero: form.numero,
+                          complemento: form.complemento,
+                          bairro: form.bairro,
+                          cidade: form.cidade,
+                          uf: form.uf,
+                          cep: form.cep,
+                        }),
+                        '_blank',
+                        'noopener,noreferrer',
+                      )
+                    }}
+                  >
+                    <MapPin className="h-4 w-4" aria-hidden />
+                    Ver no mapa
+                  </button>
                 </div>
-                <p className="mt-3 text-xs text-slate-500">
-                  Para obter as coordenadas, basta acessar o Google Maps e localizar a unidade de saúde.
-                </p>
-                <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-slate-500">
-                  <li>Clique com o botão direito do mouse no mapa sobre a unidade.</li>
-                  <li>Clique na primeira opção (Coordenadas) e copie os valores.</li>
-                  <li>Em seguida, cole os valores nos campos acima.</li>
-                </ol>
               </section>
 
               <section className="space-y-4">
@@ -594,10 +767,15 @@ function LocalModal({
                 </button>
                 <button
                   type="submit"
-                  disabled={salvando}
+                  disabled={salvando || geocodificando}
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:opacity-50"
                 >
-                  {salvando ? (
+                  {geocodificando ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      A localizar endereço…
+                    </>
+                  ) : salvando ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                       Salvando…

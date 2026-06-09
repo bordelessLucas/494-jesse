@@ -1,4 +1,4 @@
-import { CalendarClock } from 'lucide-react'
+import { CalendarClock, MapPinned } from 'lucide-react'
 import { useMemo } from 'react'
 
 import { chavePermissaoParaRotaSidebar } from '../components/Profissionais/profissionalAcessoTypes'
@@ -29,6 +29,14 @@ export function useVisibleNavigationItems(): {
         to: '/minha-agenda',
         label: 'Minha Agenda',
         icon: CalendarClock,
+      })
+    }
+
+    if (permissoes.registro_ponto) {
+      filtrados.push({
+        to: '/ponto',
+        label: 'Ponto eletrónico',
+        icon: MapPinned,
       })
     }
 

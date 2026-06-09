@@ -8,7 +8,6 @@ import { RedirectIfAuthenticated, RequireAuth } from './lib/auth/RequireAuth'
 import { ThemeBrandingProvider } from './theme/ThemeBrandingProvider'
 import { AlterarSenhaObrigatoriaPage } from './pages/AlterarSenhaObrigatoriaPage'
 import { CadastroPage } from './pages/CadastroPage'
-import { CadastrosEspecialidadesPage } from './pages/CadastrosEspecialidadesPage'
 import { CadastrosLocaisPage } from './pages/CadastrosLocaisPage'
 import { CoordenadoresPage } from './pages/CoordenadoresPage'
 import { ConfiguracaoPage } from './pages/ConfiguracaoPage'
@@ -31,11 +30,12 @@ import { NotFoundPage } from './pages/NotFoundPage'
 import { ProfissionaisPage } from './pages/ProfissionaisPage'
 import { CargaHorariaPage } from './pages/Dashboard/CargaHorariaPage'
 import { ResumoPage } from './pages/Dashboard/ResumoPage'
-import { DocumentosUsuarioPage, VisualizadoresPage } from './pages/UsuariosEmBrevePage'
+import { DocumentosUsuarioPage } from './pages/UsuariosEmBrevePage'
 import { EmissaoRelatoriosPage } from './pages/Relatorios/EmissaoRelatoriosPage'
 import { HistoricoRelatoriosPage } from './pages/Relatorios/HistoricoRelatoriosPage'
 import { IndicadoresScirasPage } from './pages/Relatorios/IndicadoresScirasPage'
 import { MuralTrocasPage } from './pages/Escalas/MuralTrocasPage'
+import { PontoPage } from './pages/Profissional/PontoPage'
 import { PwaUpdatePrompt } from './components/PwaUpdatePrompt'
 
 function App() {
@@ -86,6 +86,7 @@ function App() {
             <Route path="escalas/modelos" element={<EscalasModelosPage />} />
             <Route path="escalas/mural-trocas" element={<MuralTrocasPage />} />
             <Route path="minha-agenda" element={<MinhaAgendaPage />} />
+            <Route path="ponto" element={<PontoPage />} />
 
             <Route
               path="profissionais"
@@ -100,12 +101,15 @@ function App() {
               />
               <Route path="usuarios/profissionais" element={<ProfissionaisPage />} />
               <Route path="usuarios/coordenadores" element={<CoordenadoresPage />} />
-              <Route path="usuarios/visualizadores" element={<VisualizadoresPage />} />
               <Route path="usuarios/documentos" element={<DocumentosUsuarioPage />} />
               <Route path="usuarios/locais" element={<CadastrosLocaisPage />} />
               <Route
+                path="usuarios/visualizadores"
+                element={<Navigate to="/usuarios/profissionais" replace />}
+              />
+              <Route
                 path="usuarios/especialidades"
-                element={<CadastrosEspecialidadesPage />}
+                element={<Navigate to="/usuarios/profissionais" replace />}
               />
 
               <Route
@@ -122,7 +126,7 @@ function App() {
               />
               <Route
                 path="cadastros/especialidades"
-                element={<Navigate to="/usuarios/especialidades" replace />}
+                element={<Navigate to="/usuarios/profissionais" replace />}
               />
 
               <Route path="financeiro" element={<FinanceiroPage />} />

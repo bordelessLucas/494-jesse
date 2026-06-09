@@ -1,14 +1,11 @@
 import {
-  Award,
   Banknote,
   CalendarClock,
   ArrowLeftRight,
-  Eye,
   FileText,
   LayoutDashboard,
   MapPin,
   Settings2,
-  ShieldAlert,
   UserCog,
   Users,
 } from 'lucide-react'
@@ -66,9 +63,7 @@ export const navigationItems: NavigationItem[] = [
     subItems: [
       { to: '/usuarios/profissionais', label: 'Profissionais', icon: Users },
       { to: '/usuarios/coordenadores', label: 'Coordenadores', icon: UserCog },
-      { to: '/usuarios/visualizadores', label: 'Visualizadores', icon: Eye },
       { to: '/usuarios/documentos', label: 'Documentos · NOVO', icon: FileText },
-      { to: '/usuarios/especialidades', label: 'Especialidades', icon: Award },
     ],
   },
   {
@@ -78,13 +73,6 @@ export const navigationItems: NavigationItem[] = [
     subItems: [
       { to: '/configuracao/locais', label: 'Locais & Setores', icon: MapPin },
       { to: '/configuracao/avancadas', label: 'Remuneração · Avançadas', icon: Banknote },
-      { to: '/configuracao/grupos', label: 'Grupos', icon: Users },
-      { to: '/configuracao/tipos-plantao', label: 'Tipos de Plantão', icon: CalendarClock },
-      { to: '/configuracao/situacoes-plantao', label: 'Situações do Plantão', icon: ShieldAlert },
-      { to: '/configuracao/valores', label: 'Valores', icon: Banknote },
-      { to: '/configuracao/auto-ajustes', label: 'Auto-Ajustes', icon: Settings2 },
-      { to: '/configuracao/tipos-contratacao', label: 'Tipos de Contratação', icon: FileText },
-      { to: '/configuracao/habilidades', label: 'Habilidades', icon: Award },
     ],
   },
   {
