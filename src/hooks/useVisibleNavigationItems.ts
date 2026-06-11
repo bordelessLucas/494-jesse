@@ -1,4 +1,4 @@
-import { CalendarClock, MapPinned } from 'lucide-react'
+import { CalendarClock, MapPinned, User } from 'lucide-react'
 import { useMemo } from 'react'
 
 import { chavePermissaoParaRotaSidebar } from '../components/Profissionais/profissionalAcessoTypes'
@@ -48,6 +48,12 @@ export function useVisibleNavigationItems(): {
       if (subItems.length === 0) continue
       filtrados.push({ ...item, subItems })
     }
+
+    filtrados.push({
+      to: '/meus-dados',
+      label: 'Meus dados',
+      icon: User,
+    })
 
     return filtrados
   }, [isMembroProfissional, permissoes])

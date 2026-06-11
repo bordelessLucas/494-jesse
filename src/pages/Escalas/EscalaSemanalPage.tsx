@@ -45,7 +45,11 @@ import type {
 } from '../../lib/escalas/escalaTypes'
 import { marcarAnuncioProprio } from '../../lib/escalas/muralTrocasAlertas'
 import { carregarMapaConselhoValidado } from '../../lib/documentos/documentosUsuariosDb'
-import { MENSAGEM_BLOQUEIO_DOCUMENTOS_CONSELHO } from '../../lib/documentos/documentosUsuariosTypes'
+import {
+  EXIGIR_CONSELHO_VALIDADO_PARA_PLANTAO,
+  MENSAGEM_BLOQUEIO_DOCUMENTOS_CONSELHO,
+  profissionalPodeSerAlocadoEmPlantao,
+} from '../../lib/documentos/validacaoDocumentos'
 import {
   anunciarPlantaoNoMural,
   aprovarTrocaPlantao,
@@ -249,7 +253,7 @@ export function ModalAlterarPlantao({
 
   function profissionalPodeAssumirPlantao(profId: string | null | undefined): boolean {
     if (!profId || !isCoordenador) return true
-    return conselhoValidadoPorProf.get(profId) === true
+    return profissionalPodeSerAlocadoEmPlantao(profId, conselhoValidadoPorProf)
   }
 
   function alertarDocumentosPendentes(): void {
@@ -997,7 +1001,9 @@ export function ModalAlterarPlantao({
                           {profissionais.map((n) => (
                             <option key={n.id} value={n.id}>
                               {n.nome}
-                              {isCoordenador && conselhoValidadoPorProf.get(n.id) !== true
+                              {isCoordenador &&
+                              EXIGIR_CONSELHO_VALIDADO_PARA_PLANTAO &&
+                              conselhoValidadoPorProf.get(n.id) !== true
                                 ? ' (doc. pendente)'
                                 : ''}
                             </option>
@@ -1060,7 +1066,9 @@ export function ModalAlterarPlantao({
                           {profissionais.map((n) => (
                             <option key={`p-${n.id}`} value={n.id}>
                               {n.nome}
-                              {isCoordenador && conselhoValidadoPorProf.get(n.id) !== true
+                              {isCoordenador &&
+                              EXIGIR_CONSELHO_VALIDADO_PARA_PLANTAO &&
+                              conselhoValidadoPorProf.get(n.id) !== true
                                 ? ' (doc. pendente)'
                                 : ''}
                             </option>
@@ -1408,7 +1416,8 @@ export function ModalAlterarPlantao({
                                 {profissionaisRepasseDireto.map((p) => (
                                   <option key={p.id} value={p.id}>
                                     {p.nome}
-                                    {conselhoValidadoPorProf.get(p.id) !== true
+                                    {EXIGIR_CONSELHO_VALIDADO_PARA_PLANTAO &&
+                                    conselhoValidadoPorProf.get(p.id) !== true
                                       ? ' (doc. pendente)'
                                       : ''}
                                   </option>

@@ -109,26 +109,29 @@ export function MobileNavDrawer({ aberto, onFechar }: MobileNavDrawerProps) {
 
                   {subItems?.length && isActive ? (
                     <ul className="ml-4 mt-1 space-y-1 rounded-md border border-current/10 bg-black/10 p-2">
-                      {subItems.map((subItem) => (
-                        <li key={subItem.to}>
-                          <NavLink
-                            to={subItem.to}
-                            onClick={onFechar}
-                            className={({ isActive: isSubItemActive }) =>
-                              cn(
-                                'flex items-center gap-2 rounded-md px-3 py-2.5 text-sm transition-colors',
-                                'text-current/85 hover:bg-black/15 hover:text-current',
-                                isSubItemActive && 'bg-black/25 text-current',
-                              )
-                            }
-                          >
-                            {subItem.icon ? (
-                              <subItem.icon className="h-4 w-4 shrink-0 text-current/70" aria-hidden />
-                            ) : null}
-                            <span className="leading-tight">{subItem.label}</span>
-                          </NavLink>
-                        </li>
-                      ))}
+                      {subItems.map((subItem) => {
+                        const SubIcon = subItem.icon
+                        return (
+                          <li key={subItem.to}>
+                            <NavLink
+                              to={subItem.to}
+                              onClick={onFechar}
+                              className={({ isActive: isSubItemActive }) =>
+                                cn(
+                                  'flex items-center gap-2 rounded-md px-3 py-2.5 text-sm transition-colors',
+                                  'text-current/85 hover:bg-black/15 hover:text-current',
+                                  isSubItemActive && 'bg-black/25 text-current',
+                                )
+                              }
+                            >
+                              {SubIcon ? (
+                                <SubIcon className="h-4 w-4 shrink-0 text-current/70" aria-hidden />
+                              ) : null}
+                              <span className="leading-tight">{subItem.label}</span>
+                            </NavLink>
+                          </li>
+                        )
+                      })}
                     </ul>
                   ) : null}
                 </li>

@@ -6,6 +6,21 @@ import {
 
 export { MENSAGEM_BLOQUEIO_DOCUMENTOS_CONSELHO }
 
+/**
+ * Quando `false`, profissionais sem CRM/COREN validado podem ser alocados em plantões.
+ * Reativar em produção após testes.
+ */
+export const EXIGIR_CONSELHO_VALIDADO_PARA_PLANTAO = false
+
+export function profissionalPodeSerAlocadoEmPlantao(
+  profissionalId: string | null | undefined,
+  conselhoValidadoPorProf: Map<string, boolean>,
+): boolean {
+  if (!profissionalId) return true
+  if (!EXIGIR_CONSELHO_VALIDADO_PARA_PLANTAO) return true
+  return conselhoValidadoPorProf.get(profissionalId) === true
+}
+
 /** Determina se o profissional exige documento CRM ou COREN conforme a sigla do conselho. */
 export function tipoConselhoDocumentoObrigatorio(
   siglaConselho: string | null | undefined,

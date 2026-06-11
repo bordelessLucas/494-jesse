@@ -31,6 +31,7 @@ export function permissoesProfissionalPadrao(): Record<string, boolean> {
 export const ROTAS_LIBERADAS_MEMBRO = [
   '/meus-dados',
   '/alterar-senha-obrigatoria',
+  '/notificacoes',
 ] as const
 
 export function rotaPermitidaParaMembro(

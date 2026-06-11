@@ -1,6 +1,6 @@
 import { BrandedLogoOrInitial } from './branding/BrandedLogoOrInitial'
 import { cn } from '../lib/cn'
-import { ChevronRight, Palette } from 'lucide-react'
+import { ChevronRight, Loader2, Palette } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 
 import { useVisibleNavigationItems } from '../hooks/useVisibleNavigationItems'
@@ -18,8 +18,10 @@ export function Sidebar() {
     return (
       <aside
         style={sidebarSurfaceStyle}
-        className="no-print sticky top-0 z-30 hidden h-dvh w-64 border-r border-black/15 md:flex md:flex-col print:hidden"
-      />
+        className="no-print sticky top-0 z-30 hidden h-dvh w-64 items-center justify-center border-r border-black/15 md:flex md:flex-col print:hidden"
+      >
+        <Loader2 className="h-6 w-6 animate-spin text-current/70" aria-hidden />
+      </aside>
     )
   }
 
@@ -45,6 +47,11 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">
+        {itensVisiveis.length === 0 ? (
+          <p className="px-3 py-2 text-xs text-current/60">
+            Nenhum menu disponível para este perfil.
+          </p>
+        ) : null}
         <ul className="space-y-1">
           {itensVisiveis.map(({ to, label, icon: Icon, subItems }) => {
             const isActive = pathname === to || pathname.startsWith(`${to}/`)
@@ -92,25 +99,28 @@ export function Sidebar() {
                     )}
                   >
                     <ul className="space-y-1 p-2">
-                      {subItems.map((subItem) => (
-                        <li key={subItem.to}>
-                          <NavLink
-                            to={subItem.to}
-                            className={({ isActive: isSubItemActive }) =>
-                              cn(
-                                'flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors',
-                                'text-current/85 hover:bg-black/15 hover:text-current',
-                                isSubItemActive && 'bg-black/25 text-current',
-                              )
-                            }
-                          >
-                            {subItem.icon ? (
-                              <subItem.icon className="h-4 w-4 shrink-0 text-current/70" />
-                            ) : null}
-                            <span className="leading-tight">{subItem.label}</span>
-                          </NavLink>
-                        </li>
-                      ))}
+                      {subItems.map((subItem) => {
+                        const SubIcon = subItem.icon
+                        return (
+                          <li key={subItem.to}>
+                            <NavLink
+                              to={subItem.to}
+                              className={({ isActive: isSubItemActive }) =>
+                                cn(
+                                  'flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors',
+                                  'text-current/85 hover:bg-black/15 hover:text-current',
+                                  isSubItemActive && 'bg-black/25 text-current',
+                                )
+                              }
+                            >
+                              {SubIcon ? (
+                                <SubIcon className="h-4 w-4 shrink-0 text-current/70" />
+                              ) : null}
+                              <span className="leading-tight">{subItem.label}</span>
+                            </NavLink>
+                          </li>
+                        )
+                      })}
                     </ul>
                   </div>
                 ) : null}

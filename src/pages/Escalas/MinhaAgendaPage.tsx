@@ -24,7 +24,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 
 import { PontoPlantaoHojeBanner } from '../../components/Ponto/PontoPlantaoHojeBanner'
-import { useContaMembro } from '../../hooks/useContaMembro'
 import { useTenantUserId } from '../../hooks/useTenantUserId'
 import {
   buscarPlantoesHojeProfissional,
@@ -302,9 +301,9 @@ export function MinhaAgendaPage() {
     tenantUserId,
     isMembroProfissional,
     profissionalIdMembro,
+    permissoes,
     isLoading: isLoadingUser,
   } = useTenantUserId()
-  const { permissoes } = useContaMembro()
   const [dataReferencia, setDataReferencia] = useState(() => new Date())
   const [plantaoPontoHoje, setPlantaoPontoHoje] = useState<PlantaoPontoHoje | null>(null)
   const [turnoPontoAtivo, setTurnoPontoAtivo] = useState(false)
