@@ -23,7 +23,14 @@ import { ptBR } from 'date-fns/locale'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 
+import { PontoPlantaoHojeBanner } from '../../components/Ponto/PontoPlantaoHojeBanner'
+import { useContaMembro } from '../../hooks/useContaMembro'
 import { useTenantUserId } from '../../hooks/useTenantUserId'
+import {
+  buscarPlantoesHojeProfissional,
+  buscarRegistroAbertoPlantao,
+} from '../../lib/ponto/registroPontoDb'
+import type { PlantaoPontoHoje } from '../../lib/ponto/registroPontoTypes'
 import { cn } from '../../lib/cn'
 import {
   formatarDataSegura,
@@ -297,7 +304,10 @@ export function MinhaAgendaPage() {
     profissionalIdMembro,
     isLoading: isLoadingUser,
   } = useTenantUserId()
+  const { permissoes } = useContaMembro()
   const [dataReferencia, setDataReferencia] = useState(() => new Date())
+  const [plantaoPontoHoje, setPlantaoPontoHoje] = useState<PlantaoPontoHoje | null>(null)
+  const [turnoPontoAtivo, setTurnoPontoAtivo] = useState(false)
   const [modalAberto, setModalAberto] = useState(false)
   const [plantaoSelecionado, setPlantaoSelecionado] = useState<PlantaoAgenda | null>(
     null,
@@ -504,6 +514,74 @@ export function MinhaAgendaPage() {
     setPlantoesRows((rows) => [...(Array.isArray(rows) ? rows : [])])
   }, [])
 
+  useEffect(() => {
+    if (
+      isLoadingUser ||
+      !tenantUserId ||
+      !profissionalId ||
+      !permissoes.registro_ponto ||
+      !isMembroProfissional
+    ) {
+      setPlantaoPontoHoje(null)
+      setTurnoPontoAtivo(false)
+      return
+    }
+
+    const uid = tenantUserId
+    const pid = profissionalId
+    let cancelado = false
+
+    async function carregarPontoHoje() {
+      try {
+        const plantoes = await buscarPlantoesHojeProfissional(uid, pid)
+        if (cancelado) return
+
+        const elegiveis = plantoes.filter(
+          (p) => p.status === 'confirmado' || p.status === 'pendente' || p.status === 'realizado',
+        )
+        if (elegiveis.length === 0) {
+          setPlantaoPontoHoje(null)
+          setTurnoPontoAtivo(false)
+          return
+        }
+
+        let abertoPlantaoId: string | null = null
+        for (const plantao of elegiveis) {
+          const reg = await buscarRegistroAbertoPlantao(plantao.id)
+          if (reg) {
+            abertoPlantaoId = plantao.id
+            break
+          }
+        }
+
+        const destaque =
+          elegiveis.find((p) => p.id === abertoPlantaoId) ??
+          elegiveis.find((p) => p.status === 'confirmado' || p.status === 'pendente') ??
+          elegiveis[0] ??
+          null
+
+        setPlantaoPontoHoje(destaque)
+        setTurnoPontoAtivo(Boolean(abertoPlantaoId))
+      } catch {
+        if (!cancelado) {
+          setPlantaoPontoHoje(null)
+          setTurnoPontoAtivo(false)
+        }
+      }
+    }
+
+    void carregarPontoHoje()
+    return () => {
+      cancelado = true
+    }
+  }, [
+    isLoadingUser,
+    tenantUserId,
+    profissionalId,
+    permissoes.registro_ponto,
+    isMembroProfissional,
+  ])
+
   if (isLoadingUser || carregandoProfissionais) {
     return <PaginaCarregando mensagem="A preparar a sua agenda…" />
   }
@@ -609,6 +687,10 @@ export function MinhaAgendaPage() {
           </div>
         </div>
       </header>
+
+      {plantaoPontoHoje && permissoes.registro_ponto ? (
+        <PontoPlantaoHojeBanner plantao={plantaoPontoHoje} turnoAtivo={turnoPontoAtivo} />
+      ) : null}
 
       {!profissionalId && (profissionais?.length ?? 0) > 0 ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">

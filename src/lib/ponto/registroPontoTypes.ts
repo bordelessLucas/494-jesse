@@ -1,7 +1,14 @@
 export const RAIO_CHECKIN_METROS = 300
 
-export const MENSAGEM_CHECKIN_BLOQUEADO =
-  'Check-in bloqueado. Você precisa estar nas dependências do hospital para iniciar o plantão.'
+export function mensagemBloqueioDistancia(raioMetros = RAIO_CHECKIN_METROS): string {
+  return `Tem de estar num raio de ${raioMetros}m do hospital para bater o ponto.`
+}
+
+export const MENSAGEM_CHECKIN_BLOQUEADO = mensagemBloqueioDistancia()
+
+export function isErroDistanciaCheckin(mensagem: string): boolean {
+  return mensagem.includes('raio de') && mensagem.includes('hospital')
+}
 
 export type StatusRegistroPonto = 'validado' | 'pendente' | 'rejeitado'
 
