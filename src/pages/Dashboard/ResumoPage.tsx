@@ -1,6 +1,13 @@
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
-import { Filter, Loader2, SlidersHorizontal } from 'lucide-react'
-import { addDays, format, startOfMonth, subMonths } from 'date-fns'
+import {
+  DollarSign,
+  Loader2,
+  Percent,
+  ShieldCheck,
+  SlidersHorizontal,
+  TrendingUp,
+} from 'lucide-react'
+import { addDays, format, startOfYear } from 'date-fns'
 import toast from 'react-hot-toast'
 
 import { cn } from '../../lib/cn'
@@ -9,21 +16,37 @@ import { supabase } from '../../lib/supabase'
 import { buscarPlantoesIntervaloComLocaisSetores } from '../../lib/dashboard/dashboardQueries'
 import {
   agregarContagens48h,
-  agregarDonutMesAnterior,
+  agregarDonutPeriodo,
   filtrarPorSetor,
   listarPlantoes48hParaPainel,
   listarVagos48hParaPainel,
   maximoSerieGrafico,
-  rankingProfissionaisSemana,
   serieMensalPlantoes,
   type FatiaDonutMes,
   type PontoGraficoMeses,
 } from '../../lib/dashboard/resumoPainel'
+import {
+  calcularMetricasBi,
+  custoPorSetorOrdenado,
+  intervaloPeriodoBi,
+  maximoSerieNumerica,
+  META_MINIMA_COBERTURA_PADRAO,
+  rankingProfissionaisPeriodo,
+  rotuloPeriodoBi,
+  serieCoberturaSemanal,
+  type BarraSetorCusto,
+  type LinhaRankingPeriodo,
+  type PeriodoBi,
+  type PontoSemanaCobertura,
+} from '../../lib/dashboard/resumoBi'
 import { buscarSetoresEscala } from '../../lib/escalas/plantoesDb'
 import {
   aprovarTrocaPlantao,
   reprovarSolicitacaoTroca,
 } from '../../lib/escalas/muralTrocasDb'
+import { buscarRegrasRemuneracao } from '../../lib/financeiro/remuneracaoDb'
+import { REGRAS_REMUNERACAO_VAZIAS } from '../../lib/financeiro/extratoCalculos'
+import type { RegrasRemuneracao } from '../../lib/financeiro/remuneracaoTypes'
 import type { PlantaoDashboardRow } from '../../lib/dashboard/dashboardQueries'
 
 type TrocaPendenteRow = {
@@ -45,7 +68,7 @@ type TrocaPendenteRow = {
   candidato?: { nome: string } | null
 }
 
-type PeriodoResumo = 'hoje' | 'semana' | 'mes'
+type PeriodoResumo = PeriodoBi
 
 type Aba48h = 'furos' | 'anunciados' | 'trocas' | 'candidaturas'
 
@@ -55,6 +78,29 @@ const SELECT_CLASS =
 const W = 640
 const H = 220
 const PAD = { l: 44, r: 16, t: 16, b: 36 }
+
+function fmtBRL(n: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n)
+}
+
+function fmtPct(n: number): string {
+  return `${n.toLocaleString('pt-BR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })}%`
+}
+
+function iniciais(nome: string) {
+  const partes = nome.trim().split(/\s+/).filter(Boolean)
+  const a = partes[0]?.[0] ?? ''
+  const b = partes.length > 1 ? partes[partes.length - 1][0] : ''
+  return (a + b).toUpperCase() || '?'
+}
 
 function escalaY(v: number, yMax: number) {
   const innerH = H - PAD.t - PAD.b
@@ -323,6 +369,253 @@ function GraficoPlantoesPeriodo({
   )
 }
 
+function CardMetricaBi({
+  titulo,
+  valor,
+  detalhe,
+  icone: Icone,
+  destaqueClass,
+}: {
+  titulo: string
+  valor: string
+  detalhe: string
+  icone: typeof DollarSign
+  destaqueClass: string
+}) {
+  return (
+    <article className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {titulo}
+          </p>
+          <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-slate-900">
+            {valor}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">{detalhe}</p>
+        </div>
+        <div
+          className={cn(
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+            destaqueClass,
+          )}
+        >
+          <Icone className="h-5 w-5" aria-hidden />
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function GraficoBarrasSetor({
+  barras,
+  yMax,
+}: {
+  barras: BarraSetorCusto[]
+  yMax: number
+}) {
+  const innerW = W - PAD.l - PAD.r
+  const innerH = H - PAD.t - PAD.b
+  const barWidth = barras.length > 0 ? innerW / barras.length * 0.55 : 0
+  const gap = barras.length > 0 ? innerW / barras.length : 0
+
+  return (
+    <div className="w-full overflow-x-auto">
+      {barras.length === 0 ? (
+        <p className="py-8 text-center text-sm text-slate-500">
+          Sem plantões realizados no período.
+        </p>
+      ) : (
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          className="h-auto w-full min-w-70 text-slate-400"
+          role="img"
+          aria-label="Custo por setor"
+        >
+          <line
+            x1={PAD.l}
+            y1={escalaY(0, yMax)}
+            x2={W - PAD.r}
+            y2={escalaY(0, yMax)}
+            className="stroke-slate-200"
+            strokeWidth={1}
+          />
+          {barras.map((barra, i) => {
+            const xCenter = PAD.l + gap * i + gap / 2
+            const barH = (barra.custo / yMax) * innerH
+            const yTop = PAD.t + innerH - barH
+            return (
+              <g key={barra.setorId}>
+                <rect
+                  x={xCenter - barWidth / 2}
+                  y={yTop}
+                  width={barWidth}
+                  height={barH}
+                  rx={3}
+                  className="fill-primary-500"
+                />
+                <text
+                  x={xCenter}
+                  y={H - 8}
+                  textAnchor="middle"
+                  className="fill-slate-500 text-[9px] font-medium"
+                >
+                  {barra.setorNome.length > 10
+                    ? `${barra.setorNome.slice(0, 9)}…`
+                    : barra.setorNome}
+                </text>
+              </g>
+            )
+          })}
+        </svg>
+      )}
+    </div>
+  )
+}
+
+function GraficoCoberturaSemanal({
+  pontos,
+  yMax,
+}: {
+  pontos: PontoSemanaCobertura[]
+  yMax: number
+}) {
+  const serieConfirmados = pontos.map((p) => p.confirmados)
+  const serieFuros = pontos.map((p) => p.furos)
+  const n = pontos.length
+
+  return (
+    <div className="w-full overflow-x-auto">
+      {pontos.length === 0 ? (
+        <p className="py-8 text-center text-sm text-slate-500">
+          Sem dados de cobertura no período.
+        </p>
+      ) : (
+        <>
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            className="h-auto w-full min-w-70 text-slate-400"
+            role="img"
+            aria-label="Evolução semanal: confirmados vs furos"
+          >
+            <line
+              x1={PAD.l}
+              y1={escalaY(0, yMax)}
+              x2={W - PAD.r}
+              y2={escalaY(0, yMax)}
+              className="stroke-slate-200"
+              strokeWidth={1}
+            />
+            <path
+              d={pathLinha(serieConfirmados, yMax)}
+              fill="none"
+              className="stroke-success-600"
+              strokeWidth={2}
+              strokeLinejoin="round"
+            />
+            <path
+              d={pathLinha(serieFuros, yMax)}
+              fill="none"
+              className="stroke-danger-500"
+              strokeWidth={2}
+              strokeLinejoin="round"
+            />
+            {pontos.map((p, i) => (
+              <text
+                key={p.chave}
+                x={escalaX(i, n)}
+                y={H - 10}
+                textAnchor="middle"
+                className="fill-slate-500 text-[10px] font-medium"
+              >
+                {p.rotulo}
+              </text>
+            ))}
+          </svg>
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-medium text-slate-600">
+            <span className="inline-flex items-center gap-2">
+              <span className="h-0.5 w-6 bg-success-600" aria-hidden />
+              Confirmados
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span className="h-0.5 w-6 bg-danger-500" aria-hidden />
+              Furos
+            </span>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function RankingProfissionaisAtivos({
+  ranking,
+}: {
+  ranking: LinhaRankingPeriodo[]
+}) {
+  if (ranking.length === 0) {
+    return (
+      <p className="py-6 text-center text-sm text-slate-500">
+        Sem profissionais com plantões no período.
+      </p>
+    )
+  }
+
+  const maxHoras = Math.max(1, ...ranking.map((r) => r.horasNum))
+
+  return (
+    <ul className="space-y-3">
+      {ranking.map((row) => {
+        const pctBarra = (row.horasNum / maxHoras) * 100
+        return (
+          <li
+            key={row.profissionalId}
+            className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2.5"
+          >
+            <span
+              className="w-5 shrink-0 text-sm font-bold tabular-nums text-slate-400"
+              aria-hidden
+            >
+              {row.n}.
+            </span>
+            {row.fotoUrl ? (
+              <img
+                src={row.fotoUrl}
+                alt=""
+                className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-white"
+              />
+            ) : (
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-800"
+                aria-hidden
+              >
+                {iniciais(row.nome)}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium text-slate-900">{row.nome}</p>
+              <div className="mt-1.5 flex items-center gap-3 text-xs text-slate-500">
+                <span className="tabular-nums">
+                  {row.realizados} plantões
+                </span>
+                <span className="tabular-nums font-medium text-slate-700">
+                  {row.horas}
+                </span>
+              </div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="h-full rounded-full bg-primary-500 transition-all"
+                  style={{ width: `${pctBarra}%` }}
+                />
+              </div>
+            </div>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 function ListaItens48h({
   itens,
 }: {
@@ -371,6 +664,9 @@ export function ResumoPage() {
   const [erro, setErro] = useState<string | null>(null)
   const [trocasPendentes, setTrocasPendentes] = useState<TrocaPendenteRow[]>([])
   const [carregandoTrocas, setCarregandoTrocas] = useState(false)
+  const [regrasRemuneracao, setRegrasRemuneracao] = useState<RegrasRemuneracao>(
+    REGRAS_REMUNERACAO_VAZIAS,
+  )
 
   useEffect(() => {
     if (isLoadingUser || !user || !tenantUserId) return
@@ -382,15 +678,17 @@ export function ResumoPage() {
       setErro(null)
       try {
         const hoje = new Date()
-        const min = format(startOfMonth(subMonths(hoje, 6)), 'yyyy-MM-dd')
+        const min = format(startOfYear(hoje), 'yyyy-MM-dd')
         const max = format(addDays(hoje, 2), 'yyyy-MM-dd')
-        const [plantoes, setores] = await Promise.all([
+        const [plantoes, setores, regras] = await Promise.all([
           buscarPlantoesIntervaloComLocaisSetores(userId, min, max),
           buscarSetoresEscala(userId),
+          buscarRegrasRemuneracao(userId).catch(() => REGRAS_REMUNERACAO_VAZIAS),
         ])
         if (cancelado) return
         setPlantoesRaw(plantoes)
         setSetoresOpcoes(setores.map((s) => ({ id: s.id, nome: s.nome })))
+        setRegrasRemuneracao(regras)
       } catch (e) {
         if (!cancelado) {
           setErro(e instanceof Error ? e.message : 'Erro ao carregar dados.')
@@ -460,10 +758,54 @@ export function ResumoPage() {
 
   const agora = useMemo(() => new Date(), [plantoesRaw])
 
+  const intervaloBi = useMemo(
+    () => intervaloPeriodoBi(periodo, agora),
+    [periodo, agora],
+  )
+
   const plantoesFiltrados = useMemo(
     () => filtrarPorSetor(plantoesRaw, setor),
     [plantoesRaw, setor],
   )
+
+  const metricasBi = useMemo(
+    () =>
+      calcularMetricasBi(
+        plantoesFiltrados,
+        intervaloBi,
+        regrasRemuneracao,
+        META_MINIMA_COBERTURA_PADRAO,
+      ),
+    [plantoesFiltrados, intervaloBi, regrasRemuneracao],
+  )
+
+  const barrasSetor = useMemo(
+    () =>
+      custoPorSetorOrdenado(plantoesFiltrados, intervaloBi, regrasRemuneracao),
+    [plantoesFiltrados, intervaloBi, regrasRemuneracao],
+  )
+
+  const yMaxBarrasSetor = useMemo(
+    () => maximoSerieNumerica(barrasSetor.map((b) => b.custo)),
+    [barrasSetor],
+  )
+
+  const serieSemanal = useMemo(
+    () => serieCoberturaSemanal(plantoesFiltrados, intervaloBi),
+    [plantoesFiltrados, intervaloBi],
+  )
+
+  const yMaxSemanal = useMemo(() => {
+    const vals = serieSemanal.flatMap((p) => [p.confirmados, p.furos])
+    return maximoSerieNumerica(vals)
+  }, [serieSemanal])
+
+  const rankingPeriodo = useMemo(
+    () => rankingProfissionaisPeriodo(plantoesFiltrados, intervaloBi, 5),
+    [plantoesFiltrados, intervaloBi],
+  )
+
+  const rotuloPeriodo = rotuloPeriodoBi(periodo)
 
   const contagem48h = useMemo(
     () => agregarContagens48h(plantoesFiltrados, agora),
@@ -481,13 +823,13 @@ export function ResumoPage() {
   )
 
   const donut = useMemo(
-    () => agregarDonutMesAnterior(plantoesFiltrados, agora),
-    [plantoesFiltrados, agora],
-  )
-
-  const ranking = useMemo(
-    () => rankingProfissionaisSemana(plantoesFiltrados, agora),
-    [plantoesFiltrados, agora],
+    () =>
+      agregarDonutPeriodo(
+        plantoesFiltrados,
+        intervaloBi.inicio,
+        intervaloBi.fim,
+      ),
+    [plantoesFiltrados, intervaloBi],
   )
 
   const pontosGrafico = useMemo(
@@ -610,14 +952,99 @@ export function ResumoPage() {
                 }
                 aria-label="Período do painel"
               >
-                <option value="hoje">Hoje</option>
-                <option value="semana">Esta semana</option>
-                <option value="mes">Este mês</option>
+                <option value="mes">Mês atual</option>
+                <option value="trimestre">Trimestre</option>
+                <option value="ano">Ano corrente</option>
               </select>
             </div>
           </div>
         </div>
       </header>
+
+      <section aria-label="Indicadores estratégicos" className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <CardMetricaBi
+            titulo="Custo total de escala"
+            valor={fmtBRL(metricasBi.custoTotalEscala)}
+            detalhe="Plantões realizados no período (líquido de ajustes)"
+            icone={DollarSign}
+            destaqueClass="bg-primary-50 text-primary-700"
+          />
+          <CardMetricaBi
+            titulo="Taxa de absenteísmo / glosas"
+            valor={fmtPct(metricasBi.taxaGlosasPct)}
+            detalhe={`${fmtBRL(metricasBi.totalGlosas)} em glosas sobre ${fmtBRL(metricasBi.totalBrutoEscala)} bruto`}
+            icone={Percent}
+            destaqueClass="bg-danger-50 text-danger-600"
+          />
+          <CardMetricaBi
+            titulo="Eficiência de cobertura"
+            valor={fmtPct(metricasBi.eficienciaCoberturaPct)}
+            detalhe={`${metricasBi.diasComMeta} de ${metricasBi.diasAvaliados} dias-setor com meta mínima (${META_MINIMA_COBERTURA_PADRAO} plantonistas)`}
+            icone={ShieldCheck}
+            destaqueClass="bg-success-50 text-success-700"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <CardShell
+            titulo={
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Análise financeira
+                </p>
+                <h2 className="text-base font-semibold text-slate-900">
+                  Custo por setor
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Plantões realizados no {rotuloPeriodo}, do mais caro ao mais barato.
+                </p>
+              </div>
+            }
+          >
+            <GraficoBarrasSetor barras={barrasSetor} yMax={yMaxBarrasSetor} />
+          </CardShell>
+
+          <CardShell
+            titulo={
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Cobertura operacional
+                </p>
+                <h2 className="text-base font-semibold text-slate-900">
+                  Evolução semanal
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Confirmados vs. furos por semana no {rotuloPeriodo}.
+                </p>
+              </div>
+            }
+          >
+            <GraficoCoberturaSemanal pontos={serieSemanal} yMax={yMaxSemanal} />
+          </CardShell>
+        </div>
+
+        <CardShell
+          titulo={
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary-600" aria-hidden />
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Ranking
+                </p>
+                <h2 className="text-base font-semibold text-slate-900">
+                  Profissionais mais ativos
+                </h2>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Top 5 no {rotuloPeriodo} — plantões e carga horária.
+                </p>
+              </div>
+            </div>
+          }
+        >
+          <RankingProfissionaisAtivos ranking={rankingPeriodo} />
+        </CardShell>
+      </section>
 
       {!isMembroProfissional ? (
         <CardShell
@@ -782,7 +1209,7 @@ export function ResumoPage() {
             <h2 className="text-sm font-semibold leading-snug text-slate-800">
               <span className="text-slate-500">Tipos de plantão no </span>
               <span className="uppercase tracking-wide text-slate-900">
-                mês anterior
+                {rotuloPeriodo}
               </span>
             </h2>
           }
@@ -796,87 +1223,16 @@ export function ResumoPage() {
         <CardShell
           titulo={
             <h2 className="text-sm font-semibold leading-snug text-slate-800">
-              <span className="text-slate-500">Profissionais </span>
+              <span className="text-slate-500">Histórico — </span>
               <span className="uppercase tracking-wide text-slate-900">
-                nesta semana
+                últimos 7 meses
               </span>
             </h2>
           }
         >
-          <div className="-mx-5 -mt-4 max-h-[min(24rem,55vh)] overflow-auto rounded-lg border border-slate-100">
-            <table className="w-full min-w-[320px] text-left text-sm">
-              <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Nome</th>
-                  <th className="px-4 py-3 text-right font-medium">
-                    Realizados
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium">Horas</th>
-                  <th className="px-4 py-3 text-right font-medium">
-                    Coberturas
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {ranking.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="px-4 py-6 text-center text-sm text-slate-500"
-                    >
-                      Sem plantões atribuídos esta semana.
-                    </td>
-                  </tr>
-                ) : (
-                  ranking.map((row) => (
-                    <tr
-                      key={row.profissionalId}
-                      className="transition-colors hover:bg-slate-50/80"
-                    >
-                      <td className="px-4 py-2.5">
-                        <span className="mr-2 inline-block w-5 tabular-nums text-slate-400">
-                          {row.n}.
-                        </span>
-                        <span className="font-medium text-slate-900">
-                          {row.nome}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">
-                        {row.realizados}
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">
-                        {row.horas}
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums font-medium text-primary-700">
-                        {row.coberturas}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardShell>
-
-        <CardShell
-          titulo={
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-slate-400" aria-hidden />
-              <h2 className="text-sm font-semibold text-slate-800">
-                Plantões por período
-              </h2>
-            </div>
-          }
-        >
           <p className="mb-3 text-xs text-slate-500">
-            Séries dos últimos 7 meses (total, coberturas sem vagos, furos). Recorte
-            visível no painel:{' '}
-            {periodo === 'hoje'
-              ? 'hoje'
-              : periodo === 'semana'
-                ? 'esta semana'
-                : 'este mês'}
-            . Eixo até {yMaxGrafico} plantões.
+            Visão histórica independente do filtro de período (total, coberturas e furos).
+            Eixo até {yMaxGrafico} plantões.
           </p>
           <GraficoPlantoesPeriodo pontos={pontosGrafico} yMax={yMaxGrafico} />
         </CardShell>

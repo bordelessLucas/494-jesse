@@ -59,6 +59,16 @@ import {
   substituirProfissionalPlantao,
   type CandidatoTrocaPlantao,
 } from '../../lib/escalas/muralTrocasDb'
+import {
+  avaliarAvisoCargaSemanal,
+  calcularCargaHorariaSemanal,
+  intervaloPlantao,
+  observacoesComJustificativaCoordenacao,
+  verificarChoqueHorario,
+  type ResultadoAvisoCargaSemanal,
+  type ResultadoChoqueHorario,
+} from '../../lib/escalas/validacoesEscala'
+import { duracaoHorasPlantao } from '../../lib/dashboard/plantaoHoras'
 import { supabase } from '../../lib/supabase'
 import { useContaMembro } from '../../hooks/useContaMembro'
 import { useTenantUserId } from '../../hooks/useTenantUserId'
@@ -308,6 +318,10 @@ export function ModalAlterarPlantao({
   const [repasseProfissionalId, setRepasseProfissionalId] = useState('')
   const [salvandoTroca, setSalvandoTroca] = useState(false)
   const [carregandoCandidatos, setCarregandoCandidatos] = useState(false)
+  const [choqueHorario, setChoqueHorario] = useState<ResultadoChoqueHorario | null>(null)
+  const [avisoCarga, setAvisoCarga] = useState<ResultadoAvisoCargaSemanal | null>(null)
+  const [justificativaCoordenacao, setJustificativaCoordenacao] = useState('')
+  const [validandoCompliance, setValidandoCompliance] = useState(false)
 
   const setoresDoLocal = useMemo(
     () => setores.filter((s) => s.local_id === localSel),
@@ -417,8 +431,78 @@ export function ModalAlterarPlantao({
       setPrecisaCobertura(false)
       setOutrasInformacoes('')
       setObservacaoInterna('')
+      setJustificativaCoordenacao('')
+      setChoqueHorario(null)
+      setAvisoCarga(null)
     }
   }, [aberto, contexto?.cartao.id, contexto?.dia])
+
+  useEffect(() => {
+    if (!aberto || !userId || !profissionalSel || situacao === 'vago') {
+      setChoqueHorario(null)
+      setAvisoCarga(null)
+      return
+    }
+    if (!dataPlantaoIso || !/^\d{4}-\d{2}-\d{2}$/.test(dataPlantaoIso)) return
+
+    const plantaoIdExcluir = contexto?.plantaoId ?? null
+    let cancelado = false
+
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        setValidandoCompliance(true)
+        try {
+          const { inicio, fim } = intervaloPlantao(
+            dataPlantaoIso,
+            horaInicioForm,
+            horaFimForm,
+          )
+          const choque = await verificarChoqueHorario(
+            userId,
+            profissionalSel,
+            inicio,
+            fim,
+            plantaoIdExcluir,
+          )
+          const horasNovo = duracaoHorasPlantao(
+            dataPlantaoIso,
+            horaInicioForm,
+            horaFimForm,
+          )
+          const acumulada = await calcularCargaHorariaSemanal(
+            userId,
+            profissionalSel,
+            dataPlantaoIso,
+            plantaoIdExcluir,
+          )
+          if (cancelado) return
+          setChoqueHorario(choque)
+          setAvisoCarga(avaliarAvisoCargaSemanal(acumulada, horasNovo))
+        } catch {
+          if (!cancelado) {
+            setChoqueHorario(null)
+            setAvisoCarga(null)
+          }
+        } finally {
+          if (!cancelado) setValidandoCompliance(false)
+        }
+      })()
+    }, 350)
+
+    return () => {
+      cancelado = true
+      window.clearTimeout(timer)
+    }
+  }, [
+    aberto,
+    userId,
+    profissionalSel,
+    situacao,
+    dataPlantaoIso,
+    horaInicioForm,
+    horaFimForm,
+    contexto?.plantaoId,
+  ])
 
   const reaplicarDatasDetalhes = useCallback(() => {
     if (!contexto || !dataPlantaoIso) return
@@ -472,6 +556,12 @@ export function ModalAlterarPlantao({
   const hospitalRotulo =
     locais.find((l) => l.id === localSel)?.nome.toUpperCase() ?? 'LOCAL'
   const duracao = diferencaHoras(horaInicioForm, horaFimForm)
+  const bloqueadoPorChoque = Boolean(choqueHorario?.temChoque)
+  const exigeJustificativaCarga = Boolean(avisoCarga?.excedeLimite)
+  const justificativaPendente =
+    exigeJustificativaCarga && !justificativaCoordenacao.trim()
+  const salvarDesabilitado =
+    salvando || bloqueadoPorChoque || justificativaPendente
 
   async function salvarPlantao() {
     if (!userId) {
@@ -506,6 +596,22 @@ export function ModalAlterarPlantao({
       return
     }
 
+    if (profId && situacao !== 'vago') {
+      if (choqueHorario?.temChoque) {
+        setErroSalvar(
+          choqueHorario.mensagem ??
+            'Conflito detetado: este profissional já está escalado neste horário.',
+        )
+        return
+      }
+      if (avisoCarga?.excedeLimite && !justificativaCoordenacao.trim()) {
+        setErroSalvar(
+          'Preencha a justificativa da coordenação para gravar com limite de 60 horas semanais excedido.',
+        )
+        return
+      }
+    }
+
     if (!dataPlantaoIso || !/^\d{4}-\d{2}-\d{2}$/.test(dataPlantaoIso)) {
       setErroSalvar('Informe a data do plantão.')
       return
@@ -515,6 +621,27 @@ export function ModalAlterarPlantao({
 
     const valorPlantaoGravar =
       Number.isFinite(valorPlantaoNum) && valorPlantaoNum >= 0 ? valorPlantaoNum : 0
+
+    let observacoesGravar: string | null | undefined = undefined
+    if (profId && avisoCarga?.excedeLimite && justificativaCoordenacao.trim()) {
+      if (isNovo) {
+        observacoesGravar = observacoesComJustificativaCoordenacao(
+          null,
+          justificativaCoordenacao,
+        )
+      } else {
+        const { data: rowObs } = await supabase
+          .from('plantoes')
+          .select('observacoes')
+          .eq('id', plantaoIdReal)
+          .eq('user_id', userId)
+          .maybeSingle()
+        observacoesGravar = observacoesComJustificativaCoordenacao(
+          rowObs?.observacoes,
+          justificativaCoordenacao,
+        )
+      }
+    }
 
     setSalvando(true)
     setErroSalvar(null)
@@ -530,6 +657,7 @@ export function ModalAlterarPlantao({
           hora_fim: horaFimForm,
           status: statusFinal,
           valor_plantao: valorPlantaoGravar,
+          ...(observacoesGravar != null ? { observacoes: observacoesGravar } : {}),
           updated_at: agora,
         })
         if (error) {
@@ -548,6 +676,7 @@ export function ModalAlterarPlantao({
             hora_fim: horaFimForm,
             status: statusFinal,
             valor_plantao: valorPlantaoGravar,
+            ...(observacoesGravar != null ? { observacoes: observacoesGravar } : {}),
             updated_at: agora,
           })
           .eq('id', plantaoIdReal)
@@ -743,6 +872,22 @@ export function ModalAlterarPlantao({
         className="relative flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-slate-200/80"
         onClick={(e) => e.stopPropagation()}
       >
+        {choqueHorario?.temChoque ? (
+          <div
+            className="border-b border-danger-300 bg-danger-50 px-4 py-3 text-sm font-medium text-danger-800"
+            role="alert"
+          >
+            {choqueHorario.mensagem}
+          </div>
+        ) : null}
+        {avisoCarga?.excedeLimite ? (
+          <div
+            className="border-b border-warning-300 bg-warning-50 px-4 py-3 text-sm font-medium text-warning-900"
+            role="status"
+          >
+            {avisoCarga.mensagem}
+          </div>
+        ) : null}
         {erroSalvar ? (
           <div
             className="border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
@@ -790,11 +935,15 @@ export function ModalAlterarPlantao({
             </button>
             <button
               type="button"
-              disabled={salvando}
+              disabled={salvarDesabilitado}
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:opacity-50"
               onClick={() => void salvarPlantao()}
             >
-              <Check className="h-4 w-4" aria-hidden />
+              {validandoCompliance ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <Check className="h-4 w-4" aria-hidden />
+              )}
               {isNovo ? 'Salvar' : 'Atualizar'}
             </button>
             <button
@@ -845,6 +994,33 @@ export function ModalAlterarPlantao({
 
             {aba === 'informacoes' && (
               <div className="space-y-0 p-5 sm:p-6">
+                {exigeJustificativaCarga ? (
+                  <section className="mb-6 rounded-lg border border-warning-200 bg-warning-50/60 p-4">
+                    <label
+                      htmlFor={`${tituloModalId}-justificativa-coordenacao`}
+                      className="mb-2 block text-sm font-semibold text-warning-900"
+                    >
+                      Justificativa da Coordenação
+                      <span className="text-danger-600"> *</span>
+                    </label>
+                    <textarea
+                      id={`${tituloModalId}-justificativa-coordenacao`}
+                      className={TEXTAREA_MODAL}
+                      value={justificativaCoordenacao}
+                      onChange={(e) => {
+                        setJustificativaCoordenacao(e.target.value)
+                        setErroSalvar(null)
+                      }}
+                      rows={3}
+                      placeholder="Descreva o motivo da alocação acima do limite de 60 horas semanais…"
+                      required
+                    />
+                    <p className="mt-2 text-xs text-warning-800">
+                      Obrigatório para gravar este plantão. A justificativa será
+                      registrada nas observações do plantão no Supabase.
+                    </p>
+                  </section>
+                ) : null}
                 <section className="border-b border-slate-200 pb-6">
                   <h3 className="mb-4 text-xs font-bold uppercase tracking-wide text-slate-500">
                     Local e setor

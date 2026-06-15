@@ -163,6 +163,47 @@ export function listarPlantoes48hParaPainel(
     })
 }
 
+export function agregarDonutPeriodo(
+  linhas: PlantaoDashboardRow[],
+  inicio: Date,
+  fim: Date,
+): { fatias: FatiaDonutMes[]; totalPlantoes: number } {
+  const noPeriodo = linhas.filter((r) => {
+    const d = dataLocalAPartirDeIsoData(r.data_plantao)
+    return d >= inicio && d <= fim
+  })
+
+  let nNormal = 0
+  let nFds = 0
+  let nNot = 0
+  let fNormal = 0
+  let fFds = 0
+  let fNot = 0
+  for (const r of noPeriodo) {
+    const tipo = classificarTipoPlantao(r)
+    const vago = r.status === 'vago'
+    if (tipo === 'fds') {
+      nFds++
+      if (vago) fFds++
+    } else if (tipo === 'noturno') {
+      nNot++
+      if (vago) fNot++
+    } else {
+      nNormal++
+      if (vago) fNormal++
+    }
+  }
+
+  const totalPlantoes = noPeriodo.length
+  const fatias: FatiaDonutMes[] = [
+    { tipo: 'Normal', total: nNormal, furos: fNormal, cor: 'bg-slate-300' },
+    { tipo: 'Fim de semana', total: nFds, furos: fFds, cor: 'bg-warning-500' },
+    { tipo: 'Noturno', total: nNot, furos: fNot, cor: 'bg-primary-600' },
+  ]
+
+  return { fatias, totalPlantoes }
+}
+
 export function agregarDonutMesAnterior(
   linhas: PlantaoDashboardRow[],
   referencia: Date,

@@ -1,9 +1,17 @@
 import { supabase } from '../supabase'
 import type { PlantaoRowDb } from '../escalas/plantoesDb'
 
+type ProfissionalDashboardJoin = {
+  id: string
+  nome: string
+  detalhes?: unknown
+} | null
+
 export type PlantaoDashboardRow = PlantaoRowDb & {
+  remuneracao_tipo_id?: string | null
   locais?: { nome_fantasia: string } | null
   setores?: { nome: string } | null
+  profissionais?: ProfissionalDashboardJoin
 }
 
 export async function buscarPlantoesIntervaloComLocaisSetores(
@@ -26,9 +34,10 @@ export async function buscarPlantoesIntervaloComLocaisSetores(
       status,
       observacoes,
       valor_plantao,
+      remuneracao_tipo_id,
       ajuste_financeiro,
       observacao_ajuste,
-      profissionais ( id, nome ),
+      profissionais ( id, nome, detalhes ),
       locais ( nome_fantasia ),
       setores ( nome )
     `,
@@ -111,9 +120,10 @@ export async function buscarPlantoesDoProfissional(
       status,
       observacoes,
       valor_plantao,
+      remuneracao_tipo_id,
       ajuste_financeiro,
       observacao_ajuste,
-      profissionais ( id, nome ),
+      profissionais ( id, nome, detalhes ),
       locais ( nome_fantasia ),
       setores ( nome )
     `,
