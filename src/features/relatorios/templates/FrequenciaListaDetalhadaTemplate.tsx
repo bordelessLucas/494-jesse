@@ -1,6 +1,11 @@
+import { BlocoAssinaturaDigitalJuridica } from '../components/BlocoAssinaturaDigitalJuridica'
 import { CabecalhoContratual } from '../components/CabecalhoContratual'
 import { PaginaA4 } from '../components/PaginaA4'
-import type { CabecalhoContratualData, LinhaFrequenciaDetalhada } from '../types'
+import type {
+  AssinaturaResponsavel,
+  CabecalhoContratualData,
+  LinhaFrequenciaDetalhada,
+} from '../types'
 
 type FrequenciaListaDetalhadaTemplateProps = {
   cabecalho: CabecalhoContratualData
@@ -8,6 +13,8 @@ type FrequenciaListaDetalhadaTemplateProps = {
   linhas: LinhaFrequenciaDetalhada[]
   carregando?: boolean
   totalPlantoes?: number
+  assinatura?: AssinaturaResponsavel
+  modoPreviewAssinatura?: boolean
 }
 
 /**
@@ -20,9 +27,20 @@ export function FrequenciaListaDetalhadaTemplate({
   linhas,
   carregando = false,
   totalPlantoes = 0,
+  assinatura,
+  modoPreviewAssinatura = true,
 }: FrequenciaListaDetalhadaTemplateProps) {
   return (
-    <PaginaA4>
+    <PaginaA4
+      rodape={
+        assinatura ? (
+          <BlocoAssinaturaDigitalJuridica
+            assinatura={assinatura}
+            modoPreview={modoPreviewAssinatura}
+          />
+        ) : undefined
+      }
+    >
       <CabecalhoContratual {...cabecalho} />
 
       <h2 className="mt-4 text-center text-sm font-bold uppercase tracking-wide">

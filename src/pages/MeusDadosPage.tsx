@@ -2,6 +2,7 @@ import { Loader2, MapPinned } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { CertificadoDigitalPanel } from '../components/Profissionais/CertificadoDigitalPanel'
 import { DocumentosProfissionalPanel } from '../components/Profissionais/DocumentosProfissionalPanel'
 import { useContaMembro } from '../hooks/useContaMembro'
 import { supabase } from '../lib/supabase'
@@ -78,6 +79,9 @@ export function MeusDadosPage() {
             siglaConselho={siglaConselho}
             podeValidar={false}
           />
+        </div>
+        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
+          <CertificadoDigitalPanel profissionalId={profissionalId} />
         </div>
         </>
       ) : isTitular ? (

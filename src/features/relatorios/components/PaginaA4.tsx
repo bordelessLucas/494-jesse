@@ -4,6 +4,8 @@ import { cn } from '../../../lib/cn'
 
 type PaginaA4Props = {
   children: ReactNode
+  /** Rodapé fixado ao fundo da folha (ex.: bloco de assinatura digital). */
+  rodape?: ReactNode
   className?: string
 }
 
@@ -17,17 +19,19 @@ type PaginaA4Props = {
  * remove sombra/borda e aplica `print-color-adjust: exact` para preservar
  * bordas pretas das tabelas.
  */
-export function PaginaA4({ children, className }: PaginaA4Props) {
+export function PaginaA4({ children, rodape, className }: PaginaA4Props) {
   return (
     <article
       className={cn(
         'pagina-a4 mx-auto bg-white font-sans text-black shadow-md ring-1 ring-black/5',
         'w-[210mm] min-h-[297mm] p-[15mm]',
+        rodape ? 'flex flex-col' : undefined,
         'print:m-0 print:w-auto print:min-h-0 print:p-0 print:shadow-none print:ring-0',
         className,
       )}
     >
-      {children}
+      <div className={rodape ? 'flex-1' : undefined}>{children}</div>
+      {rodape}
     </article>
   )
 }

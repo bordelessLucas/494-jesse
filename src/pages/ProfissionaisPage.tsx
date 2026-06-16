@@ -29,6 +29,7 @@ import {
   type ProfissionalQueryRow,
 } from '../lib/profissionais/mapProfissional'
 import { criarAcessoProfissional } from '../lib/profissionais/criarAcessoProfissional'
+import { atualizarPermissoesPorProfissional } from '../lib/auth/contaMembroDb'
 import { supabase } from '../lib/supabase'
 
 const TAMANHO_PAGINA = 30
@@ -387,6 +388,17 @@ export function ProfissionaisPage() {
             })),
           )
         if (erroInsercaoVinculos) return { error: erroInsercaoVinculos.message }
+      }
+
+      if (form.temAcessoLogin) {
+        try {
+          await atualizarPermissoesPorProfissional(id, form.permissoes)
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : 'Erro ao atualizar permissões.'
+          return {
+            error: `Dados guardados, mas as permissões não foram atualizadas: ${msg}`,
+          }
+        }
       }
 
       await carregar()

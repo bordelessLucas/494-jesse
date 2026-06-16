@@ -1,7 +1,23 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 import { Loader2, Printer } from 'lucide-react'
 
+import { useContaMembro } from '../../hooks/useContaMembro'
 import { useTenantUserId } from '../../hooks/useTenantUserId'
+import {
+  assinarRelatorioProfissional,
+  listarProfissionaisComCertificadoAtivo,
+  type ProfissionalCertificadoAtivo,
+} from '../../lib/relatorios/assinarRelatorioProfissional'
+import {
+  capturarPreviewComoPdf,
+  pdfParaBase64,
+} from '../../lib/relatorios/capturarPreviewComoPdf'
+import {
+  buscarDadosAssinaturaEmissor,
+  montarAssinaturaDocumento,
+  type DadosAssinaturaEmissor,
+} from '../../lib/relatorios/dadosAssinaturaEmissor'
 import { registrarRelatorioImpresso } from '../../lib/relatorios/relatoriosHistoricoDb'
 import {
   buscarLocaisRelatorio,
@@ -217,17 +233,6 @@ const CAMPOS_CABECALHO_FORMULARIO: {
   { chave: 'competencia', label: 'Competência (texto no relatório)' },
 ]
 
-function montarAssinaturaAPartirDoCabecalho(
-  cab: CabecalhoContratualData,
-): AssinaturaResponsavel {
-  return {
-    nomeProfissional: cab.coordenador,
-    crmRqe: 'CRM/SP 123456 — RQE 7890',
-    nomeEmpresa: cab.empresa,
-    cnpjEmpresa: cab.cnpj,
-  }
-}
-
 /** Blocos iniciais vazios — o coordenador adiciona texto/imagem pelos botões. */
 const BLOCOS_INICIAIS_SCIRAS: RelatorioAtividadesBloco[] = []
 
@@ -245,7 +250,10 @@ function formatarDataEmissao(competenciaCabecalho: string): string {
 
 export function EmissaoRelatoriosPage() {
   const { tenantUserId } = useTenantUserId()
+  const { isTitular, isMembroProfissional, profissionalId: profissionalIdMembro } =
+    useContaMembro()
   const { logoUrl } = useThemeBranding()
+  const previewCapturaRef = useRef<HTMLDivElement>(null)
   const competencias = useMemo(() => gerarCompetencias(), [])
   const rascunhoGuardado = useMemo(() => lerEmissaoRelatorioRascunho(), [])
 
@@ -300,8 +308,73 @@ export function EmissaoRelatoriosPage() {
     useState(false)
 
   const [versaoHistorico, setVersaoHistorico] = useState(0)
-  const [aRegistarImpressao, setARegistarImpressao] = useState(false)
+  const [aAssinarRelatorio, setAAssinarRelatorio] = useState(false)
   const [avisoHistorico, setAvisoHistorico] = useState<string | null>(null)
+  const [profissionaisComCertificado, setProfissionaisComCertificado] = useState<
+    ProfissionalCertificadoAtivo[]
+  >([])
+  const [profissionalEmissorId, setProfissionalEmissorId] = useState('')
+  const [carregandoEmissores, setCarregandoEmissores] = useState(false)
+  const [dadosEmissor, setDadosEmissor] = useState<DadosAssinaturaEmissor | null>(
+    null,
+  )
+  const [dataHoraAssinaturaPdf, setDataHoraAssinaturaPdf] = useState<
+    string | undefined
+  >(undefined)
+
+  useEffect(() => {
+    if (!tenantUserId || !isTitular) {
+      setProfissionaisComCertificado([])
+      setProfissionalEmissorId('')
+      return
+    }
+
+    let cancelado = false
+    setCarregandoEmissores(true)
+    void listarProfissionaisComCertificadoAtivo(tenantUserId)
+      .then((lista) => {
+        if (cancelado) return
+        setProfissionaisComCertificado(lista)
+        setProfissionalEmissorId((atual) => {
+          if (atual && lista.some((p) => p.profissionalId === atual)) return atual
+          return lista[0]?.profissionalId ?? ''
+        })
+      })
+      .catch(() => {
+        if (!cancelado) setProfissionaisComCertificado([])
+      })
+      .finally(() => {
+        if (!cancelado) setCarregandoEmissores(false)
+      })
+
+    return () => {
+      cancelado = true
+    }
+  }, [tenantUserId, isTitular])
+
+  const profissionalEmissorEfetivo = isMembroProfissional
+    ? profissionalIdMembro
+    : profissionalEmissorId || null
+
+  useEffect(() => {
+    if (!profissionalEmissorEfetivo) {
+      setDadosEmissor(null)
+      return
+    }
+
+    let cancelado = false
+    void buscarDadosAssinaturaEmissor(profissionalEmissorEfetivo)
+      .then((dados) => {
+        if (!cancelado) setDadosEmissor(dados)
+      })
+      .catch(() => {
+        if (!cancelado) setDadosEmissor(null)
+      })
+
+    return () => {
+      cancelado = true
+    }
+  }, [profissionalEmissorEfetivo])
 
   const competencia = useMemo(
     () =>
@@ -330,6 +403,14 @@ export function EmissaoRelatoriosPage() {
     (): CabecalhoContratualData => ({ ...cabecalhoTexto, logoUrl }),
     [cabecalhoTexto, logoUrl],
   )
+
+  const assinaturaDocumento = useMemo(
+    () =>
+      montarAssinaturaDocumento(cabecalho, dadosEmissor, dataHoraAssinaturaPdf),
+    [cabecalho, dadosEmissor, dataHoraAssinaturaPdf],
+  )
+
+  const modoPreviewAssinatura = !dataHoraAssinaturaPdf
 
   useEffect(() => {
     salvarEmissaoRelatorioRascunho({
@@ -484,66 +565,89 @@ export function EmissaoRelatoriosPage() {
   const handleImprimir = async () => {
     setAvisoHistorico(null)
 
-    if (tenantUserId) {
-      setARegistarImpressao(true)
-      try {
-        const titulo =
-          TIPOS_RELATORIO.find((t) => t.id === tipoSelecionado)?.label ??
-          tipoSelecionado
-        const competenciaRotulo = competencia?.label ?? competenciaId
-
-        await registrarRelatorioImpresso(tenantUserId, {
-          tipo_relatorio: tipoSelecionado,
-          titulo,
-          competencia: competenciaRotulo,
-          local_ref: localId,
-          local_nome: detalhe.nomeLocal,
-          cabecalho: { ...cabecalhoTexto, logoUrl } as Json,
-          snapshot: {
-            tipoSelecionado,
-            competenciaId,
-            competenciaRotulo,
-            localId,
-            cabecalho,
-            totalDias,
-            linhasFrequencia:
-              tipoSelecionado !== 'RelatorioSCIRAS' ? linhasFrequencia : undefined,
-            escalaSetor:
-              tipoSelecionado === 'FrequenciaSetor' ? escalaSetor : undefined,
-            escalaCoordenacao:
-              tipoSelecionado === 'FrequenciaCoordenacao'
-                ? escalaCoordenacao
-                : undefined,
-            indicadoresEscala:
-              tipoSelecionado === 'RelatorioSCIRAS' ? indicadoresEscala : undefined,
-            rotulosTurnosFrequenciaSetor:
-              tipoSelecionado === 'FrequenciaSetor'
-                ? rotulosTurnosFrequenciaSetor
-                : undefined,
-            blocosSCIRAS:
-              tipoSelecionado === 'RelatorioSCIRAS'
-                ? blocosRelatorio.blocos
-                : undefined,
-            indicadorUti: indicadorUtiRelatorio,
-            indicadorCirurgico: indicadorCirurgicoRelatorio,
-          } as Json,
-        })
-        setVersaoHistorico((v) => v + 1)
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Erro ao guardar histórico.'
-        setAvisoHistorico(
-          msg.includes('relatorios_historico') || msg.includes('schema')
-            ? 'Não foi possível guardar o histórico (migração pendente). A impressão continuará.'
-            : `Histórico não guardado: ${msg}. A impressão continuará.`,
-        )
-      } finally {
-        setARegistarImpressao(false)
-      }
-    } else {
-      setAvisoHistorico('Inicie sessão para registar o relatório no histórico.')
+    if (!tenantUserId) {
+      setAvisoHistorico('Inicie sessão para emitir e assinar relatórios.')
+      return
     }
 
-    window.print()
+    if (!profissionalEmissorEfetivo) {
+      setAvisoHistorico(
+        isTitular
+          ? 'Selecione um profissional com certificado digital ativo para assinar o relatório.'
+          : 'Associe um perfil profissional com certificado digital em Meus dados.',
+      )
+      return
+    }
+
+    const elementoPreview = previewCapturaRef.current
+    if (!elementoPreview) {
+      setAvisoHistorico('Preview do relatório indisponível. Recarregue a página.')
+      return
+    }
+
+    setAAssinarRelatorio(true)
+
+    try {
+      const dataHoraAssinatura = new Date().toISOString()
+      flushSync(() => setDataHoraAssinaturaPdf(dataHoraAssinatura))
+
+      const titulo =
+        TIPOS_RELATORIO.find((t) => t.id === tipoSelecionado)?.label ?? tipoSelecionado
+      const competenciaRotulo = competencia?.label ?? competenciaId
+
+      const relatorioRegistado = await registrarRelatorioImpresso(tenantUserId, {
+        tipo_relatorio: tipoSelecionado,
+        titulo,
+        competencia: competenciaRotulo,
+        local_ref: localId,
+        local_nome: detalhe.nomeLocal,
+        cabecalho: { ...cabecalhoTexto, logoUrl } as Json,
+        snapshot: {
+          tipoSelecionado,
+          competenciaId,
+          competenciaRotulo,
+          localId,
+          cabecalho,
+          totalDias,
+          linhasFrequencia:
+            tipoSelecionado !== 'RelatorioSCIRAS' ? linhasFrequencia : undefined,
+          escalaSetor:
+            tipoSelecionado === 'FrequenciaSetor' ? escalaSetor : undefined,
+          escalaCoordenacao:
+            tipoSelecionado === 'FrequenciaCoordenacao'
+              ? escalaCoordenacao
+              : undefined,
+          indicadoresEscala:
+            tipoSelecionado === 'RelatorioSCIRAS' ? indicadoresEscala : undefined,
+          rotulosTurnosFrequenciaSetor:
+            tipoSelecionado === 'FrequenciaSetor'
+              ? rotulosTurnosFrequenciaSetor
+              : undefined,
+          blocosSCIRAS:
+            tipoSelecionado === 'RelatorioSCIRAS'
+              ? blocosRelatorio.blocos
+              : undefined,
+          indicadorUti: indicadorUtiRelatorio,
+          indicadorCirurgico: indicadorCirurgicoRelatorio,
+        } as Json,
+      })
+
+      const pdfBytes = await capturarPreviewComoPdf(elementoPreview)
+      const resultado = await assinarRelatorioProfissional({
+        relatorioId: relatorioRegistado.id,
+        profissionalId: profissionalEmissorEfetivo,
+        pdfBase64: pdfParaBase64(pdfBytes),
+      })
+
+      setVersaoHistorico((v) => v + 1)
+      window.open(resultado.pdfAssinadoUrl, '_blank', 'noopener,noreferrer')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Erro ao assinar o relatório.'
+      setAvisoHistorico(msg)
+    } finally {
+      setAAssinarRelatorio(false)
+      setDataHoraAssinaturaPdf(undefined)
+    }
   }
 
   const alterarRotuloTurnoFrequencia = (indice: number, valor: string) => {
@@ -606,8 +710,13 @@ export function EmissaoRelatoriosPage() {
         erroPlantoes={erroPlantoes}
         totalPlantoesRealizados={plantoesRelatorio.length}
         onImprimir={() => void handleImprimir()}
-        aRegistarImpressao={aRegistarImpressao}
+        aAssinarRelatorio={aAssinarRelatorio}
         avisoHistorico={avisoHistorico}
+        isTitular={isTitular}
+        profissionaisComCertificado={profissionaisComCertificado}
+        profissionalEmissorId={profissionalEmissorId}
+        onChangeProfissionalEmissor={setProfissionalEmissorId}
+        carregandoEmissores={carregandoEmissores}
         painelHistorico={
           <HistoricoRelatoriosPanel userId={tenantUserId ?? undefined} versaoLista={versaoHistorico} />
         }
@@ -627,7 +736,7 @@ export function EmissaoRelatoriosPage() {
         ) : null}
       </PainelConfiguracao>
 
-      <PainelPreview>
+      <PainelPreview capturaRef={previewCapturaRef}>
         <PreviewRelatorioSelecionado
           tipoSelecionado={tipoSelecionado}
           cabecalho={cabecalho}
@@ -645,6 +754,8 @@ export function EmissaoRelatoriosPage() {
           indicadoresRelatorioCarregando={
             indicadoresRelatorioCarregando || carregandoPlantoes
           }
+          assinatura={assinaturaDocumento}
+          modoPreviewAssinatura={modoPreviewAssinatura}
         />
       </PainelPreview>
     </div>
@@ -669,8 +780,13 @@ type PainelConfiguracaoProps = {
   erroPlantoes?: string | null
   totalPlantoesRealizados?: number
   onImprimir: () => void
-  aRegistarImpressao?: boolean
+  aAssinarRelatorio?: boolean
   avisoHistorico?: string | null
+  isTitular?: boolean
+  profissionaisComCertificado?: ProfissionalCertificadoAtivo[]
+  profissionalEmissorId?: string
+  onChangeProfissionalEmissor?: (valor: string) => void
+  carregandoEmissores?: boolean
   painelHistorico?: ReactNode
   cabecalhoTexto: CabecalhoTextoEditavel
   onAlterarCampoCabecalho: (
@@ -700,8 +816,13 @@ function PainelConfiguracao({
   erroPlantoes,
   totalPlantoesRealizados = 0,
   onImprimir,
-  aRegistarImpressao = false,
+  aAssinarRelatorio = false,
   avisoHistorico,
+  isTitular = false,
+  profissionaisComCertificado = [],
+  profissionalEmissorId = '',
+  onChangeProfissionalEmissor,
+  carregandoEmissores = false,
   painelHistorico,
   cabecalhoTexto,
   onAlterarCampoCabecalho,
@@ -840,6 +961,40 @@ function PainelConfiguracao({
         ) : null}
         </div>
 
+        {isTitular ? (
+          <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+            <p className="text-sm font-medium text-slate-800">
+              Profissional assinante
+            </p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              O certificado digital ICP-Brasil deste profissional será aplicado ao PDF.
+            </p>
+            {carregandoEmissores ? (
+              <p className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                A carregar profissionais com certificado…
+              </p>
+            ) : profissionaisComCertificado.length === 0 ? (
+              <p className="mt-2 text-xs text-amber-800">
+                Nenhum profissional com certificado ativo. Peça ao médico que registe o
+                certificado em <strong>Meus dados</strong>.
+              </p>
+            ) : (
+              <select
+                value={profissionalEmissorId}
+                onChange={(e) => onChangeProfissionalEmissor?.(e.target.value)}
+                className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+              >
+                {profissionaisComCertificado.map((prof) => (
+                  <option key={prof.profissionalId} value={prof.profissionalId}>
+                    {prof.nome}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        ) : null}
+
         {children ? (
           <div className="border-t border-slate-100 px-6 py-4">{children}</div>
         ) : null}
@@ -859,19 +1014,22 @@ function PainelConfiguracao({
         ) : null}
         <button
           type="button"
-          disabled={aRegistarImpressao}
+          disabled={aAssinarRelatorio}
           onClick={onImprimir}
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-5 py-3 text-base font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 disabled:opacity-60"
         >
-          {aRegistarImpressao ? (
+          {aAssinarRelatorio ? (
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
           ) : (
             <Printer className="h-5 w-5" aria-hidden />
           )}
-          {aRegistarImpressao ? 'A registar…' : 'Imprimir / Salvar PDF'}
+          {aAssinarRelatorio
+            ? 'Autenticando e aplicando assinatura jurídica do conselho…'
+            : 'Imprimir / Salvar PDF'}
         </button>
         <p className="mt-2 text-center text-xs text-slate-500">
-          Dica: escolha “Salvar como PDF” na janela de impressão do navegador.
+          O PDF assinado digitalmente será aberto numa nova aba para impressão ou
+          download.
         </p>
       </div>
     </aside>
@@ -884,12 +1042,15 @@ function PainelConfiguracao({
 
 type PainelPreviewProps = {
   children: ReactNode
+  capturaRef?: React.RefObject<HTMLDivElement | null>
 }
 
-function PainelPreview({ children }: PainelPreviewProps) {
+function PainelPreview({ children, capturaRef }: PainelPreviewProps) {
   return (
     <section className="flex-1 overflow-y-auto bg-slate-300 p-8 print:overflow-visible print:bg-white print:p-0">
-      <div className="flex justify-center">{children}</div>
+      <div ref={capturaRef} className="flex justify-center">
+        {children}
+      </div>
     </section>
   )
 }
@@ -913,6 +1074,8 @@ type PreviewRelatorioSelecionadoProps = {
   indicadorCirurgicoRelatorio: IndicadorCirurgico | null
   indicadoresEscala: IndicadoresScirasEscala
   indicadoresRelatorioCarregando: boolean
+  assinatura: AssinaturaResponsavel
+  modoPreviewAssinatura?: boolean
 }
 
 function PreviewRelatorioSelecionado({
@@ -930,9 +1093,12 @@ function PreviewRelatorioSelecionado({
   indicadorCirurgicoRelatorio,
   indicadoresEscala,
   indicadoresRelatorioCarregando,
+  assinatura,
+  modoPreviewAssinatura = true,
 }: PreviewRelatorioSelecionadoProps) {
   switch (tipoSelecionado) {
-    case 'FrequenciaSetor':
+    case 'FrequenciaSetor': {
+      const temEscalaSetor = escalaSetor.length > 0
       return (
         <div className="flex flex-col gap-8">
           <FrequenciaListaDetalhadaTemplate
@@ -941,17 +1107,22 @@ function PreviewRelatorioSelecionado({
             linhas={linhasFrequencia}
             carregando={carregandoPlantoes}
             totalPlantoes={totalPlantoesRealizados}
+            assinatura={temEscalaSetor ? undefined : assinatura}
+            modoPreviewAssinatura={modoPreviewAssinatura}
           />
-          {escalaSetor.length > 0 ? (
+          {temEscalaSetor ? (
             <FrequenciaSetorTemplate
               cabecalho={cabecalho}
               turnos={turnosFrequenciaSetor}
               escala={escalaSetor}
               totalDias={totalDias}
+              assinatura={assinatura}
+              modoPreviewAssinatura={modoPreviewAssinatura}
             />
           ) : null}
         </div>
       )
+    }
 
     case 'FrequenciaCoordenacao':
       return (
@@ -967,6 +1138,8 @@ function PreviewRelatorioSelecionado({
             cabecalho={cabecalho}
             escala={escalaCoordenacao}
             totalDias={totalDias}
+            assinatura={assinatura}
+            modoPreviewAssinatura={modoPreviewAssinatura}
           />
         </div>
       )
@@ -982,7 +1155,8 @@ function PreviewRelatorioSelecionado({
           indicadorCirurgico={indicadorCirurgicoRelatorio}
           indicadoresEscala={indicadoresEscala}
           indicadoresCarregando={indicadoresRelatorioCarregando}
-          assinatura={montarAssinaturaAPartirDoCabecalho(cabecalho)}
+          assinatura={assinatura}
+          modoPreviewAssinatura={modoPreviewAssinatura}
         />
       )
 

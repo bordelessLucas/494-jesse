@@ -18,6 +18,9 @@ export type RelatorioHistoricoRow = {
   snapshot: Json
   impresso_em: string
   created_at: string
+  pdf_assinado_url: string | null
+  profissional_emissor_id: string | null
+  assinado_em: string | null
 }
 
 export type RegistrarRelatorioImpressoInput = {
@@ -49,7 +52,7 @@ export async function registrarRelatorioImpresso(
       impresso_em: agora,
     })
     .select(
-      'id, user_id, tipo_relatorio, titulo, competencia, local_ref, local_nome, cabecalho, snapshot, impresso_em, created_at',
+      'id, user_id, tipo_relatorio, titulo, competencia, local_ref, local_nome, cabecalho, snapshot, impresso_em, created_at, pdf_assinado_url, profissional_emissor_id, assinado_em',
     )
     .single()
 
@@ -64,7 +67,7 @@ export async function listarHistoricoRelatorios(
   const { data, error } = await supabase
     .from('relatorios_historico')
     .select(
-      'id, user_id, tipo_relatorio, titulo, competencia, local_ref, local_nome, cabecalho, snapshot, impresso_em, created_at',
+      'id, user_id, tipo_relatorio, titulo, competencia, local_ref, local_nome, cabecalho, snapshot, impresso_em, created_at, pdf_assinado_url, profissional_emissor_id, assinado_em',
     )
     .eq('user_id', userId)
     .order('impresso_em', { ascending: false })

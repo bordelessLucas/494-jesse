@@ -17,18 +17,21 @@ comment on table public.user_branding is 'Cores e logotipo personalizados da pla
 
 alter table public.user_branding enable row level security;
 
+drop policy if exists "user_branding_select_own" on public.user_branding;
 create policy "user_branding_select_own"
   on public.user_branding
   for select
   to authenticated
   using (auth.uid() = user_id);
 
+drop policy if exists "user_branding_insert_own" on public.user_branding;
 create policy "user_branding_insert_own"
   on public.user_branding
   for insert
   to authenticated
   with check (auth.uid() = user_id);
 
+drop policy if exists "user_branding_update_own" on public.user_branding;
 create policy "user_branding_update_own"
   on public.user_branding
   for update
@@ -36,6 +39,7 @@ create policy "user_branding_update_own"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+drop policy if exists "user_branding_delete_own" on public.user_branding;
 create policy "user_branding_delete_own"
   on public.user_branding
   for delete
@@ -47,12 +51,14 @@ insert into storage.buckets (id, name, public)
 values ('branding-logos', 'branding-logos', true)
 on conflict (id) do update set public = excluded.public;
 
+drop policy if exists "branding_logos_public_read" on storage.objects;
 create policy "branding_logos_public_read"
   on storage.objects
   for select
   to public
   using (bucket_id = 'branding-logos');
 
+drop policy if exists "branding_logos_insert_own_folder" on storage.objects;
 create policy "branding_logos_insert_own_folder"
   on storage.objects
   for insert
@@ -62,6 +68,7 @@ create policy "branding_logos_insert_own_folder"
     and split_part(name, '/', 1) = auth.uid()::text
   );
 
+drop policy if exists "branding_logos_update_own_folder" on storage.objects;
 create policy "branding_logos_update_own_folder"
   on storage.objects
   for update
@@ -75,6 +82,7 @@ create policy "branding_logos_update_own_folder"
     and split_part(name, '/', 1) = auth.uid()::text
   );
 
+drop policy if exists "branding_logos_delete_own_folder" on storage.objects;
 create policy "branding_logos_delete_own_folder"
   on storage.objects
   for delete

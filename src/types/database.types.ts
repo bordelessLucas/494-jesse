@@ -372,6 +372,47 @@ export type Database = {
           },
         ]
       }
+      certificados_profissionais: {
+        Row: {
+          id: string
+          tenant_user_id: string
+          profissional_id: string
+          certificado_url: string
+          senha_criptografada: string
+          valido_ate: string
+          titular_certificado: string | null
+          criado_em: string
+        }
+        Insert: {
+          id?: string
+          tenant_user_id: string
+          profissional_id: string
+          certificado_url: string
+          senha_criptografada: string
+          valido_ate: string
+          titular_certificado?: string | null
+          criado_em?: string
+        }
+        Update: {
+          id?: string
+          tenant_user_id?: string
+          profissional_id?: string
+          certificado_url?: string
+          senha_criptografada?: string
+          valido_ate?: string
+          titular_certificado?: string | null
+          criado_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'certificados_profissionais_profissional_id_fkey'
+            columns: ['profissional_id']
+            isOneToOne: true
+            referencedRelation: 'profissionais'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       documentos_usuarios: {
         Row: {
           id: string
@@ -905,6 +946,9 @@ export type Database = {
           snapshot: Json
           impresso_em: string
           created_at: string
+          pdf_assinado_url: string | null
+          profissional_emissor_id: string | null
+          assinado_em: string | null
         }
         Insert: {
           id?: string
@@ -918,6 +962,9 @@ export type Database = {
           snapshot?: Json
           impresso_em?: string
           created_at?: string
+          pdf_assinado_url?: string | null
+          profissional_emissor_id?: string | null
+          assinado_em?: string | null
         }
         Update: {
           id?: string
@@ -931,6 +978,9 @@ export type Database = {
           snapshot?: Json
           impresso_em?: string
           created_at?: string
+          pdf_assinado_url?: string | null
+          profissional_emissor_id?: string | null
+          assinado_em?: string | null
         }
         Relationships: []
       }
@@ -1038,6 +1088,27 @@ export type Database = {
       }
       auth_empresa_id: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      upsert_certificado_profissional: {
+        Args: {
+          p_certificado_url: string
+          p_senha_plana: string
+          p_valido_ate: string
+          p_titular_certificado?: string | null
+        }
+        Returns: string
+      }
+      criptografar_pin_certificado: {
+        Args: {
+          p_senha: string
+        }
+        Returns: string
+      }
+      descriptografar_pin_certificado: {
+        Args: {
+          p_senha_criptografada: string
+        }
         Returns: string
       }
     }

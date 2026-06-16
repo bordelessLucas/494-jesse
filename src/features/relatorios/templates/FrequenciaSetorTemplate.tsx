@@ -1,7 +1,9 @@
+import { BlocoAssinaturaDigitalJuridica } from '../components/BlocoAssinaturaDigitalJuridica'
 import { CabecalhoContratual } from '../components/CabecalhoContratual'
 import { PaginaA4 } from '../components/PaginaA4'
 import {
   DEFAULT_TOTAL_DIAS_MES,
+  type AssinaturaResponsavel,
   type CabecalhoContratualData,
   type EscalaFrequenciaSetorEntrada,
   type TurnoFrequencia,
@@ -15,6 +17,8 @@ type FrequenciaSetorTemplateProps = {
   escala: EscalaFrequenciaSetorEntrada[]
   /** Total de dias do mês de referência. Default: 31. */
   totalDias?: number
+  assinatura?: AssinaturaResponsavel
+  modoPreviewAssinatura?: boolean
 }
 
 type MatrizEscala = Record<number, Record<TurnoFrequencia, string | null>>
@@ -33,12 +37,23 @@ export function FrequenciaSetorTemplate({
   turnos,
   escala,
   totalDias = DEFAULT_TOTAL_DIAS_MES,
+  assinatura,
+  modoPreviewAssinatura = true,
 }: FrequenciaSetorTemplateProps) {
   const matriz = construirMatrizDeEscala(escala, turnos, totalDias)
   const dias = Array.from({ length: totalDias }, (_, index) => index + 1)
 
   return (
-    <PaginaA4>
+    <PaginaA4
+      rodape={
+        assinatura ? (
+          <BlocoAssinaturaDigitalJuridica
+            assinatura={assinatura}
+            modoPreview={modoPreviewAssinatura}
+          />
+        ) : undefined
+      }
+    >
       <CabecalhoContratual {...cabecalho} />
 
       <h2 className="mt-4 text-center text-sm font-bold uppercase tracking-wide">

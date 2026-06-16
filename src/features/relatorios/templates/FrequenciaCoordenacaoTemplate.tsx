@@ -1,7 +1,9 @@
+import { BlocoAssinaturaDigitalJuridica } from '../components/BlocoAssinaturaDigitalJuridica'
 import { CabecalhoContratual } from '../components/CabecalhoContratual'
 import { PaginaA4 } from '../components/PaginaA4'
 import {
   DEFAULT_TOTAL_DIAS_MES,
+  type AssinaturaResponsavel,
   type CabecalhoContratualData,
   type EscalaCoordenacaoEntrada,
 } from '../types'
@@ -12,6 +14,8 @@ type FrequenciaCoordenacaoTemplateProps = {
   escala: EscalaCoordenacaoEntrada[]
   /** Total de dias do mês de referência. Default: 31. */
   totalDias?: number
+  assinatura?: AssinaturaResponsavel
+  modoPreviewAssinatura?: boolean
 }
 
 /**
@@ -24,12 +28,23 @@ export function FrequenciaCoordenacaoTemplate({
   cabecalho,
   escala,
   totalDias = DEFAULT_TOTAL_DIAS_MES,
+  assinatura,
+  modoPreviewAssinatura = true,
 }: FrequenciaCoordenacaoTemplateProps) {
   const coordenadorPorDia = indexarPorDia(escala, totalDias)
   const dias = Array.from({ length: totalDias }, (_, index) => index + 1)
 
   return (
-    <PaginaA4>
+    <PaginaA4
+      rodape={
+        assinatura ? (
+          <BlocoAssinaturaDigitalJuridica
+            assinatura={assinatura}
+            modoPreview={modoPreviewAssinatura}
+          />
+        ) : undefined
+      }
+    >
       <CabecalhoContratual {...cabecalho} />
 
       <h2 className="mt-4 text-center text-sm font-bold uppercase tracking-wide">

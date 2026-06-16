@@ -4,6 +4,14 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  resolve: {
+    alias: {
+      html2canvas: 'html2canvas-pro',
+    },
+  },
+  optimizeDeps: {
+    include: ['html2canvas-pro'],
+  },
   plugins: [
     react(),
     VitePWA({

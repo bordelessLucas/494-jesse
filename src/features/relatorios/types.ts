@@ -84,6 +84,12 @@ export type AssinaturaResponsavel = {
   nomeEmpresa: string
   /** CNPJ já formatado (ex.: "00.000.000/0001-00"). */
   cnpjEmpresa: string
+  /** Nome no certificado ICP-Brasil (CN), quando distinto do cadastro. */
+  titularCertificado?: string
+  /** Validade do certificado digital (ISO ou texto formatado). */
+  certificadoValidoAte?: string
+  /** Data/hora da assinatura jurídica aplicada ao PDF. */
+  dataHoraAssinatura?: string
 }
 
 /** Default usado quando o consumidor não passa explicitamente. */

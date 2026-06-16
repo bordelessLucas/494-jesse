@@ -24,6 +24,7 @@ import {
   Paperclip,
   Plus,
   Search,
+  Shield,
   ShieldCheck,
   Shuffle,
   Star,
@@ -35,7 +36,13 @@ import {
 } from 'lucide-react'
 
 import { cn } from '../../lib/cn'
+import { resolverPermissoesMembro } from '../../contexts/ContaMembroProvider'
+import { buscarContaMembroPorProfissional } from '../../lib/auth/contaMembroDb'
 import { DocumentosProfissionalPanel } from './DocumentosProfissionalPanel'
+import {
+  PERMISSOES_PROFISSIONAL,
+  permissoesProfissionalPadrao,
+} from './profissionalAcessoTypes'
 import { useContaMembro } from '../../hooks/useContaMembro'
 import { supabase } from '../../lib/supabase'
 import type {
@@ -49,6 +56,7 @@ import type {
 
 type AbaPerfil =
   | 'informacoes'
+  | 'permissoes'
   | 'endereco'
   | 'grupos'
   | 'dados-bancarios'
@@ -65,6 +73,7 @@ const ABAS: {
   Icon: ComponentType<{ className?: string }>
 }[] = [
   { id: 'informacoes', rotulo: 'Informações', Icon: UserRound },
+  { id: 'permissoes', rotulo: 'Permissões', Icon: Shield },
   { id: 'endereco', rotulo: 'Endereço', Icon: MapPin },
   { id: 'grupos', rotulo: 'Grupos', Icon: Users },
   { id: 'dados-bancarios', rotulo: 'Dados Bancários', Icon: Wallet },
@@ -226,6 +235,9 @@ export interface FormInformacoes {
   periodosContratacao: ProfissionalPeriodoContratacao[]
   afastamentos: ProfissionalAfastamento[]
   contasBancarias: ProfissionalContaBancaria[]
+  /** Profissional com login próprio na conta (registo em contas_membros). */
+  temAcessoLogin: boolean
+  permissoes: Record<string, boolean>
 }
 
 function parseRegistroProfissional(reg: string): { num: string; uf: string } {
@@ -270,6 +282,8 @@ function criarFormInformacoes(p: ProfissionalCompleto): FormInformacoes {
     contasBancarias: (p.detalhes.contasBancarias ?? []).map((c) => ({ ...c })),
     habilidades: [...p.detalhes.habilidades],
     anexos: p.detalhes.anexos.map((a) => ({ ...a })),
+    temAcessoLogin: false,
+    permissoes: permissoesProfissionalPadrao(),
   }
 }
 
@@ -1739,6 +1753,71 @@ function GruposFormulario({
   )
 }
 
+function PermissoesFormulario({
+  form,
+  setForm,
+}: {
+  form: FormInformacoes
+  setForm: Dispatch<SetStateAction<FormInformacoes | null>>
+}) {
+  if (!form.temAcessoLogin) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm leading-relaxed text-slate-600">
+          Este profissional ainda não possui login próprio na plataforma. As permissões de
+          acesso só podem ser configuradas após criar o acesso em{' '}
+          <strong>Usuários → Profissionais → Novo profissional</strong> (com a opção de criar
+          acesso ativada) ou ao convidar um profissional existente.
+        </p>
+        <p className="rounded-lg border border-dashed border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Se o profissional já deveria ter acesso, verifique se o e-mail foi registado em{' '}
+          <strong>Informações</strong> e se a conta foi criada com sucesso.
+        </p>
+      </div>
+    )
+  }
+
+  function alternarPermissao(chave: string, marcado: boolean) {
+    setForm((prev) =>
+      prev
+        ? {
+            ...prev,
+            permissoes: { ...prev.permissoes, [chave]: marcado },
+          }
+        : prev,
+    )
+  }
+
+  return (
+    <div className="space-y-5">
+      <p className="text-sm leading-relaxed text-slate-600">
+        Defina quais áreas do sistema este profissional pode aceder após entrar com o login
+        próprio. Alterações passam a valer na próxima sessão (ou após recarregar a página).
+      </p>
+      <ul className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200">
+        {PERMISSOES_PROFISSIONAL.map(({ key, label }) => (
+          <li key={key} className="flex items-start gap-3 bg-white px-4 py-3.5">
+            <input
+              type="checkbox"
+              id={`pf-perm-${key}`}
+              checked={Boolean(form.permissoes[key])}
+              onChange={(e) => alternarPermissao(key, e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+            />
+            <label htmlFor={`pf-perm-${key}`} className="text-sm leading-relaxed text-slate-800">
+              {label}
+            </label>
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-slate-500">
+        <strong>Meus dados</strong>, <strong>notificações</strong> e troca de senha obrigatória
+        permanecem sempre acessíveis ao profissional autenticado.
+      </p>
+    </div>
+  )
+}
+
 function InformacoesFormulario({
   form,
   setForm,
@@ -2008,8 +2087,26 @@ export function ProfissionalDetalhesModal({
   }, [open, profissional?.id])
 
   useEffect(() => {
-    if (open && profissional) {
-      setFormInformacoes(criarFormInformacoes(profissional))
+    if (!open || !profissional) return
+    const form = criarFormInformacoes(profissional)
+    setFormInformacoes(form)
+
+    let cancelado = false
+    void buscarContaMembroPorProfissional(profissional.id).then((membro) => {
+      if (cancelado || !membro) return
+      setFormInformacoes((prev) =>
+        prev
+          ? {
+              ...prev,
+              temAcessoLogin: true,
+              permissoes: resolverPermissoesMembro(membro.permissoes),
+            }
+          : prev,
+      )
+    })
+
+    return () => {
+      cancelado = true
     }
   }, [open, profissional])
 
@@ -2143,6 +2240,12 @@ export function ProfissionalDetalhesModal({
             setores={profissionalAtual.setores}
             locaisOpcoes={locaisOpcoes}
           />
+        ) : null
+      break
+    case 'permissoes':
+      conteudo =
+        formInformacoes ? (
+          <PermissoesFormulario form={formInformacoes} setForm={setFormInformacoes} />
         ) : null
       break
     case 'endereco':
