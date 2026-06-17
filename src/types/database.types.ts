@@ -1046,6 +1046,42 @@ export type Database = {
         }
         Relationships: []
       }
+      notificacoes: {
+        Row: {
+          id: string
+          tenant_user_id: string
+          usuario_id: string
+          titulo: string
+          mensagem: string
+          tipo: string
+          lida: boolean
+          link_acao: string | null
+          criado_em: string
+        }
+        Insert: {
+          id?: string
+          tenant_user_id: string
+          usuario_id: string
+          titulo: string
+          mensagem: string
+          tipo: string
+          lida?: boolean
+          link_acao?: string | null
+          criado_em?: string
+        }
+        Update: {
+          id?: string
+          tenant_user_id?: string
+          usuario_id?: string
+          titulo?: string
+          mensagem?: string
+          tipo?: string
+          lida?: boolean
+          link_acao?: string | null
+          criado_em?: string
+        }
+        Relationships: []
+      }
       user_branding: {
         Row: {
           user_id: string

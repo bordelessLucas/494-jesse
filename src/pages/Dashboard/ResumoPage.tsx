@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import {
   DollarSign,
   Loader2,
@@ -12,13 +12,13 @@ import toast from 'react-hot-toast'
 
 import { cn } from '../../lib/cn'
 import { useTenantUserId } from '../../hooks/useTenantUserId'
-import { supabase } from '../../lib/supabase'
 import { buscarPlantoesIntervaloComLocaisSetores } from '../../lib/dashboard/dashboardQueries'
 import {
   agregarContagens48h,
   agregarDonutPeriodo,
   filtrarPorSetor,
   listarPlantoes48hParaPainel,
+  listarTrocas48hParaPainel,
   listarVagos48hParaPainel,
   maximoSerieGrafico,
   serieMensalPlantoes,
@@ -41,32 +41,16 @@ import {
 } from '../../lib/dashboard/resumoBi'
 import { buscarSetoresEscala } from '../../lib/escalas/plantoesDb'
 import {
-  aprovarTrocaPlantao,
-  reprovarSolicitacaoTroca,
+  aprovarCandidatura,
+  buscarCandidaturasPendentes,
+  filtrarCandidaturas48h,
+  recusarCandidatura,
+  type CandidaturaPendenteRow,
 } from '../../lib/escalas/muralTrocasDb'
 import { buscarRegrasRemuneracao } from '../../lib/financeiro/remuneracaoDb'
 import { REGRAS_REMUNERACAO_VAZIAS } from '../../lib/financeiro/extratoCalculos'
 import type { RegrasRemuneracao } from '../../lib/financeiro/remuneracaoTypes'
 import type { PlantaoDashboardRow } from '../../lib/dashboard/dashboardQueries'
-
-type TrocaPendenteRow = {
-  id: string
-  status: string
-  created_at: string
-  plantao_id: string
-  anunciante_profissional_id: string
-  candidato_profissional_id: string
-  plantoes?: {
-    id: string
-    data_plantao: string
-    hora_inicio: string
-    hora_fim: string
-    locais?: { nome_fantasia: string } | null
-    setores?: { nome: string } | null
-  } | null
-  anunciante?: { nome: string } | null
-  candidato?: { nome: string } | null
-}
 
 type PeriodoResumo = PeriodoBi
 
@@ -616,6 +600,85 @@ function RankingProfissionaisAtivos({
   )
 }
 
+function ListaCandidaturas48h({
+  candidaturas,
+  carregando,
+  processandoId,
+  onAprovar,
+  onRecusar,
+  mensagemVazia = 'Sem candidaturas pendentes neste intervalo.',
+}: {
+  candidaturas: CandidaturaPendenteRow[]
+  carregando: boolean
+  processandoId: string | null
+  onAprovar: (candidatura: CandidaturaPendenteRow) => Promise<void>
+  onRecusar: (candidatura: CandidaturaPendenteRow) => Promise<void>
+  mensagemVazia?: string
+}) {
+  if (carregando) {
+    return (
+      <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        Carregando candidaturas…
+      </div>
+    )
+  }
+
+  if (candidaturas.length === 0) {
+    return (
+      <p className="text-sm font-medium text-slate-500">{mensagemVazia}</p>
+    )
+  }
+
+  return (
+    <ul className="w-full max-w-lg space-y-3 px-1 text-left text-sm">
+      {candidaturas.map((c) => {
+        const horario = `${c.horaInicio.slice(0, 5)}–${c.horaFim.slice(0, 5)}`
+        const processando = processandoId === c.id
+
+        return (
+          <li
+            key={c.id}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"
+          >
+            <p className="font-semibold text-slate-900">{c.candidatoNome}</p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              {c.dataPlantao} · {horario} · {c.setorNome} · {c.localNome}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Substituindo {c.anuncianteNome}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={processando}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-success-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-success-700 disabled:opacity-60"
+                onClick={() => void onAprovar(c)}
+              >
+                {processando ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                ) : null}
+                Aprovar
+              </button>
+              <button
+                type="button"
+                disabled={processando}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-danger-200 bg-white px-3 py-2 text-sm font-semibold text-danger-700 shadow-sm transition-colors hover:bg-danger-50 disabled:opacity-60"
+                onClick={() => void onRecusar(c)}
+              >
+                {processando ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                ) : null}
+                Recusar
+              </button>
+            </div>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 function ListaItens48h({
   itens,
 }: {
@@ -662,11 +725,62 @@ export function ResumoPage() {
   )
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
-  const [trocasPendentes, setTrocasPendentes] = useState<TrocaPendenteRow[]>([])
-  const [carregandoTrocas, setCarregandoTrocas] = useState(false)
+  const [candidaturasPendentes, setCandidaturasPendentes] = useState<CandidaturaPendenteRow[]>(
+    [],
+  )
+  const [carregandoCandidaturas, setCarregandoCandidaturas] = useState(false)
+  const [processandoSolicitacaoId, setProcessandoSolicitacaoId] = useState<string | null>(
+    null,
+  )
   const [regrasRemuneracao, setRegrasRemuneracao] = useState<RegrasRemuneracao>(
     REGRAS_REMUNERACAO_VAZIAS,
   )
+
+  const recarregarCandidaturas = useCallback(async () => {
+    if (!tenantUserId) return
+    setCarregandoCandidaturas(true)
+    try {
+      const rows = await buscarCandidaturasPendentes(tenantUserId)
+      setCandidaturasPendentes(rows)
+    } catch {
+      setCandidaturasPendentes([])
+    } finally {
+      setCarregandoCandidaturas(false)
+    }
+  }, [tenantUserId])
+
+  const aprovarCandidaturaHandler = useCallback(
+    async (candidatura: CandidaturaPendenteRow) => {
+      setProcessandoSolicitacaoId(candidatura.id)
+      try {
+        await aprovarCandidatura(
+          candidatura.id,
+          candidatura.plantaoId,
+          candidatura.candidatoProfissionalId,
+        )
+        toast.success('Troca de plantão efetivada com sucesso!')
+        setCandidaturasPendentes((prev) => prev.filter((x) => x.id !== candidatura.id))
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Erro ao aprovar candidatura.')
+      } finally {
+        setProcessandoSolicitacaoId(null)
+      }
+    },
+    [],
+  )
+
+  const recusarCandidaturaHandler = useCallback(async (candidatura: CandidaturaPendenteRow) => {
+    setProcessandoSolicitacaoId(candidatura.id)
+    try {
+      await recusarCandidatura(candidatura.id)
+      toast.success('Candidatura recusada.')
+      setCandidaturasPendentes((prev) => prev.filter((x) => x.id !== candidatura.id))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao recusar candidatura.')
+    } finally {
+      setProcessandoSolicitacaoId(null)
+    }
+  }, [])
 
   useEffect(() => {
     if (isLoadingUser || !user || !tenantUserId) return
@@ -705,56 +819,9 @@ export function ResumoPage() {
   }, [user, isLoadingUser, tenantUserId])
 
   useEffect(() => {
-    if (isLoadingUser || !user) return
-    if (isMembroProfissional) return
-    let cancelado = false
-
-    async function loadTrocas() {
-      setCarregandoTrocas(true)
-      try {
-        const { data, error } = await supabase
-          .from('plantoes_trocas_solicitacoes')
-          .select(
-            `
-            id,
-            status,
-            created_at,
-            plantao_id,
-            anunciante_profissional_id,
-            candidato_profissional_id,
-            plantoes (
-              id,
-              data_plantao,
-              hora_inicio,
-              hora_fim,
-              locais ( nome_fantasia ),
-              setores ( nome )
-            ),
-            anunciante:profissionais!plantoes_trocas_solicitacoes_anunciante_profissional_id_fkey ( nome ),
-            candidato:profissionais!plantoes_trocas_solicitacoes_candidato_profissional_id_fkey ( nome )
-          `,
-          )
-          .eq('status', 'aguardando_aprovacao_coordenador')
-          .order('created_at', { ascending: false })
-
-        if (error) throw new Error(error.message)
-        if (!cancelado) {
-          setTrocasPendentes((data ?? []) as unknown as TrocaPendenteRow[])
-        }
-      } catch (_e) {
-        if (!cancelado) {
-          setTrocasPendentes([])
-        }
-      } finally {
-        if (!cancelado) setCarregandoTrocas(false)
-      }
-    }
-
-    void loadTrocas()
-    return () => {
-      cancelado = true
-    }
-  }, [isLoadingUser, isMembroProfissional, user])
+    if (isLoadingUser || !tenantUserId || isMembroProfissional) return
+    void recarregarCandidaturas()
+  }, [isLoadingUser, isMembroProfissional, tenantUserId, recarregarCandidaturas])
 
   const agora = useMemo(() => new Date(), [plantoesRaw])
 
@@ -807,9 +874,21 @@ export function ResumoPage() {
 
   const rotuloPeriodo = rotuloPeriodoBi(periodo)
 
+  const candidaturasFiltradas = useMemo(() => {
+    const noSetor = setor
+      ? candidaturasPendentes.filter((c) => c.setorId === setor)
+      : candidaturasPendentes
+    return filtrarCandidaturas48h(noSetor, agora)
+  }, [candidaturasPendentes, setor, agora])
+
   const contagem48h = useMemo(
-    () => agregarContagens48h(plantoesFiltrados, agora),
-    [plantoesFiltrados, agora],
+    () =>
+      agregarContagens48h(
+        plantoesFiltrados,
+        agora,
+        candidaturasFiltradas.length,
+      ),
+    [plantoesFiltrados, agora, candidaturasFiltradas.length],
   )
 
   const listaAnunciados = useMemo(
@@ -819,6 +898,11 @@ export function ResumoPage() {
 
   const listaFuros = useMemo(
     () => listarVagos48hParaPainel(plantoesFiltrados, agora),
+    [plantoesFiltrados, agora],
+  )
+
+  const listaTrocas48h = useMemo(
+    () => listarTrocas48hParaPainel(plantoesFiltrados, agora),
     [plantoesFiltrados, agora],
   )
 
@@ -882,10 +966,15 @@ export function ResumoPage() {
   const painel48h = () => {
     if (aba48h === 'anunciados') return <ListaItens48h itens={listaAnunciados} />
     if (aba48h === 'furos') return <ListaItens48h itens={listaFuros} />
+    if (aba48h === 'trocas') return <ListaItens48h itens={listaTrocas48h} />
     return (
-      <p className="text-sm font-medium text-slate-500">
-        Sem integração — em breve no fluxo de trocas e candidaturas.
-      </p>
+      <ListaCandidaturas48h
+        candidaturas={candidaturasFiltradas}
+        carregando={carregandoCandidaturas}
+        processandoId={processandoSolicitacaoId}
+        onAprovar={aprovarCandidaturaHandler}
+        onRecusar={recusarCandidaturaHandler}
+      />
     )
   }
 
@@ -1062,90 +1151,24 @@ export function ResumoPage() {
           acaoTopo={
             <button
               type="button"
-              onClick={() => {
-                // força recarregar via efeito (mudança de referência simples)
-                setTrocasPendentes((t) => [...t])
-              }}
+              onClick={() => void recarregarCandidaturas()}
               className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
             >
-              {carregandoTrocas ? (
+              {carregandoCandidaturas ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
               ) : null}
               Atualizar
             </button>
           }
         >
-          {carregandoTrocas ? (
-            <p className="text-sm text-slate-500">Carregando solicitações…</p>
-          ) : trocasPendentes.length === 0 ? (
-            <p className="text-sm text-slate-500">Nenhuma troca pendente.</p>
-          ) : (
-            <ul className="space-y-3">
-              {trocasPendentes.map((s) => {
-                const data = s.plantoes?.data_plantao ?? ''
-                const horario = `${s.plantoes?.hora_inicio?.slice(0, 5) ?? '--:--'}–${s.plantoes?.hora_fim?.slice(0, 5) ?? '--:--'}`
-                const local = s.plantoes?.locais?.nome_fantasia ?? 'Local'
-                const setorNome = s.plantoes?.setores?.nome ?? 'Setor'
-                const anunciante = s.anunciante?.nome ?? 'Profissional'
-                const candidato = s.candidato?.nome ?? 'Candidato'
-
-                return (
-                  <li
-                    key={s.id}
-                    className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-                  >
-                    <p className="text-sm font-semibold text-slate-900">
-                      {anunciante} quer repassar o plantão de {setorNome} para {candidato}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {data} · {horario} · {local}
-                    </p>
-
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
-                        onClick={async () => {
-                          if (!s.plantao_id) return
-                          try {
-                            await aprovarTrocaPlantao({
-                              plantaoId: s.plantao_id,
-                              solicitacaoId: s.id,
-                              candidatoProfissionalId: s.candidato_profissional_id,
-                            })
-
-                            toast.success('Troca aprovada e plantão atualizado.')
-                            setTrocasPendentes((prev) => prev.filter((x) => x.id !== s.id))
-                          } catch (e) {
-                            toast.error(e instanceof Error ? e.message : 'Erro ao aprovar.')
-                          }
-                        }}
-                      >
-                        Aprovar
-                      </button>
-
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-                        onClick={async () => {
-                          try {
-                            await reprovarSolicitacaoTroca(s.id)
-
-                            toast.success('Solicitação reprovada.')
-                            setTrocasPendentes((prev) => prev.filter((x) => x.id !== s.id))
-                          } catch (e) {
-                            toast.error(e instanceof Error ? e.message : 'Erro ao reprovar.')
-                          }
-                        }}
-                      >
-                        Reprovar
-                      </button>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
+          <ListaCandidaturas48h
+            candidaturas={candidaturasPendentes}
+            carregando={carregandoCandidaturas}
+            processandoId={processandoSolicitacaoId}
+            onAprovar={aprovarCandidaturaHandler}
+            onRecusar={recusarCandidaturaHandler}
+            mensagemVazia="Nenhuma troca pendente."
+          />
         </CardShell>
       ) : null}
 

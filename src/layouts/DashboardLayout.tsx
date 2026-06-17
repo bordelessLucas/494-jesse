@@ -9,9 +9,11 @@ import { Sidebar } from '../components/Sidebar'
 import { SuporteChatWidget } from '../components/support/SuporteChatWidget'
 import { Topbar } from '../components/Topbar'
 import { useMuralTrocasAlertas } from '../hooks/useMuralTrocasAlertas'
+import { useNotificacoesRealtime } from '../hooks/useNotificacoes'
 
 export function DashboardLayout() {
   useMuralTrocasAlertas()
+  useNotificacoesRealtime()
   const [mobileNavAberto, setMobileNavAberto] = useState(false)
   const abrirMobileNav = useCallback(() => setMobileNavAberto(true), [])
   const fecharMobileNav = useCallback(() => setMobileNavAberto(false), [])

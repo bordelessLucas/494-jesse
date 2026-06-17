@@ -694,7 +694,7 @@ export function ModalAlterarPlantao({
         const mes = capitalizeFirstLetter(format(dia, 'MMMM', { locale: ptBR }))
         const dataRotulo = `${format(dia, 'dd', { locale: ptBR })}/${mes}`
 
-        enviarNotificacaoNovaEscala({
+        void enviarNotificacaoNovaEscala({
           profissionalId: profId,
           setor: setorNome,
           data: dataRotulo,

@@ -98,7 +98,7 @@ export function useMuralTrocasAlertas(): void {
           if (deveIgnorarAlertaMural(atual.id)) return
 
           exibirToastNovoPlantaoMural(atual.data_plantao)
-          notificarNovoPlantaoMural({
+          void notificarNovoPlantaoMural({
             dataPlantao: atual.data_plantao,
           })
         },

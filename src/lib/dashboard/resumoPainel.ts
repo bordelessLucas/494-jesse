@@ -98,6 +98,7 @@ export function rotuloInicioRelativo(row: PlantaoDashboardRow, agora: Date): str
 export function agregarContagens48h(
   linhas: PlantaoDashboardRow[],
   agora: Date,
+  candidaturasPendentes48h?: number,
 ): { furos: number; anunciados: number; trocas: number; candidaturas: number } {
   const fim48 = addHours(agora, 48)
   const noIntervalo = linhas.filter((r) => inIntervalo48h(r, agora, fim48))
@@ -106,8 +107,8 @@ export function agregarContagens48h(
     anunciados: noIntervalo.filter(
       (r) => r.status !== 'vago' && r.status !== 'realizado',
     ).length,
-    trocas: 0,
-    candidaturas: 0,
+    trocas: noIntervalo.filter((r) => r.status === 'pendente_troca').length,
+    candidaturas: candidaturasPendentes48h ?? 0,
   }
 }
 
@@ -131,6 +132,33 @@ export function listarVagos48hParaPainel(
         titulo: `${setor} — ${formatarHoraDb(r.hora_inicio)} às ${formatarHoraDb(
           r.hora_fim,
         )}`,
+        local,
+        inicioRelativo: rotuloInicioRelativo(r, agora),
+      }
+    })
+}
+
+export function listarTrocas48hParaPainel(
+  linhas: PlantaoDashboardRow[],
+  agora: Date,
+): ItemLista48h[] {
+  const fim48 = addHours(agora, 48)
+  return linhas
+    .filter((r) => inIntervalo48h(r, agora, fim48))
+    .filter((r) => r.status === 'pendente_troca')
+    .sort(
+      (a, b) =>
+        dataHoraInicioPlantao(a).getTime() - dataHoraInicioPlantao(b).getTime(),
+    )
+    .map((r) => {
+      const setor = r.setores?.nome?.trim() ?? 'Setor'
+      const local = r.locais?.nome_fantasia?.trim() ?? 'Local'
+      const prof = r.profissionais?.nome?.trim()
+      return {
+        id: r.id,
+        titulo: prof
+          ? `${prof} — ${setor} · ${formatarHoraDb(r.hora_inicio)}–${formatarHoraDb(r.hora_fim)}`
+          : `${setor} — ${formatarHoraDb(r.hora_inicio)} às ${formatarHoraDb(r.hora_fim)}`,
         local,
         inicioRelativo: rotuloInicioRelativo(r, agora),
       }
