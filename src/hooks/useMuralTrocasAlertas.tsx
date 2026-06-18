@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { Link } from 'react-router-dom'
 
+import { useContaMembro } from './useContaMembro'
 import { deveIgnorarAlertaMural } from '../lib/escalas/muralTrocasAlertas'
 import { supabase } from '../lib/supabase'
 import { useNotificacoes } from './useNotificacoes'
@@ -75,11 +76,12 @@ function exibirToastNovoPlantaoMural(dataPlantao?: string) {
 }
 
 export function useMuralTrocasAlertas(): void {
-  const { user, isLoading } = useSupabaseUser()
+  const { user, isLoading: authLoading } = useSupabaseUser()
+  const { tenantUserId, isLoading: membroLoading } = useContaMembro()
   const notificarNovoPlantaoMural = useNotificacoes((s) => s.notificarNovoPlantaoMural)
 
   useEffect(() => {
-    if (isLoading || !user?.id) return
+    if (authLoading || membroLoading || !user?.id || !tenantUserId) return
 
     const canal = supabase
       .channel(`mural-plantoes-${user.id}`)
@@ -89,6 +91,7 @@ export function useMuralTrocasAlertas(): void {
           event: 'UPDATE',
           schema: 'public',
           table: 'plantoes',
+          filter: `user_id=eq.${tenantUserId}`,
         },
         (payload) => {
           const anterior = payload.old as PlantaoMuralPayload | undefined
@@ -108,5 +111,11 @@ export function useMuralTrocasAlertas(): void {
     return () => {
       void supabase.removeChannel(canal)
     }
-  }, [isLoading, notificarNovoPlantaoMural, user?.id])
+  }, [
+    authLoading,
+    membroLoading,
+    notificarNovoPlantaoMural,
+    tenantUserId,
+    user?.id,
+  ])
 }

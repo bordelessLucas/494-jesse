@@ -91,8 +91,8 @@ export function CertificadoDigitalPanel({ profissionalId }: CertificadoDigitalPa
 
     try {
       const buffer = await arquivo.arrayBuffer()
-      const validoAte = extrairValidadeCertificadoPfx(buffer, pin)
-      const titularCertificado = extrairTitularCertificadoPfx(buffer, pin)
+      const validoAte = await extrairValidadeCertificadoPfx(buffer, pin)
+      const titularCertificado = await extrairTitularCertificadoPfx(buffer, pin)
 
       const { storagePath } = await uploadCertificadoDigital({
         profissionalId,

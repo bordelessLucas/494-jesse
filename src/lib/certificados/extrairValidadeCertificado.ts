@@ -1,6 +1,17 @@
-import forge from 'node-forge'
+type ForgeModule = typeof import('node-forge')
 
-function abrirPkcs12(buffer: ArrayBuffer, senha: string) {
+let forgePromise: Promise<ForgeModule> | null = null
+
+function carregarForge(): Promise<ForgeModule> {
+  if (!forgePromise) {
+    forgePromise = import('node-forge').then((mod) => mod.default)
+  }
+  return forgePromise
+}
+
+async function abrirPkcs12(buffer: ArrayBuffer, senha: string) {
+  const forge = await carregarForge()
+
   if (!senha.trim()) {
     throw new Error('Informe o PIN/senha do certificado.')
   }
@@ -17,7 +28,10 @@ function abrirPkcs12(buffer: ArrayBuffer, senha: string) {
   }
 }
 
-function obterPrimeiroCertificado(pkcs12: forge.pkcs12.Pkcs12Pfx) {
+async function obterPrimeiroCertificado(
+  pkcs12: Awaited<ReturnType<typeof abrirPkcs12>>,
+) {
+  const forge = await carregarForge()
   const bags = pkcs12.getBags({ bagType: forge.pki.oids.certBag })
   const certBags = bags[forge.pki.oids.certBag] ?? []
 
@@ -31,12 +45,12 @@ function obterPrimeiroCertificado(pkcs12: forge.pkcs12.Pkcs12Pfx) {
 /**
  * Extrai o Common Name (CN) do titular do certificado ICP-Brasil.
  */
-export function extrairTitularCertificadoPfx(
+export async function extrairTitularCertificadoPfx(
   buffer: ArrayBuffer,
   senha: string,
-): string {
-  const pkcs12 = abrirPkcs12(buffer, senha)
-  const cert = obterPrimeiroCertificado(pkcs12)
+): Promise<string> {
+  const pkcs12 = await abrirPkcs12(buffer, senha)
+  const cert = await obterPrimeiroCertificado(pkcs12)
   if (!cert) {
     throw new Error('Nenhum certificado válido encontrado no ficheiro.')
   }
@@ -49,12 +63,12 @@ export function extrairTitularCertificadoPfx(
  * Extrai a data de expiração do certificado a partir de um ficheiro PKCS#12.
  * Valida o PIN ao decifrar o contentor.
  */
-export function extrairValidadeCertificadoPfx(
+export async function extrairValidadeCertificadoPfx(
   buffer: ArrayBuffer,
   senha: string,
-): Date {
-  const pkcs12 = abrirPkcs12(buffer, senha)
-  const cert = obterPrimeiroCertificado(pkcs12)
+): Promise<Date> {
+  const pkcs12 = await abrirPkcs12(buffer, senha)
+  const cert = await obterPrimeiroCertificado(pkcs12)
 
   if (cert?.validity?.notAfter) {
     return cert.validity.notAfter

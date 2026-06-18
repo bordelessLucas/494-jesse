@@ -17,10 +17,8 @@ import {
   persistThemeColorForEarlyPaint,
   resetPrimaryCssVariables,
 } from '../lib/brandColors'
-import {
-  subscribeSupabaseAuth,
-  tenantUserIdFromSession,
-} from '../lib/auth/subscribeSupabaseAuth'
+import { tenantUserIdFromSession } from '../lib/auth/subscribeSupabaseAuth'
+import { useAuthSession } from '../contexts/AuthProvider'
 import { supabase } from '../lib/supabase'
 
 type PersistInput = {
@@ -53,6 +51,7 @@ async function fetchBrandingForSession(session: Session) {
 }
 
 export function ThemeBrandingProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuthSession()
   const [primaryColor, setPrimaryColor] = useState(DEFAULT_PRIMARY_HEX)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [previewPrimaryColor, setPreviewPrimaryColor] = useState<string | null>(
@@ -118,18 +117,8 @@ export function ThemeBrandingProvider({ children }: { children: ReactNode }) {
   )
 
   useEffect(() => {
-    let active = true
-
-    const subscription = subscribeSupabaseAuth((_event, session) => {
-      if (!active) return
-      void handleSession(session)
-    })
-
-    return () => {
-      active = false
-      subscription.unsubscribe()
-    }
-  }, [handleSession])
+    void handleSession(session)
+  }, [handleSession, session])
 
   const persistBranding = useCallback(
     async (input: PersistInput) => {

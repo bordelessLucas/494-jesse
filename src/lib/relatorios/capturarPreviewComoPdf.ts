@@ -1,6 +1,3 @@
-import html2canvas from 'html2canvas-pro'
-import { jsPDF } from 'jspdf'
-
 const LARGURA_A4_MM = 210
 const ALTURA_A4_MM = 297
 
@@ -10,6 +7,11 @@ const ALTURA_A4_MM = 297
 export async function capturarPreviewComoPdf(
   elementoRaiz: HTMLElement,
 ): Promise<Uint8Array> {
+  const [{ jsPDF }, { default: html2canvas }] = await Promise.all([
+    import('jspdf'),
+    import('html2canvas-pro'),
+  ])
+
   const paginas = elementoRaiz.querySelectorAll<HTMLElement>('.pagina-a4')
   const alvos = paginas.length > 0 ? Array.from(paginas) : [elementoRaiz]
 

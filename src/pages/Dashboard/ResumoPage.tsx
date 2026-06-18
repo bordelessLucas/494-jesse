@@ -11,6 +11,7 @@ import { addDays, format, startOfYear } from 'date-fns'
 import toast from 'react-hot-toast'
 
 import { cn } from '../../lib/cn'
+import { useCatalogoLocaisSetores } from '../../hooks/useCatalogoLocaisSetores'
 import { useTenantUserId } from '../../hooks/useTenantUserId'
 import { buscarPlantoesIntervaloComLocaisSetores } from '../../lib/dashboard/dashboardQueries'
 import {
@@ -39,7 +40,6 @@ import {
   type PeriodoBi,
   type PontoSemanaCobertura,
 } from '../../lib/dashboard/resumoBi'
-import { buscarSetoresEscala } from '../../lib/escalas/plantoesDb'
 import {
   aprovarCandidatura,
   buscarCandidaturasPendentes,
@@ -716,12 +716,14 @@ export function ResumoPage() {
   const idSetor = useId()
   const { user, tenantUserId, isLoading: isLoadingUser, isMembroProfissional } =
     useTenantUserId()
+  const { setores } = useCatalogoLocaisSetores()
   const [periodo, setPeriodo] = useState<PeriodoResumo>('mes')
   const [setor, setSetor] = useState('')
   const [aba48h, setAba48h] = useState<Aba48h>('anunciados')
   const [plantoesRaw, setPlantoesRaw] = useState<PlantaoDashboardRow[]>([])
-  const [setoresOpcoes, setSetoresOpcoes] = useState<{ id: string; nome: string }[]>(
-    [],
+  const setoresOpcoes = useMemo(
+    () => setores.map((item) => ({ id: item.id, nome: item.nome })),
+    [setores],
   )
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -794,14 +796,12 @@ export function ResumoPage() {
         const hoje = new Date()
         const min = format(startOfYear(hoje), 'yyyy-MM-dd')
         const max = format(addDays(hoje, 2), 'yyyy-MM-dd')
-        const [plantoes, setores, regras] = await Promise.all([
+        const [plantoes, regras] = await Promise.all([
           buscarPlantoesIntervaloComLocaisSetores(userId, min, max),
-          buscarSetoresEscala(userId),
           buscarRegrasRemuneracao(userId).catch(() => REGRAS_REMUNERACAO_VAZIAS),
         ])
         if (cancelado) return
         setPlantoesRaw(plantoes)
-        setSetoresOpcoes(setores.map((s) => ({ id: s.id, nome: s.nome })))
         setRegrasRemuneracao(regras)
       } catch (e) {
         if (!cancelado) {

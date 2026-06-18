@@ -20,7 +20,7 @@ import {
   type PlantaoMuralRow,
 } from '../../lib/escalas/muralTrocasDb'
 import { supabase } from '../../lib/supabase'
-import { useSupabaseUser } from '../../hooks/useSupabaseUser'
+import { useTenantUserId } from '../../hooks/useTenantUserId'
 
 function formatarDataLonga(isoData: string): string {
   const d = dataLocalAPartirDeIsoData(isoData)
@@ -44,7 +44,7 @@ function formatarValor(valor: number): string {
 }
 
 export function MuralTrocasPage() {
-  const { user, isLoading } = useSupabaseUser()
+  const { user, tenantUserId, isLoading } = useTenantUserId()
   const [carregando, setCarregando] = useState(true)
   const [itens, setItens] = useState<PlantaoMuralRow[]>([])
   const [erro, setErro] = useState<string | null>(null)
@@ -70,7 +70,7 @@ export function MuralTrocasPage() {
   }, [carregar, isLoading])
 
   useEffect(() => {
-    if (isLoading || !user?.id) return
+    if (isLoading || !user?.id || !tenantUserId) return
 
     const canal = supabase
       .channel(`mural-trocas-lista-${user.id}`)
@@ -80,6 +80,7 @@ export function MuralTrocasPage() {
           event: '*',
           schema: 'public',
           table: 'plantoes',
+          filter: `user_id=eq.${tenantUserId}`,
         },
         (payload) => {
           const novo = payload.new as { disponivel_mural?: boolean } | null
@@ -97,7 +98,7 @@ export function MuralTrocasPage() {
     return () => {
       void supabase.removeChannel(canal)
     }
-  }, [carregar, isLoading, user?.id])
+  }, [carregar, isLoading, tenantUserId, user?.id])
 
   const assumirPlantao = useCallback(
     async (plantao: PlantaoMuralRow) => {

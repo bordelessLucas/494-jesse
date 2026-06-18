@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
-import type { Session } from '@supabase/supabase-js'
 
-import { subscribeSupabaseAuth } from './subscribeSupabaseAuth'
+import { useAuthSession } from '../../contexts/AuthProvider'
 
 type AuthGateProps = {
   children?: React.ReactNode
@@ -10,23 +8,7 @@ type AuthGateProps = {
 
 export function RequireAuth({ children }: AuthGateProps) {
   const location = useLocation()
-  const [session, setSession] = useState<Session | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    let isMounted = true
-
-    const subscription = subscribeSupabaseAuth((_event, nextSession) => {
-      if (!isMounted) return
-      setSession(nextSession)
-      setIsLoading(false)
-    })
-
-    return () => {
-      isMounted = false
-      subscription.unsubscribe()
-    }
-  }, [])
+  const { session, isLoading } = useAuthSession()
 
   if (isLoading) {
     return (
@@ -46,25 +28,8 @@ export function RequireAuth({ children }: AuthGateProps) {
 }
 
 export function RedirectIfAuthenticated({ children }: AuthGateProps) {
-  const [session, setSession] = useState<Session | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  const isAuthenticated = useMemo(() => Boolean(session), [session])
-
-  useEffect(() => {
-    let isMounted = true
-
-    const subscription = subscribeSupabaseAuth((_event, nextSession) => {
-      if (!isMounted) return
-      setSession(nextSession)
-      setIsLoading(false)
-    })
-
-    return () => {
-      isMounted = false
-      subscription.unsubscribe()
-    }
-  }, [])
+  const { session, isLoading } = useAuthSession()
+  const isAuthenticated = Boolean(session)
 
   if (isLoading) return children ? <>{children}</> : <Outlet />
 

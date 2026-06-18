@@ -5,21 +5,28 @@ import { Toaster } from 'react-hot-toast'
 import { MembroAcessoGuard } from '../components/auth/MembroAcessoGuard'
 import { MobileNavDrawer } from '../components/MobileNavDrawer'
 import { ContaMembroProvider } from '../contexts/ContaMembroProvider'
+import { PreloadCatalogoLocaisSetores } from '../components/catalogo/PreloadCatalogoLocaisSetores'
 import { Sidebar } from '../components/Sidebar'
 import { SuporteChatWidget } from '../components/support/SuporteChatWidget'
 import { Topbar } from '../components/Topbar'
 import { useMuralTrocasAlertas } from '../hooks/useMuralTrocasAlertas'
 import { useNotificacoesRealtime } from '../hooks/useNotificacoes'
 
-export function DashboardLayout() {
+function DashboardRealtimeListeners() {
   useMuralTrocasAlertas()
   useNotificacoesRealtime()
+  return null
+}
+
+export function DashboardLayout() {
   const [mobileNavAberto, setMobileNavAberto] = useState(false)
   const abrirMobileNav = useCallback(() => setMobileNavAberto(true), [])
   const fecharMobileNav = useCallback(() => setMobileNavAberto(false), [])
 
   return (
     <ContaMembroProvider>
+      <PreloadCatalogoLocaisSetores />
+      <DashboardRealtimeListeners />
       <div className="flex min-h-dvh bg-slate-50 print:block print:min-h-0 print:bg-white">
         <Sidebar />
         <MobileNavDrawer aberto={mobileNavAberto} onFechar={fecharMobileNav} />
@@ -53,4 +60,3 @@ export function DashboardLayout() {
     </ContaMembroProvider>
   )
 }
-

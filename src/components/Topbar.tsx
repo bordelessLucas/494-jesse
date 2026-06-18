@@ -41,7 +41,9 @@ export function Topbar({ onAbrirMenuMobile }: TopbarProps) {
   const buttonId = useMemo(() => `user-menu-button-${dropdownId}`, [dropdownId])
   const { user } = useSupabaseUser()
   const { isMaster, empresa, isMembroProfissional, permissoes } = useContaMembro()
-  const { notificacoes, marcarComoLida, marcarTodasComoLidas } = useNotificacoes()
+  const notificacoes = useNotificacoes((s) => s.notificacoes)
+  const marcarComoLida = useNotificacoes((s) => s.marcarComoLida)
+  const marcarTodasComoLidas = useNotificacoes((s) => s.marcarTodasComoLidas)
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const userMenuContainerRef = useRef<HTMLDivElement | null>(null)

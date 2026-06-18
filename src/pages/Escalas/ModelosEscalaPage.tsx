@@ -11,18 +11,16 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { SeletorLocalSetor } from '../../components/catalogo/SeletorLocalSetor'
+import { useCatalogoLocaisSetores } from '../../hooks/useCatalogoLocaisSetores'
 import { useSupabaseUser } from '../../hooks/useSupabaseUser'
 import { cn } from '../../lib/cn'
-import { exportarEscalaModeloParaXlsx } from '../../lib/escalas/exportarEscalaModeloXlsx'
 import {
-  buscarLocaisEscala,
   buscarProfissionaisEscala,
   buscarProfissionaisRelatorioEscala,
-  buscarSetoresEscala,
   formatarHoraDb,
-  type SetorEscalaDb,
 } from '../../lib/escalas/plantoesDb'
 import {
   atualizarEscalaModelo,
@@ -377,11 +375,12 @@ function ModalConfirmarApagarModelo({
 
 export function ModelosEscalaPage() {
   const { user, isLoading: authLoading } = useSupabaseUser()
-  const idLocal = useId()
-  const idSetor = useId()
+  const {
+    locais,
+    getSetoresDoLocal,
+    isLoading: carregandoCatalogoLocais,
+  } = useCatalogoLocaisSetores()
 
-  const [locais, setLocais] = useState<{ id: string; nome: string }[]>([])
-  const [setores, setSetores] = useState<SetorEscalaDb[]>([])
   const [profissionais, setProfissionais] = useState<{ id: string; nome: string }[]>([])
   const [localId, setLocalId] = useState('')
   const [setorId, setSetorId] = useState('')
@@ -416,8 +415,8 @@ export function ModelosEscalaPage() {
   )
 
   const setoresDoLocal = useMemo(
-    () => setores.filter((s) => s.local_id === localId),
-    [setores, localId],
+    () => getSetoresDoLocal(localId),
+    [getSetoresDoLocal, localId],
   )
 
   const nomeLocalAtual = useMemo(
@@ -430,22 +429,33 @@ export function ModelosEscalaPage() {
     [setoresDoLocal, setorId],
   )
 
-  const carregarOpcoes = useCallback(async () => {
+  const carregarProfissionais = useCallback(async () => {
     if (!user) return
-    const [L, S, P] = await Promise.all([
-      buscarLocaisEscala(user.id),
-      buscarSetoresEscala(user.id),
-      buscarProfissionaisEscala(user.id),
-    ])
-    setLocais(L)
-    setSetores(S)
+    const P = await buscarProfissionaisEscala(user.id)
     setProfissionais(P)
   }, [user])
 
   useEffect(() => {
     if (authLoading || !user) return
-    void carregarOpcoes()
-  }, [authLoading, user, carregarOpcoes])
+    void carregarProfissionais()
+  }, [authLoading, user, carregarProfissionais])
+
+  useEffect(() => {
+    if (locais.length === 0) {
+      setLocalId('')
+      setSetorId('')
+      return
+    }
+    setLocalId((prev) => (prev && locais.some((l) => l.id === prev) ? prev : locais[0].id))
+  }, [locais])
+
+  useEffect(() => {
+    const validos = getSetoresDoLocal(localId)
+    setSetorId((prev) => {
+      if (prev && validos.some((s) => s.id === prev)) return prev
+      return validos[0]?.id ?? ''
+    })
+  }, [getSetoresDoLocal, localId])
 
   useEffect(() => {
     if (!user || !localId || !setorId) {
@@ -713,6 +723,9 @@ export function ModelosEscalaPage() {
     setErro(null)
     try {
       const profissionaisPorId = await buscarProfissionaisRelatorioEscala(user.id)
+      const { exportarEscalaModeloParaXlsx } = await import(
+        '../../lib/escalas/exportarEscalaModeloXlsx'
+      )
       await exportarEscalaModeloParaXlsx({
         localNome: nomeLocalAtual || '—',
         setorNome: nomeSetorAtual || '—',
@@ -793,47 +806,17 @@ export function ModelosEscalaPage() {
       ) : null}
 
       <div className="no-print flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:flex-wrap lg:items-end">
+        <SeletorLocalSetor
+          className="lg:flex-1"
+          localId={localId}
+          setorId={setorId}
+          onLocalChange={setLocalId}
+          onSetorChange={setSetorId}
+          localLabel="Hospital"
+          disabled={carregandoCatalogoLocais}
+          selectClassName={cn(INPUT, 'min-w-[200px]')}
+        />
         <div className="grid gap-3 sm:grid-cols-2 lg:flex lg:flex-1 lg:flex-wrap lg:gap-4">
-          <div className="min-w-[200px]">
-            <label htmlFor={idLocal} className="mb-1 block text-xs font-medium text-slate-600">
-              Hospital
-            </label>
-            <select
-              id={idLocal}
-              value={localId}
-              onChange={(e) => {
-                setLocalId(e.target.value)
-                setSetorId('')
-              }}
-              className={cn(INPUT, 'min-w-[200px]')}
-            >
-              <option value="">Selecione…</option>
-              {locais.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="min-w-[200px]">
-            <label htmlFor={idSetor} className="mb-1 block text-xs font-medium text-slate-600">
-              Setor
-            </label>
-            <select
-              id={idSetor}
-              value={setorId}
-              onChange={(e) => setSetorId(e.target.value)}
-              disabled={!localId}
-              className={cn(INPUT, 'min-w-[200px]', !localId && 'opacity-50')}
-            >
-              <option value="">Selecione…</option>
-              {setoresDoLocal.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nome}
-                </option>
-              ))}
-            </select>
-          </div>
 
           {modelos.length > 0 ? (
             <div className="min-w-[200px]">

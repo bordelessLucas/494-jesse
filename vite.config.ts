@@ -9,8 +9,18 @@ export default defineConfig({
       html2canvas: 'html2canvas-pro',
     },
   },
-  optimizeDeps: {
-    include: ['html2canvas-pro'],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/exceljs')) return 'exceljs'
+          if (id.includes('node_modules/jspdf') || id.includes('html2canvas')) {
+            return 'pdf'
+          }
+          if (id.includes('node_modules/node-forge')) return 'node-forge'
+        },
+      },
+    },
   },
   plugins: [
     react(),

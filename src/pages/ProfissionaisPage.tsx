@@ -12,15 +12,16 @@ import {
   ProfissionalDetalhesModal,
   PROFISSOES,
   type FormInformacoes,
-  type LocalComSetoresArvore,
 } from '../components/Profissionais/ProfissionalDetalhesModal'
 import {
   ProfissionalSlideOver,
   type NovoProfissionalInput,
 } from '../components/Profissionais/ProfissionalSlideOver'
 import type { ProfissionalCompleto } from '../components/Profissionais/profissionalTypes'
+import { useCatalogoLocaisSetores } from '../hooks/useCatalogoLocaisSetores'
 import { useSupabaseUser } from '../hooks/useSupabaseUser'
 import { cn } from '../lib/cn'
+import { montarArvoreLocaisSetores } from '../stores/catalogoLocaisSetoresStore'
 import {
   defaultProfissionalDetalhes,
   detalhesToJson,
@@ -39,6 +40,7 @@ const selectClassName =
 
 export function ProfissionaisPage() {
   const { user, isLoading: isLoadingUser } = useSupabaseUser()
+  const { locais, setoresPorLocalId } = useCatalogoLocaisSetores()
   const [isSlideOverOpen, setIsSlideOverOpen] = useState(false)
   const [profissionalModal, setProfissionalModal] =
     useState<ProfissionalCompleto | null>(null)
@@ -51,12 +53,15 @@ export function ProfissionaisPage() {
   const [erroLista, setErroLista] = useState<string | null>(null)
   const [filtroLocalId, setFiltroLocalId] = useState('')
   const [filtroProfissao, setFiltroProfissao] = useState('')
-  const [opcoesLocais, setOpcoesLocais] = useState<{ id: string; nome: string }[]>(
-    [],
+
+  const opcoesLocais = useMemo(
+    () => locais.map((local) => ({ id: local.id, nome: local.nome })),
+    [locais],
   )
-  const [locaisComSetoresArvore, setLocaisComSetoresArvore] = useState<
-    LocalComSetoresArvore[]
-  >([])
+  const locaisComSetoresArvore = useMemo(
+    () => montarArvoreLocaisSetores(locais, setoresPorLocalId),
+    [locais, setoresPorLocalId],
+  )
 
   const totalPaginas = Math.max(1, Math.ceil(totalRegistros / TAMANHO_PAGINA))
 
@@ -145,78 +150,6 @@ export function ProfissionaisPage() {
   useEffect(() => {
     void carregar()
   }, [carregar])
-
-  useEffect(() => {
-    let ativo = true
-    if (!user) {
-      setOpcoesLocais([])
-      return
-    }
-    void supabase
-      .from('locais')
-      .select('id, nome_fantasia')
-      .eq('user_id', user.id)
-      .order('nome_fantasia', { ascending: true })
-      .then(({ data, error }) => {
-        if (!ativo) return
-        if (error || !data) {
-          setOpcoesLocais([])
-          return
-        }
-        setOpcoesLocais(
-          data.map((l) => ({
-            id: l.id,
-            nome: l.nome_fantasia,
-          })),
-        )
-      })
-    return () => {
-      ativo = false
-    }
-  }, [user])
-
-  useEffect(() => {
-    let ativo = true
-    if (!user) {
-      setLocaisComSetoresArvore([])
-      return
-    }
-    void (async () => {
-      const [locRes, setRes] = await Promise.all([
-        supabase
-          .from('locais')
-          .select('id, nome_fantasia')
-          .eq('user_id', user.id)
-          .order('nome_fantasia', { ascending: true }),
-        supabase
-          .from('setores')
-          .select('id, nome, local_id')
-          .eq('user_id', user.id)
-          .eq('ativo', true)
-          .order('nome', { ascending: true }),
-      ])
-      if (!ativo) return
-      if (locRes.error || setRes.error || !locRes.data || !setRes.data) {
-        setLocaisComSetoresArvore([])
-        return
-      }
-      const porLocal = new Map<string, { id: string; nome: string }[]>()
-      for (const s of setRes.data) {
-        const lista = porLocal.get(s.local_id) ?? []
-        lista.push({ id: s.id, nome: s.nome })
-        porLocal.set(s.local_id, lista)
-      }
-      const arvore: LocalComSetoresArvore[] = locRes.data.map((l) => ({
-        id: l.id,
-        nome: l.nome_fantasia,
-        setores: porLocal.get(l.id) ?? [],
-      }))
-      setLocaisComSetoresArvore(arvore.filter((item) => item.setores.length > 0))
-    })()
-    return () => {
-      ativo = false
-    }
-  }, [user])
 
   useEffect(() => {
     setIrParaPagina(String(paginaAtual))

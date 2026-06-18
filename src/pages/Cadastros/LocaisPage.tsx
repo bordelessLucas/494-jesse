@@ -38,6 +38,7 @@ import {
 } from '../../lib/geo/geocodificarEndereco'
 import { useSupabaseUser } from '../../hooks/useSupabaseUser'
 import { supabase } from '../../lib/supabase'
+import { recarregarCatalogoLocaisSetores } from '../../stores/catalogoLocaisSetoresStore'
 
 type LocalCadastro = {
   id: string
@@ -999,6 +1000,12 @@ export function LocaisPage() {
   const [contextoModalSetor, setContextoModalSetor] = useState<ContextoModalSetor>(null)
   const [setorEmOperacaoId, setSetorEmOperacaoId] = useState<string | null>(null)
 
+  const recarregarCatalogoGlobal = useCallback(async () => {
+    const userId = user?.id
+    if (!userId) return
+    await recarregarCatalogoLocaisSetores(userId)
+  }, [user?.id])
+
   const carregarLocais = useCallback(async () => {
     if (isLoadingUser) return
 
@@ -1157,6 +1164,7 @@ export function LocaisPage() {
         return
       }
       await recarregarSetoresAposMutacao()
+      void recarregarCatalogoGlobal()
     } finally {
       setSetorEmOperacaoId(null)
     }
@@ -1185,6 +1193,7 @@ export function LocaisPage() {
         return
       }
       await recarregarSetoresAposMutacao()
+      void recarregarCatalogoGlobal()
     } finally {
       setSetorEmOperacaoId(null)
     }
@@ -1497,6 +1506,7 @@ export function LocaisPage() {
         onFechar={() => setContextoModalSetor(null)}
         onSalvo={() => {
           void recarregarSetoresAposMutacao()
+          void recarregarCatalogoGlobal()
         }}
       />
 
@@ -1510,6 +1520,7 @@ export function LocaisPage() {
         }}
         onSalvo={() => {
           void carregarLocais()
+          void recarregarCatalogoGlobal()
         }}
       />
     </div>

@@ -9,7 +9,6 @@ import {
 } from 'lucide-react'
 import { endOfMonth, format, parseISO, startOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { jsPDF } from 'jspdf'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { cn } from '../../lib/cn'
@@ -64,7 +63,7 @@ function normalizarStatusFinanceiro(s: string | undefined): BadgeFinanceiro {
   return 'pendente'
 }
 
-function exportarExtratoPdf(params: {
+async function exportarExtratoPdf(params: {
   titulo: string
   competenciaRotulo: string
   profissionalRotulo: string
@@ -72,6 +71,7 @@ function exportarExtratoPdf(params: {
   totais: ReturnType<typeof calcularTotaisExtrato>
   statusExibicao: string
 }) {
+  const { jsPDF } = await import('jspdf')
   const { titulo, competenciaRotulo, profissionalRotulo, linhas, totais, statusExibicao } =
     params
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
@@ -488,7 +488,7 @@ export function ExtratoFinanceiroPage() {
           type="button"
           disabled={linhas.length === 0}
           onClick={() =>
-            exportarExtratoPdf({
+            void exportarExtratoPdf({
               titulo: 'Extrato Financeiro — Recibo',
               competenciaRotulo: competenciaRotulo,
               profissionalRotulo: profissionalNomeSelecionado,

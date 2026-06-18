@@ -13,15 +13,15 @@ import {
 import { ptBR } from 'date-fns/locale'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { SeletorLocalSetor } from '../../components/catalogo/SeletorLocalSetor'
 import { carregarMapaConselhoValidado } from '../../lib/documentos/documentosUsuariosDb'
 import { cn } from '../../lib/cn'
+import { useCatalogoLocaisSetores } from '../../hooks/useCatalogoLocaisSetores'
 import { useTenantUserId } from '../../hooks/useTenantUserId'
 import type { StatusPlantaoEscala } from '../../lib/escalas/escalaTypes'
 import { buscarPlantoesMensais } from '../../lib/plantoesDb'
 import {
-  buscarLocaisEscala,
   buscarProfissionaisEscala,
-  buscarSetoresEscala,
   dataLocalAPartirDeIsoData,
   plantaoRowParaCartao,
   tomParaData,
@@ -120,15 +120,17 @@ function statusClassName(status: StatusPlantaoEscala): string {
 
 export function EscalaMensalPage() {
   const { user, tenantUserId, isLoading: authLoading } = useTenantUserId()
+  const {
+    locais,
+    setores,
+    getSetoresDoLocal,
+    isLoading: carregandoCatalogoLocais,
+  } = useCatalogoLocaisSetores()
   const [dataReferencia, setDataReferencia] = useState(() => new Date())
   const [localSelecionado, setLocalSelecionado] = useState(TODOS_LOCAIS)
   const [setorSelecionado, setSetorSelecionado] = useState(TODOS_SETORES)
   const [plantaoModal, setPlantaoModal] = useState<ContextoModalPlantao | null>(null)
 
-  const [locais, setLocais] = useState<{ id: string; nome: string }[]>([])
-  const [setores, setSetores] = useState<
-    { id: string; nome: string; local_id: string }[]
-  >([])
   const [profissionais, setProfissionais] = useState<{ id: string; nome: string }[]>(
     [],
   )
@@ -136,9 +138,10 @@ export function EscalaMensalPage() {
     Map<string, boolean>
   >(() => new Map())
   const [plantoesRows, setPlantoesRows] = useState<PlantaoRowDb[]>([])
-  const [carregando, setCarregando] = useState(true)
+  const [carregandoProfissionais, setCarregandoProfissionais] = useState(true)
   const [carregandoPlantoes, setCarregandoPlantoes] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const carregando = carregandoCatalogoLocais || carregandoProfissionais
 
   const inicioMes = useMemo(() => startOfMonth(dataReferencia), [dataReferencia])
   const fimMes = useMemo(() => endOfMonth(dataReferencia), [dataReferencia])
@@ -163,45 +166,37 @@ export function EscalaMensalPage() {
 
   const setoresFiltradosSelect = useMemo(() => {
     if (localSelecionado === TODOS_LOCAIS) return setores
-    return setores.filter((s) => s.local_id === localSelecionado)
-  }, [localSelecionado, setores])
+    return getSetoresDoLocal(localSelecionado)
+  }, [getSetoresDoLocal, localSelecionado, setores])
 
-  const carregarCatalogo = useCallback(async () => {
+  const carregarProfissionais = useCallback(async () => {
     if (authLoading) return
     const uid = tenantUserId
     if (!uid) {
-      setLocais([])
-      setSetores([])
       setProfissionais([])
       setConselhoValidadoPorProf(new Map())
-      setCarregando(false)
+      setCarregandoProfissionais(false)
       return
     }
-    setCarregando(true)
+    setCarregandoProfissionais(true)
     setErro(null)
     try {
-      const [L, S, P, mapaDocs] = await Promise.all([
-        buscarLocaisEscala(uid),
-        buscarSetoresEscala(uid),
+      const [P, mapaDocs] = await Promise.all([
         buscarProfissionaisEscala(uid),
         carregarMapaConselhoValidado(uid),
       ])
-      setLocais(L)
-      setSetores(
-        S.map((s) => ({ id: s.id, nome: s.nome, local_id: s.local_id })),
-      )
       setProfissionais(P)
       setConselhoValidadoPorProf(mapaDocs)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao carregar')
     } finally {
-      setCarregando(false)
+      setCarregandoProfissionais(false)
     }
   }, [authLoading, tenantUserId])
 
   useEffect(() => {
-    void carregarCatalogo()
-  }, [carregarCatalogo])
+    void carregarProfissionais()
+  }, [carregarProfissionais])
 
   const carregarPlantoesGrade = useCallback(async () => {
     if (!tenantUserId) {
@@ -321,15 +316,6 @@ export function EscalaMensalPage() {
     [regrasCoberturaSetor],
   )
 
-  const setoresModal = useMemo(
-    () =>
-      setores.map((s) => ({
-        id: s.id,
-        nome: s.nome,
-        local_id: s.local_id,
-      })),
-    [setores],
-  )
 
   return (
     <div className="space-y-4">
@@ -372,39 +358,18 @@ export function EscalaMensalPage() {
           </div>
 
           <div className="flex flex-1 flex-col gap-3 lg:max-w-4xl lg:flex-row lg:items-end">
-            <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm font-medium text-slate-700">
-              Local / Hospital
-              <select
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition-colors focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
-                value={localSelecionado}
-                onChange={(e) => setLocalSelecionado(e.target.value)}
-                disabled={carregando || locais.length === 0}
-              >
-                <option value={TODOS_LOCAIS}>Todos os locais</option>
-                {locais.map((local) => (
-                  <option key={local.id} value={local.id}>
-                    {local.nome}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm font-medium text-slate-700">
-              Setor
-              <select
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition-colors focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
-                value={setorSelecionado}
-                onChange={(e) => setSetorSelecionado(e.target.value)}
-                disabled={carregando}
-              >
-                <option value={TODOS_SETORES}>Todos os setores</option>
-                {setoresFiltradosSelect.map((setor) => (
-                  <option key={setor.id} value={setor.id}>
-                    {setor.nome}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SeletorLocalSetor
+              className="flex-1"
+              localId={localSelecionado}
+              setorId={setorSelecionado}
+              onLocalChange={setLocalSelecionado}
+              onSetorChange={setSetorSelecionado}
+              incluirTodosLocais
+              incluirTodosSetores
+              todosLocaisValue={TODOS_LOCAIS}
+              todosSetoresValue={TODOS_SETORES}
+              disabled={carregando}
+            />
 
             <button
               type="button"
@@ -569,8 +534,6 @@ export function EscalaMensalPage() {
         contexto={plantaoModal}
         onFechar={() => setPlantaoModal(null)}
         userId={tenantUserId ?? null}
-        locais={locais}
-        setores={setoresModal}
         profissionais={profissionais}
         conselhoValidadoPorProf={conselhoValidadoPorProf}
         onPlantaoMutado={() => void carregarPlantoesGrade()}
