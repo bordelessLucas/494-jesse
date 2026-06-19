@@ -33,6 +33,7 @@ export const navigationItems: NavigationItem[] = [
     subItems: [
       { to: '/painel/resumo', label: 'Resumo' },
       { to: '/painel/carga-horaria', label: 'Carga Horária' },
+      { to: '/painel/relatorios', label: 'Relatórios Gerenciais' },
     ],
   },
   {

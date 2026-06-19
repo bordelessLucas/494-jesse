@@ -47,6 +47,7 @@ export function rotaPermitidaParaMembro(
     { prefixo: '/ponto', chave: 'registro_ponto' },
     { prefixo: '/painel/resumo', chave: 'painel_resumo' },
     { prefixo: '/painel/carga-horaria', chave: 'painel_carga_horaria' },
+    { prefixo: '/painel/relatorios', chave: 'painel_resumo' },
     { prefixo: '/escalas/mensal', chave: 'escalas_visualizar' },
     { prefixo: '/escalas/semanal', chave: 'escalas_visualizar' },
     { prefixo: '/escalas/mural-trocas', chave: 'escalas_visualizar' },
@@ -84,6 +85,7 @@ export function chavePermissaoParaRotaSidebar(to: string): string | null {
   if (to.startsWith('/ponto')) return 'registro_ponto'
   if (to.startsWith('/painel/resumo')) return 'painel_resumo'
   if (to.startsWith('/painel/carga-horaria')) return 'painel_carga_horaria'
+  if (to.startsWith('/painel/relatorios')) return 'painel_resumo'
   if (
     to.startsWith('/escalas/mensal') ||
     to.startsWith('/escalas/semanal') ||

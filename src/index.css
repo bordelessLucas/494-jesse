@@ -121,5 +121,14 @@
     border-color: #000000 !important;
     color: #000000 !important;
   }
+
+  /* Gerador de relatórios — imprime só a folha A4. */
+  body {
+    background: #ffffff !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
 }
 

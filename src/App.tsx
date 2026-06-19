@@ -104,6 +104,11 @@ const CargaHorariaPage = lazy(() =>
     default: m.CargaHorariaPage,
   })),
 )
+const RelatoriosPage = lazy(() =>
+  import('./pages/Dashboard/RelatoriosPage').then((m) => ({
+    default: m.RelatoriosPage,
+  })),
+)
 const ResumoPage = lazy(() =>
   import('./pages/Dashboard/ResumoPage').then((m) => ({ default: m.ResumoPage })),
 )
@@ -170,6 +175,14 @@ function App() {
               element={
                 <Suspense fallback={<PageLoader />}>
                   <CargaHorariaPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="painel/relatorios"
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <RelatoriosPage />
                 </Suspense>
               }
             />
