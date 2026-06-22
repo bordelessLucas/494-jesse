@@ -1,22 +1,37 @@
-const LARGURA_A4_MM = 210
-const ALTURA_A4_MM = 297
+const DIMENSOES_A4_MM = {
+  portrait: { largura: 210, altura: 297 },
+  landscape: { largura: 297, altura: 210 },
+} as const
+
+export type OrientacaoPdf = keyof typeof DIMENSOES_A4_MM
+
+export type OpcoesCapturaPdf = {
+  orientacao?: OrientacaoPdf
+  seletorPagina?: string
+}
 
 /**
  * Captura o preview do relatório (páginas `.pagina-a4`) e gera um PDF A4.
  */
 export async function capturarPreviewComoPdf(
   elementoRaiz: HTMLElement,
+  opcoes: OpcoesCapturaPdf = {},
 ): Promise<Uint8Array> {
   const [{ jsPDF }, { default: html2canvas }] = await Promise.all([
     import('jspdf'),
     import('html2canvas-pro'),
   ])
 
-  const paginas = elementoRaiz.querySelectorAll<HTMLElement>('.pagina-a4')
+  const orientacao = opcoes.orientacao ?? 'portrait'
+  const seletor = opcoes.seletorPagina ?? '.pagina-a4'
+  const { largura: larguraPaginaMm, altura: alturaPaginaMm } =
+    DIMENSOES_A4_MM[orientacao]
+
+  const paginas = elementoRaiz.querySelectorAll<HTMLElement>(seletor)
   const alvos = paginas.length > 0 ? Array.from(paginas) : [elementoRaiz]
 
   const pdf = new jsPDF({
-    orientation: 'portrait',
+    orientation: orientacao,
     unit: 'mm',
     format: 'a4',
     compress: true,
@@ -37,16 +52,16 @@ export async function capturarPreviewComoPdf(
     if (indice > 0) pdf.addPage()
 
     const proporcao = canvas.width / canvas.height
-    let largura = LARGURA_A4_MM
+    let largura = larguraPaginaMm
     let altura = largura / proporcao
 
-    if (altura > ALTURA_A4_MM) {
-      altura = ALTURA_A4_MM
+    if (altura > alturaPaginaMm) {
+      altura = alturaPaginaMm
       largura = altura * proporcao
     }
 
-    const offsetX = (LARGURA_A4_MM - largura) / 2
-    const offsetY = (ALTURA_A4_MM - altura) / 2
+    const offsetX = (larguraPaginaMm - largura) / 2
+    const offsetY = (alturaPaginaMm - altura) / 2
 
     pdf.addImage(imgData, 'JPEG', offsetX, offsetY, largura, altura)
   }

@@ -1,9 +1,12 @@
 import { format } from 'date-fns'
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { Loader2, Printer } from 'lucide-react'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import toast from 'react-hot-toast'
 
 import { useContaMembro } from '../../hooks/useContaMembro'
 import { cn } from '../../lib/cn'
+import { capturarPreviewComoPdf } from '../../lib/relatorios/capturarPreviewComoPdf'
+import { useThemeBranding } from '../../theme/ThemeBrandingProvider'
 import { RelatorioEscalaFolha } from './components/RelatorioEscalaFolha'
 import { RelatorioPagamentosFolha } from './components/RelatorioPagamentosFolha'
 import {
@@ -71,11 +74,15 @@ function CampoFiltro({
 
 export function RelatoriosPage() {
   const { empresa } = useContaMembro()
+  const { logoUrl } = useThemeBranding()
   const nomeEmpresa = empresa?.nome?.trim() || 'PlantaoCheck'
+  const previewRef = useRef<HTMLElement>(null)
 
   const [filtros, setFiltros] = useState<FiltrosGerador>(filtrosIniciais)
   const [filtrosGerados, setFiltrosGerados] = useState<FiltrosGerador | null>(null)
   const [gerando, setGerando] = useState(false)
+  const [exportandoXls, setExportandoXls] = useState(false)
+  const [exportandoPdf, setExportandoPdf] = useState(false)
   const [dataGeracao, setDataGeracao] = useState('')
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
 
@@ -122,12 +129,73 @@ export function RelatoriosPage() {
     }, 900)
   }
 
-  function exportarXls() {
+  async function exportarXls() {
     if (!filtrosGerados) {
       toast.error('Gere o relatório antes de exportar.')
       return
     }
-    toast.success('Exportação XLS preparada.')
+
+    setExportandoXls(true)
+    try {
+      const { exportarRelatorioGerencialParaXlsx } = await import(
+        '../../lib/relatorios/exportarRelatorioGerencialXlsx'
+      )
+      await exportarRelatorioGerencialParaXlsx({
+        tipoRelatorio: filtrosGerados.tipoRelatorio,
+        nomePlataforma: 'PlantaoCheck',
+        nomeEmpresa,
+        logoUrl,
+        dataInicio: filtrosGerados.dataInicio,
+        dataFim: filtrosGerados.dataFim,
+        dataGeracao,
+        listarTelefone: filtrosGerados.listarTelefone,
+        linhasPagamentos:
+          filtrosGerados.tipoRelatorio === 'pagamentos' ? linhasPagamentos : undefined,
+      })
+      toast.success('Planilha exportada com sucesso.')
+    } catch {
+      toast.error('Não foi possível exportar a planilha.')
+    } finally {
+      setExportandoXls(false)
+    }
+  }
+
+  async function imprimirOuGerarPdf() {
+    if (!filtrosGerados || !previewRef.current) {
+      toast.error('Gere o relatório antes de imprimir.')
+      return
+    }
+
+    setExportandoPdf(true)
+    try {
+      const bytes = await capturarPreviewComoPdf(previewRef.current, {
+        orientacao: 'landscape',
+        seletorPagina: '.relatorio-gerencial-folha',
+      })
+      const blob = new Blob([Uint8Array.from(bytes)], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const slug =
+        filtrosGerados.tipoRelatorio === 'pagamentos'
+          ? 'pagamentos-plantoes'
+          : 'escala-plantoes'
+      const nomeArquivo = `relatorio-gerencial-${slug}.pdf`
+
+      const linkDownload = document.createElement('a')
+      linkDownload.href = url
+      linkDownload.download = nomeArquivo
+      linkDownload.rel = 'noopener'
+      document.body.appendChild(linkDownload)
+      linkDownload.click()
+      document.body.removeChild(linkDownload)
+
+      window.open(url, '_blank', 'noopener,noreferrer')
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      toast.success('PDF gerado. Use o visualizador para imprimir em paisagem.')
+    } catch {
+      toast.error('Não foi possível gerar o PDF.')
+    } finally {
+      setExportandoPdf(false)
+    }
   }
 
   const relatorioVisivel = filtrosGerados !== null && !gerando
@@ -302,11 +370,24 @@ export function RelatoriosPage() {
             </button>
             <button
               type="button"
-              disabled={gerando}
-              onClick={exportarXls}
+              disabled={gerando || exportandoXls || !relatorioVisivel}
+              onClick={() => void exportarXls()}
               className="rounded border border-[#2563eb] bg-white px-3 py-1 text-xs font-semibold text-[#2563eb] hover:bg-blue-50 disabled:opacity-50"
             >
-              XLS
+              {exportandoXls ? 'Exportando…' : 'XLS'}
+            </button>
+            <button
+              type="button"
+              disabled={gerando || exportandoPdf || !relatorioVisivel}
+              onClick={() => void imprimirOuGerarPdf()}
+              className="inline-flex items-center gap-1 rounded border border-[#2563eb] bg-white px-3 py-1 text-xs font-semibold text-[#2563eb] hover:bg-blue-50 disabled:opacity-50"
+            >
+              {exportandoPdf ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              ) : (
+                <Printer className="h-3.5 w-3.5" aria-hidden />
+              )}
+              {exportandoPdf ? 'Gerando…' : 'Imprimir / PDF'}
             </button>
           </div>
         </div>
@@ -329,8 +410,9 @@ export function RelatoriosPage() {
 
       <div className="px-4 pb-12 pt-6 md:px-8">
         <article
+          ref={previewRef}
           className={cn(
-            'pagina-a4 mx-auto max-w-6xl bg-white text-sm text-black shadow-md',
+            'pagina-a4 relatorio-gerencial-folha mx-auto max-w-6xl bg-white text-sm text-black shadow-md',
             'min-h-[297mm] px-8 py-6',
             'print:m-0 print:max-w-none print:min-h-0 print:p-0 print:shadow-none',
           )}

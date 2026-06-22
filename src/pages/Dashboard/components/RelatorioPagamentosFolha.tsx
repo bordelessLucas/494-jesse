@@ -58,7 +58,10 @@ export function RelatorioPagamentosFolha({
       <table className="w-full border-collapse text-xs text-black">
         <thead>
           <tr className="border-b border-gray-400">
-            <th scope="col" className="w-8 border border-gray-300 px-1 py-1 text-center font-bold">
+            <th
+              scope="col"
+              className="no-print w-8 border border-gray-300 px-1 py-1 text-center font-bold"
+            >
               sim
             </th>
             <th scope="col" className="border border-gray-300 px-2 py-1 text-left font-bold">
@@ -83,7 +86,7 @@ export function RelatorioPagamentosFolha({
         <tbody>
           {linhas.map((linha) => (
             <tr key={linha.id} className="border-b border-gray-200">
-              <td className="border border-gray-300 px-1 py-1 text-center align-middle">
+              <td className="no-print border border-gray-300 px-1 py-1 text-center align-middle">
                 <input
                   type="checkbox"
                   checked={selecionados.has(linha.id)}
@@ -114,8 +117,9 @@ export function RelatorioPagamentosFolha({
         </tbody>
         <tfoot>
           <tr className="font-bold">
+            <td className="no-print border border-gray-400 px-1 py-1.5" />
             <td
-              colSpan={listarTelefone ? 3 : 2}
+              colSpan={listarTelefone ? 2 : 1}
               className="border border-gray-400 px-2 py-1.5 text-right uppercase"
             >
               Total geral

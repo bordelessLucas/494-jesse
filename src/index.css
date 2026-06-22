@@ -130,5 +130,20 @@
   main {
     padding: 0 !important;
   }
+
+  /* Relatórios gerenciais — impressão em paisagem. */
+  @page relatorio-gerencial-paisagem {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  .relatorio-gerencial-folha {
+    page: relatorio-gerencial-paisagem;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    padding: 8mm !important;
+    box-shadow: none !important;
+  }
 }
 
