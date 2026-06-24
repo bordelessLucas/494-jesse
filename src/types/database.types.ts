@@ -806,6 +806,10 @@ export type Database = {
           ajuste_financeiro: number
           observacao_ajuste: string | null
           disponivel_mural: boolean
+          confirmado_profissional: boolean
+          data_confirmacao_profissional: string | null
+          motivo_recusa: string | null
+          lembrete_confirmacao_enviado: boolean
           created_at: string
           updated_at: string
         }
@@ -825,6 +829,10 @@ export type Database = {
           ajuste_financeiro?: number
           observacao_ajuste?: string | null
           disponivel_mural?: boolean
+          confirmado_profissional?: boolean
+          data_confirmacao_profissional?: string | null
+          motivo_recusa?: string | null
+          lembrete_confirmacao_enviado?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -844,10 +852,21 @@ export type Database = {
           ajuste_financeiro?: number
           observacao_ajuste?: string | null
           disponivel_mural?: boolean
+          confirmado_profissional?: boolean
+          data_confirmacao_profissional?: string | null
+          motivo_recusa?: string | null
+          lembrete_confirmacao_enviado?: boolean
           created_at?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: 'escala_confirmacoes_plantao_id_fkey'
+            columns: ['id']
+            isOneToOne: true
+            referencedRelation: 'escala_confirmacoes'
+            referencedColumns: ['plantao_id']
+          },
           {
             foreignKeyName: 'plantoes_remuneracao_tipo_id_fkey'
             columns: ['remuneracao_tipo_id']
@@ -1046,6 +1065,42 @@ export type Database = {
         }
         Relationships: []
       }
+      escala_confirmacoes: {
+        Row: {
+          id: string
+          plantao_id: string
+          profissional_id: string
+          tenant_user_id: string
+          status: string
+          motivo_recusa: string | null
+          confirmado_em: string | null
+          ip_address: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          plantao_id: string
+          profissional_id: string
+          tenant_user_id: string
+          status?: string
+          motivo_recusa?: string | null
+          confirmado_em?: string | null
+          ip_address?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          plantao_id?: string
+          profissional_id?: string
+          tenant_user_id?: string
+          status?: string
+          motivo_recusa?: string | null
+          confirmado_em?: string | null
+          ip_address?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       notificacoes: {
         Row: {
           id: string
@@ -1146,6 +1201,75 @@ export type Database = {
           p_senha_criptografada: string
         }
         Returns: string
+      }
+      plantao_duracao_horas: {
+        Args: {
+          p_data: string
+          p_hora_inicio: string
+          p_hora_fim: string
+        }
+        Returns: number
+      }
+      plantoes_por_mes: {
+        Args: {
+          p_local_id?: string | null
+          p_meses?: number | null
+        }
+        Returns: {
+          mes: string
+          total: number
+          realizados: number
+          vagos: number
+          custo: number
+        }[]
+      }
+      profissionais_ranking: {
+        Args: {
+          p_competencia: string
+          p_local_id?: string | null
+        }
+        Returns: {
+          profissional_id: string
+          nome: string
+          horas: number
+          plantoes: number
+          valor_total: number
+          taxa_presenca: number
+        }[]
+      }
+      resumo_setor: {
+        Args: {
+          p_competencia: string
+        }
+        Returns: {
+          setor_id: string
+          setor_nome: string
+          local_nome: string
+          total_plantoes: number
+          cobertos: number
+          vagos: number
+          custo: number
+        }[]
+      }
+      profissionais_sobrecarga: {
+        Args: {
+          p_semana_inicio: string
+        }
+        Returns: {
+          profissional_id: string
+          nome: string
+          horas_semana: number
+          plantoes_semana: number
+        }[]
+      }
+      confirmar_plantao: {
+        Args: {
+          p_plantao_id: string
+          p_aceitar: boolean
+          p_motivo?: string | null
+          p_ip_address?: string | null
+        }
+        Returns: Json
       }
     }
     Enums: Record<string, never>

@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 import { useContaMembro } from '../hooks/useContaMembro'
 import { useSupabaseUser } from '../hooks/useSupabaseUser'
 import { useNotificacoes } from '../hooks/useNotificacoes'
+import { useConfirmacaoEscala } from '../hooks/useConfirmacaoEscala'
 
 function getFirstTwoInitialsFromLabel(label: string): string {
   const normalizedLabel = label.trim()
@@ -44,6 +45,7 @@ export function Topbar({ onAbrirMenuMobile }: TopbarProps) {
   const notificacoes = useNotificacoes((s) => s.notificacoes)
   const marcarComoLida = useNotificacoes((s) => s.marcarComoLida)
   const marcarTodasComoLidas = useNotificacoes((s) => s.marcarTodasComoLidas)
+  const { totalPendentes: confirmacoesPendentes } = useConfirmacaoEscala()
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const userMenuContainerRef = useRef<HTMLDivElement | null>(null)
@@ -136,6 +138,8 @@ export function Topbar({ onAbrirMenuMobile }: TopbarProps) {
     [notificacoes],
   )
 
+  const badgeCampainha = unreadNotificationsCount + (isMembroProfissional ? confirmacoesPendentes : 0)
+
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut()
@@ -193,12 +197,12 @@ export function Topbar({ onAbrirMenuMobile }: TopbarProps) {
               onClick={() => setIsNotificationsMenuOpen((prev) => !prev)}
             >
               <Bell className="h-5 w-5" />
-              {unreadNotificationsCount > 0 ? (
+              {badgeCampainha > 0 ? (
                 <span
                   className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-danger-500 px-1 text-[11px] font-semibold leading-none text-white ring-2 ring-white"
-                  aria-label={`${unreadNotificationsCount} notificações não lidas`}
+                  aria-label={`${badgeCampainha} alertas não lidos`}
                 >
-                  {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                  {badgeCampainha > 99 ? '99+' : badgeCampainha}
                 </span>
               ) : null}
             </button>

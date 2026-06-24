@@ -4,7 +4,15 @@ import { supabase } from '../supabase'
 
 import type { PlantaoCartao, StatusPlantaoEscala, TomCartao } from './escalaTypes'
 
+import type { StatusConfirmacaoEscala } from './confirmacaoEscalaTypes'
+
 type ProfissionalJoin = { id: string; nome: string } | null
+
+type EscalaConfirmacaoJoin = {
+  status: StatusConfirmacaoEscala
+  motivo_recusa: string | null
+  confirmado_em: string | null
+} | null
 
 export type PlantaoRowDb = {
   id: string
@@ -21,6 +29,10 @@ export type PlantaoRowDb = {
   valor_plantao?: number
   ajuste_financeiro?: number
   observacao_ajuste?: string | null
+  confirmado_profissional?: boolean
+  data_confirmacao_profissional?: string | null
+  motivo_recusa?: string | null
+  escala_confirmacoes?: EscalaConfirmacaoJoin | EscalaConfirmacaoJoin[]
   profissionais?: ProfissionalJoin
 }
 
@@ -51,6 +63,24 @@ export function dataLocalAPartirDeIsoData(isoData: string): Date {
   const [y, mo, d] = partes
   if (!y || !mo || !d) return parseISO(chave)
   return new Date(y, mo - 1, d, 12, 0, 0, 0)
+}
+
+export function confirmacaoStatusDeRow(
+  row: PlantaoRowDb,
+): StatusConfirmacaoEscala | null {
+  const c = row.escala_confirmacoes
+  if (!c) return null
+  if (Array.isArray(c)) return c[0]?.status ?? null
+  return c.status ?? null
+}
+
+export function plantaoAguardaConfirmacaoProfissional(row: PlantaoRowDb): boolean {
+  return (
+    Boolean(row.profissional_id) &&
+    !row.confirmado_profissional &&
+    confirmacaoStatusDeRow(row) !== 'recusado' &&
+    (row.status === 'confirmado' || row.status === 'pendente')
+  )
 }
 
 export function plantaoRowParaCartao(row: PlantaoRowDb): PlantaoCartao {
@@ -93,6 +123,10 @@ export async function buscarPlantoesIntervalo(
       valor_plantao,
       ajuste_financeiro,
       observacao_ajuste,
+      confirmado_profissional,
+      data_confirmacao_profissional,
+      motivo_recusa,
+      escala_confirmacoes ( status, motivo_recusa, confirmado_em ),
       profissionais ( id, nome )
     `,
     )
@@ -102,7 +136,7 @@ export async function buscarPlantoesIntervalo(
     .order('data_plantao', { ascending: true })
 
   if (error) throw new Error(error.message)
-  return (data ?? []) as PlantaoRowDb[]
+  return (data ?? []) as unknown as PlantaoRowDb[]
 }
 
 export type LocalEscalaOpcao = { id: string; nome: string }

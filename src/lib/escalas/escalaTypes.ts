@@ -1,3 +1,5 @@
+import type { StatusConfirmacaoEscala } from './confirmacaoEscalaTypes'
+
 export type TomCartao = 'util' | 'fds'
 
 export type StatusPlantaoEscala =
@@ -29,4 +31,8 @@ export type ContextoModalPlantao = {
   valorPlantao?: number
   /** Plantão visível no Mural de Trocas (`plantoes.disponivel_mural`). */
   disponivelMural?: boolean
+  confirmadoProfissional?: boolean
+  dataConfirmacaoProfissional?: string | null
+  motivoRecusa?: string | null
+  confirmacaoStatus?: StatusConfirmacaoEscala | null
 }

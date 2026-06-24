@@ -10,6 +10,8 @@ import { PageLoader } from './components/PageLoader'
 import { CadastroPage } from './pages/CadastroPage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { AppToaster } from './components/AppToaster'
+import { PwaInstallPrompt } from './components/PwaInstallPrompt'
 import { PwaUpdatePrompt } from './components/PwaUpdatePrompt'
 
 const AlterarSenhaObrigatoriaPage = lazy(() =>
@@ -111,6 +113,11 @@ const RelatoriosPage = lazy(() =>
 )
 const ResumoPage = lazy(() =>
   import('./pages/Dashboard/ResumoPage').then((m) => ({ default: m.ResumoPage })),
+)
+const ConfirmacoesPainelPage = lazy(() =>
+  import('./pages/Dashboard/ConfirmacoesPainelPage').then((m) => ({
+    default: m.ConfirmacoesPainelPage,
+  })),
 )
 const DocumentosUsuarioPage = lazy(() =>
   import('./pages/UsuariosEmBrevePage').then((m) => ({
@@ -284,6 +291,14 @@ function App() {
 
             <Route element={<MasterOnlyOutlet />}>
               <Route
+                path="painel/confirmacoes"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <ConfirmacoesPainelPage />
+                  </Suspense>
+                }
+              />
+              <Route
                 path="usuarios"
                 element={<Navigate to="/usuarios/profissionais" replace />}
               />
@@ -439,6 +454,8 @@ function App() {
           </Route>
         </Route>
       </Routes>
+      <AppToaster />
+      <PwaInstallPrompt />
       <PwaUpdatePrompt />
     </BrowserRouter>
   )

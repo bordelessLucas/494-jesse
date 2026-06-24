@@ -1,27 +1,37 @@
 import { format } from 'date-fns'
-import { Loader2, Printer } from 'lucide-react'
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Loader2, Printer, RefreshCw } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import toast from 'react-hot-toast'
 
+import { useCatalogoLocaisSetores } from '../../hooks/useCatalogoLocaisSetores'
 import { useContaMembro } from '../../hooks/useContaMembro'
+import {
+  invalidarCacheRelatoriosGerenciais,
+  useRelatorioEscala,
+  useRelatorioPagamentos,
+} from '../../hooks/useRelatoriosGerenciais'
 import { cn } from '../../lib/cn'
 import { capturarPreviewComoPdf } from '../../lib/relatorios/capturarPreviewComoPdf'
 import { useThemeBranding } from '../../theme/ThemeBrandingProvider'
 import { RelatorioEscalaFolha } from './components/RelatorioEscalaFolha'
 import { RelatorioPagamentosFolha } from './components/RelatorioPagamentosFolha'
 import {
-  buscarLinhasPagamentos,
+  competenciaDeData,
   GRUPOS_OPCOES,
-  PERIODO_PADRAO,
-  SETORES_OPCOES,
+  intervaloPorPreset,
+  periodoPadraoMesAtual,
+  type FiltroRelatorioEscala,
+  type PeriodoRelatorioPreset,
   type TipoRelatorioGerador,
-} from './relatoriosMockData'
+} from './relatoriosGerenciaisTypes'
 
 type FiltrosGerador = {
   tipoRelatorio: TipoRelatorioGerador
   listarTelefone: boolean
-  setores: string[]
+  localId: string
+  setorIds: string[]
   grupo: string
+  presetPeriodo: PeriodoRelatorioPreset
   dataInicio: string
   dataFim: string
   tipo: string
@@ -36,14 +46,20 @@ const INPUT =
   'w-full min-w-0 rounded border border-gray-300 bg-white px-1.5 py-0.5 text-xs text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30'
 const SELECT = INPUT
 
+const TODOS_LOCAIS = ''
+const TODOS_SETORES = '__todos__'
+
 function filtrosIniciais(): FiltrosGerador {
+  const { inicio, fim } = periodoPadraoMesAtual()
   return {
     tipoRelatorio: 'pagamentos',
     listarTelefone: false,
-    setores: [],
+    localId: TODOS_LOCAIS,
+    setorIds: [],
     grupo: 'Todos',
-    dataInicio: PERIODO_PADRAO.inicio,
-    dataFim: PERIODO_PADRAO.fim,
+    presetPeriodo: 'mes',
+    dataInicio: inicio,
+    dataFim: fim,
     tipo: 'Todos',
     setoresDesabilitados: 'nao',
     identificarProfissional: 'Nome completo',
@@ -72,24 +88,81 @@ function CampoFiltro({
   )
 }
 
+function mapFiltroEscala(f: FiltrosGerador): FiltroRelatorioEscala {
+  return {
+    localId: f.localId || undefined,
+    setorIds: f.setorIds.length > 0 ? f.setorIds : undefined,
+    dataInicio: f.dataInicio,
+    dataFim: f.dataFim,
+    competencia: competenciaDeData(f.dataInicio),
+    tipo: f.tipoEscala as FiltroRelatorioEscala['tipo'],
+    tipoTurno: f.tipo as FiltroRelatorioEscala['tipoTurno'],
+    identificarProfissional:
+      f.identificarProfissional as FiltroRelatorioEscala['identificarProfissional'],
+    incluirSetoresInativos: f.setoresDesabilitados === 'sim',
+  }
+}
+
 export function RelatoriosPage() {
   const { empresa } = useContaMembro()
   const { logoUrl } = useThemeBranding()
+  const { locais, setoresPorLocalId } = useCatalogoLocaisSetores()
   const nomeEmpresa = empresa?.nome?.trim() || 'PlantaoCheck'
   const previewRef = useRef<HTMLElement>(null)
 
   const [filtros, setFiltros] = useState<FiltrosGerador>(filtrosIniciais)
   const [filtrosGerados, setFiltrosGerados] = useState<FiltrosGerador | null>(null)
-  const [gerando, setGerando] = useState(false)
-  const [exportandoXls, setExportandoXls] = useState(false)
-  const [exportandoPdf, setExportandoPdf] = useState(false)
   const [dataGeracao, setDataGeracao] = useState('')
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
+  const [exportandoXls, setExportandoXls] = useState(false)
+  const [exportandoPdf, setExportandoPdf] = useState(false)
 
-  const linhasPagamentos = useMemo(() => {
-    if (!filtrosGerados || filtrosGerados.tipoRelatorio !== 'pagamentos') return []
-    return buscarLinhasPagamentos(filtrosGerados.listarTelefone)
-  }, [filtrosGerados])
+  const setoresDisponiveis = useMemo(() => {
+    if (!filtros.localId) {
+      return locais.flatMap((l) => setoresPorLocalId[l.id] ?? [])
+    }
+    return setoresPorLocalId[filtros.localId] ?? []
+  }, [filtros.localId, locais, setoresPorLocalId])
+
+  const filtroEscala = useMemo(
+    () => (filtrosGerados ? mapFiltroEscala(filtrosGerados) : null),
+    [filtrosGerados],
+  )
+
+  const filtroPagamentos = useMemo(
+    () =>
+      filtrosGerados
+        ? {
+            dataInicio: filtrosGerados.dataInicio,
+            dataFim: filtrosGerados.dataFim,
+            localId: filtrosGerados.localId || undefined,
+            listarTelefone: filtrosGerados.listarTelefone,
+          }
+        : null,
+    [filtrosGerados],
+  )
+
+  const relatorioAtivo = filtrosGerados !== null
+  const isEscala = filtrosGerados?.tipoRelatorio === 'escala'
+
+  const escalaQuery = useRelatorioEscala(
+    filtroEscala,
+    relatorioAtivo && isEscala,
+  )
+  const pagamentosQuery = useRelatorioPagamentos(
+    filtroPagamentos,
+    relatorioAtivo && !isEscala,
+  )
+
+  const queryAtiva = isEscala ? escalaQuery : pagamentosQuery
+  const isLoading = queryAtiva.isLoading
+  const error = queryAtiva.error
+
+  useEffect(() => {
+    if (error) {
+      toast.error(error)
+    }
+  }, [error])
 
   const alternarSelecao = useCallback((id: string) => {
     setSelecionados((prev) => {
@@ -107,26 +180,46 @@ export function RelatoriosPage() {
     setFiltros((p) => ({ ...p, [campo]: valor }))
   }
 
-  function alternarSetor(setor: string) {
+  function aplicarPresetPeriodo(preset: PeriodoRelatorioPreset) {
+    if (preset === 'personalizado') {
+      patchFiltros('presetPeriodo', preset)
+      return
+    }
+    const { inicio, fim } = intervaloPorPreset(preset)
+    setFiltros((p) => ({
+      ...p,
+      presetPeriodo: preset,
+      dataInicio: inicio,
+      dataFim: fim,
+    }))
+  }
+
+  function alternarSetor(setorId: string) {
     setFiltros((p) => {
-      const tem = p.setores.includes(setor)
+      const tem = p.setorIds.includes(setorId)
       return {
         ...p,
-        setores: tem
-          ? p.setores.filter((s) => s !== setor)
-          : [...p.setores, setor],
+        setorIds: tem
+          ? p.setorIds.filter((s) => s !== setorId)
+          : [...p.setorIds, setorId],
       }
     })
   }
 
   function gerarRelatorio() {
-    setGerando(true)
-    window.setTimeout(() => {
-      setFiltrosGerados({ ...filtros })
-      setDataGeracao(format(new Date(), 'dd/MM/yyyy HH:mm'))
-      setSelecionados(new Set())
-      setGerando(false)
-    }, 900)
+    if (filtros.dataInicio > filtros.dataFim) {
+      toast.error('A data de início deve ser anterior à data final.')
+      return
+    }
+    invalidarCacheRelatoriosGerenciais()
+    setFiltrosGerados({ ...filtros })
+    setDataGeracao(format(new Date(), 'dd/MM/yyyy HH:mm'))
+    setSelecionados(new Set())
+  }
+
+  function tentarNovamente() {
+    invalidarCacheRelatoriosGerenciais()
+    queryAtiva.refetch()
   }
 
   async function exportarXls() {
@@ -150,7 +243,9 @@ export function RelatoriosPage() {
         dataGeracao,
         listarTelefone: filtrosGerados.listarTelefone,
         linhasPagamentos:
-          filtrosGerados.tipoRelatorio === 'pagamentos' ? linhasPagamentos : undefined,
+          filtrosGerados.tipoRelatorio === 'pagamentos'
+            ? pagamentosQuery.data
+            : undefined,
       })
       toast.success('Planilha exportada com sucesso.')
     } catch {
@@ -198,7 +293,9 @@ export function RelatoriosPage() {
     }
   }
 
-  const relatorioVisivel = filtrosGerados !== null && !gerando
+  const relatorioVisivel = filtrosGerados !== null && !isLoading && !error
+  const nomeSetor = (id: string) =>
+    setoresDisponiveis.find((s) => s.id === id)?.nome ?? id
 
   return (
     <div className="relative -mx-4 -mt-4 min-h-[calc(100dvh-4rem)] bg-slate-100 md:-mx-8 md:-mt-8">
@@ -215,6 +312,43 @@ export function RelatoriosPage() {
             >
               <option value="escala">Escala de Plantões</option>
               <option value="pagamentos">Pagamentos para Plantões</option>
+            </select>
+          </CampoFiltro>
+
+          <CampoFiltro label="Local" htmlFor="filtro-local" className="min-w-[120px]">
+            <select
+              id="filtro-local"
+              className={SELECT}
+              value={filtros.localId}
+              onChange={(e) => {
+                patchFiltros('localId', e.target.value)
+                patchFiltros('setorIds', [])
+              }}
+            >
+              <option value={TODOS_LOCAIS}>Todos os locais</option>
+              {locais.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.nome}
+                </option>
+              ))}
+            </select>
+          </CampoFiltro>
+
+          <CampoFiltro label="Período" htmlFor="filtro-periodo" className="min-w-[100px]">
+            <select
+              id="filtro-periodo"
+              className={SELECT}
+              value={filtros.presetPeriodo}
+              onChange={(e) =>
+                aplicarPresetPeriodo(e.target.value as PeriodoRelatorioPreset)
+              }
+            >
+              <option value="semana">Semana</option>
+              <option value="mes">Mês</option>
+              <option value="trimestre">Trimestre</option>
+              <option value="ano">Ano</option>
+              <option value="ytd">YTD</option>
+              <option value="personalizado">Personalizado</option>
             </select>
           </CampoFiltro>
 
@@ -238,21 +372,23 @@ export function RelatoriosPage() {
                 className={cn(SELECT, 'flex-1')}
                 value=""
                 onChange={(e) => {
-                  if (e.target.value) alternarSetor(e.target.value)
+                  if (e.target.value && e.target.value !== TODOS_SETORES) {
+                    alternarSetor(e.target.value)
+                  }
                   e.target.value = ''
                 }}
               >
                 <option value="">Selecionar…</option>
-                {SETORES_OPCOES.map((s) => (
-                  <option key={s} value={s}>
-                    {filtros.setores.includes(s) ? '✓ ' : ''}
-                    {s}
+                {setoresDisponiveis.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {filtros.setorIds.includes(s.id) ? '✓ ' : ''}
+                    {s.nome}
                   </option>
                 ))}
               </select>
-              {filtros.setores.length > 0 ? (
+              {filtros.setorIds.length > 0 ? (
                 <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white">
-                  {filtros.setores.length}
+                  {filtros.setorIds.length}
                 </span>
               ) : null}
             </div>
@@ -279,7 +415,10 @@ export function RelatoriosPage() {
               type="date"
               className={INPUT}
               value={filtros.dataInicio}
-              onChange={(e) => patchFiltros('dataInicio', e.target.value)}
+              onChange={(e) => {
+                patchFiltros('dataInicio', e.target.value)
+                patchFiltros('presetPeriodo', 'personalizado')
+              }}
             />
           </CampoFiltro>
 
@@ -289,7 +428,10 @@ export function RelatoriosPage() {
               type="date"
               className={INPUT}
               value={filtros.dataFim}
-              onChange={(e) => patchFiltros('dataFim', e.target.value)}
+              onChange={(e) => {
+                patchFiltros('dataFim', e.target.value)
+                patchFiltros('presetPeriodo', 'personalizado')
+              }}
             />
           </CampoFiltro>
 
@@ -362,25 +504,25 @@ export function RelatoriosPage() {
           <div className="flex items-end gap-1.5 pb-0.5">
             <button
               type="button"
-              disabled={gerando}
+              disabled={isLoading && relatorioAtivo}
               onClick={gerarRelatorio}
-              className="rounded border border-[#2563eb] bg-[#2563eb] px-3 py-1 text-xs font-semibold text-white hover:bg-[#1d4ed8] disabled:cursor-wait disabled:opacity-70"
+              className="rounded border border-primary bg-primary px-3 py-1 text-xs font-semibold text-white hover:bg-primary-700 disabled:cursor-wait disabled:opacity-70"
             >
-              {gerando ? 'Aguarde...' : 'Gerar'}
+              {isLoading && relatorioAtivo ? 'A carregar…' : 'Gerar'}
             </button>
             <button
               type="button"
-              disabled={gerando || exportandoXls || !relatorioVisivel}
+              disabled={isLoading || exportandoXls || !relatorioVisivel}
               onClick={() => void exportarXls()}
-              className="rounded border border-[#2563eb] bg-white px-3 py-1 text-xs font-semibold text-[#2563eb] hover:bg-blue-50 disabled:opacity-50"
+              className="rounded border border-primary bg-white px-3 py-1 text-xs font-semibold text-primary hover:bg-primary-50 disabled:opacity-50"
             >
               {exportandoXls ? 'Exportando…' : 'XLS'}
             </button>
             <button
               type="button"
-              disabled={gerando || exportandoPdf || !relatorioVisivel}
+              disabled={isLoading || exportandoPdf || !relatorioVisivel}
               onClick={() => void imprimirOuGerarPdf()}
-              className="inline-flex items-center gap-1 rounded border border-[#2563eb] bg-white px-3 py-1 text-xs font-semibold text-[#2563eb] hover:bg-blue-50 disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded border border-primary bg-white px-3 py-1 text-xs font-semibold text-primary hover:bg-primary-50 disabled:opacity-50"
             >
               {exportandoPdf ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -392,16 +534,16 @@ export function RelatoriosPage() {
           </div>
         </div>
 
-        {filtros.setores.length > 0 ? (
+        {filtros.setorIds.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-1">
-            {filtros.setores.map((s) => (
+            {filtros.setorIds.map((id) => (
               <button
-                key={s}
+                key={id}
                 type="button"
-                onClick={() => alternarSetor(s)}
+                onClick={() => alternarSetor(id)}
                 className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-gray-700 hover:bg-slate-200"
               >
-                {s} ×
+                {nomeSetor(id)} ×
               </button>
             ))}
           </div>
@@ -409,42 +551,67 @@ export function RelatoriosPage() {
       </div>
 
       <div className="px-4 pb-12 pt-6 md:px-8">
-        <article
-          ref={previewRef}
-          className={cn(
-            'pagina-a4 relatorio-gerencial-folha mx-auto max-w-6xl bg-white text-sm text-black shadow-md',
-            'min-h-[297mm] px-8 py-6',
-            'print:m-0 print:max-w-none print:min-h-0 print:p-0 print:shadow-none',
-          )}
-        >
-          {gerando ? (
-            <div className="flex min-h-[240px] items-center justify-center text-sm text-gray-500">
-              Aguarde...
+        {relatorioAtivo && isLoading ? (
+          <div className="mx-auto max-w-6xl rounded-lg border border-gray-200 bg-white p-8 shadow-md">
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden />
+              A carregar dados do Supabase…
             </div>
-          ) : !relatorioVisivel ? (
-            <div className="flex min-h-[240px] items-center justify-center text-sm text-gray-400">
-              Configure os filtros e clique em Gerar para visualizar o relatório.
+            <div className="mt-6 animate-pulse space-y-3">
+              <div className="h-6 w-1/3 rounded bg-gray-200" />
+              <div className="h-40 rounded bg-gray-100" />
             </div>
-          ) : filtrosGerados.tipoRelatorio === 'pagamentos' ? (
-            <RelatorioPagamentosFolha
-              linhas={linhasPagamentos}
-              dataInicio={filtrosGerados.dataInicio}
-              dataFim={filtrosGerados.dataFim}
-              dataGeracao={dataGeracao}
-              nomeEmpresa={nomeEmpresa}
-              selecionados={selecionados}
-              onAlternarSelecao={alternarSelecao}
-              listarTelefone={filtrosGerados.listarTelefone}
-            />
-          ) : (
-            <RelatorioEscalaFolha
-              dataInicio={filtrosGerados.dataInicio}
-              dataFim={filtrosGerados.dataFim}
-              dataGeracao={dataGeracao}
-              nomeEmpresa={nomeEmpresa}
-            />
-          )}
-        </article>
+          </div>
+        ) : relatorioAtivo && error ? (
+          <div className="mx-auto max-w-lg rounded-lg border border-red-200 bg-white p-6 text-center shadow-md">
+            <p className="text-sm font-medium text-red-800">Erro ao carregar relatório</p>
+            <p className="mt-1 text-xs text-red-600">{error}</p>
+            <button
+              type="button"
+              onClick={tentarNovamente}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100"
+            >
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+              Tentar novamente
+            </button>
+          </div>
+        ) : (
+          <article
+            ref={previewRef}
+            className={cn(
+              'pagina-a4 relatorio-gerencial-folha mx-auto max-w-6xl bg-white text-sm text-black shadow-md',
+              'min-h-[297mm] px-8 py-6',
+              'print:m-0 print:max-w-none print:min-h-0 print:p-0 print:shadow-none',
+            )}
+          >
+            {!filtrosGerados ? (
+              <div className="flex min-h-[240px] items-center justify-center text-sm text-gray-400">
+                Configure os filtros e clique em Gerar para visualizar o relatório.
+              </div>
+            ) : filtrosGerados.tipoRelatorio === 'pagamentos' ? (
+              <RelatorioPagamentosFolha
+                linhas={pagamentosQuery.data}
+                dataInicio={filtrosGerados.dataInicio}
+                dataFim={filtrosGerados.dataFim}
+                dataGeracao={dataGeracao}
+                nomeEmpresa={nomeEmpresa}
+                selecionados={selecionados}
+                onAlternarSelecao={alternarSelecao}
+                listarTelefone={filtrosGerados.listarTelefone}
+                isLoading={pagamentosQuery.isFetching}
+              />
+            ) : (
+              <RelatorioEscalaFolha
+                dataInicio={filtrosGerados.dataInicio}
+                dataFim={filtrosGerados.dataFim}
+                dataGeracao={dataGeracao}
+                nomeEmpresa={nomeEmpresa}
+                semanas={escalaQuery.data.grade}
+                isLoading={escalaQuery.isFetching}
+              />
+            )}
+          </article>
+        )}
       </div>
     </div>
   )

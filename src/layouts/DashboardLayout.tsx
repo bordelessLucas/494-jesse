@@ -1,8 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Outlet } from 'react-router-dom'
-import { Toaster } from 'react-hot-toast'
-
 import { MembroAcessoGuard } from '../components/auth/MembroAcessoGuard'
+import { BannerConfirmacaoPendente } from '../components/ConfirmacaoEscala/BannerConfirmacaoPendente'
 import { MobileNavDrawer } from '../components/MobileNavDrawer'
 import { ContaMembroProvider } from '../contexts/ContaMembroProvider'
 import { PreloadCatalogoLocaisSetores } from '../components/catalogo/PreloadCatalogoLocaisSetores'
@@ -11,10 +10,12 @@ import { SuporteChatWidget } from '../components/support/SuporteChatWidget'
 import { Topbar } from '../components/Topbar'
 import { useMuralTrocasAlertas } from '../hooks/useMuralTrocasAlertas'
 import { useNotificacoesRealtime } from '../hooks/useNotificacoes'
+import { useConfirmacaoEscalaLoader } from '../hooks/useConfirmacaoEscalaLoader'
 
 function DashboardRealtimeListeners() {
   useMuralTrocasAlertas()
   useNotificacoesRealtime()
+  useConfirmacaoEscalaLoader()
   return null
 }
 
@@ -42,20 +43,7 @@ export function DashboardLayout() {
         </div>
 
         <SuporteChatWidget />
-
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            duration: 3500,
-            style: {
-              borderRadius: '14px',
-              background: '#ffffff',
-              color: '#0f172a',
-              boxShadow: '0 20px 40px rgba(15, 23, 42, 0.12)',
-              border: '1px solid rgba(148, 163, 184, 0.35)',
-            },
-          }}
-        />
+        <BannerConfirmacaoPendente />
       </div>
     </ContaMembroProvider>
   )

@@ -4,6 +4,9 @@ export type TipoNotificacao =
   | 'novo_mural'
   | 'troca_aprovada'
   | 'aviso'
+  | 'confirmacao_escala'
+  | 'recusa_escala'
+  | 'lembrete_confirmacao'
 
 export type Notificacao = {
   id: string

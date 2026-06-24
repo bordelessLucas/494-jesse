@@ -22,7 +22,9 @@ import type { StatusPlantaoEscala } from '../../lib/escalas/escalaTypes'
 import { buscarPlantoesMensais } from '../../lib/plantoesDb'
 import {
   buscarProfissionaisEscala,
+  confirmacaoStatusDeRow,
   dataLocalAPartirDeIsoData,
+  plantaoAguardaConfirmacaoProfissional,
   plantaoRowParaCartao,
   tomParaData,
   type PlantaoRowDb,
@@ -94,7 +96,16 @@ function rowParaPlantaoMensal(row: PlantaoRowDb): PlantaoMensal {
   }
 }
 
-function contextoParaPlantao(plantao: PlantaoMensal): ContextoModalPlantao {
+function contextoParaPlantao(
+  plantao: PlantaoMensal,
+  row?: PlantaoRowDb,
+): ContextoModalPlantao {
+  const confStatus = row ? confirmacaoStatusDeRow(row) : null
+  const confArr = row?.escala_confirmacoes
+  const motivoConf = Array.isArray(confArr)
+    ? confArr[0]?.motivo_recusa
+    : confArr?.motivo_recusa
+
   return {
     dia: new Date(plantao.dia),
     cartao: {
@@ -111,6 +122,11 @@ function contextoParaPlantao(plantao: PlantaoMensal): ContextoModalPlantao {
     plantaoId: plantao.id,
     profissionalId: plantao.profissionalId,
     disponivelMural: plantao.disponivelMural,
+    valorPlantao: row != null ? Number(row.valor_plantao ?? 0) : undefined,
+    confirmadoProfissional: row?.confirmado_profissional,
+    dataConfirmacaoProfissional: row?.data_confirmacao_profissional ?? null,
+    motivoRecusa: row?.motivo_recusa ?? motivoConf ?? null,
+    confirmacaoStatus: confStatus,
   }
 }
 
@@ -130,6 +146,7 @@ export function EscalaMensalPage() {
   const [localSelecionado, setLocalSelecionado] = useState(TODOS_LOCAIS)
   const [setorSelecionado, setSetorSelecionado] = useState(TODOS_SETORES)
   const [plantaoModal, setPlantaoModal] = useState<ContextoModalPlantao | null>(null)
+  const [somenteNaoConfirmados, setSomenteNaoConfirmados] = useState(false)
 
   const [profissionais, setProfissionais] = useState<{ id: string; nome: string }[]>(
     [],
@@ -233,10 +250,16 @@ export function EscalaMensalPage() {
     }
   }, [setorSelecionado, setoresFiltradosSelect])
 
-  const plantoes = useMemo(
-    () => plantoesRows.map(rowParaPlantaoMensal),
-    [plantoesRows],
-  )
+  const plantoes = useMemo(() => {
+    const mapped = plantoesRows.map(rowParaPlantaoMensal)
+    if (!somenteNaoConfirmados) return mapped
+    const idsPendentes = new Set(
+      plantoesRows
+        .filter(plantaoAguardaConfirmacaoProfissional)
+        .map((r) => r.id),
+    )
+    return mapped.filter((p) => idsPendentes.has(p.id))
+  }, [plantoesRows, somenteNaoConfirmados])
 
   const mesAnoLabel = useMemo(() => formatarMesAno(dataReferencia), [dataReferencia])
 
@@ -371,6 +394,16 @@ export function EscalaMensalPage() {
               disabled={carregando}
             />
 
+            <label className="flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700">
+              <input
+                type="checkbox"
+                checked={somenteNaoConfirmados}
+                onChange={(e) => setSomenteNaoConfirmados(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-slate-300 text-primary focus:ring-primary/30"
+              />
+              Só não confirmados
+            </label>
+
             <button
               type="button"
               onClick={abrirNovoPlantao}
@@ -483,9 +516,10 @@ export function EscalaMensalPage() {
                           <button
                             key={plantao.id}
                             type="button"
-                            onClick={() =>
-                              setPlantaoModal(contextoParaPlantao(plantao))
-                            }
+                            onClick={() => {
+                              const row = plantoesRows.find((r) => r.id === plantao.id)
+                              setPlantaoModal(contextoParaPlantao(plantao, row))
+                            }}
                             className={cn(
                               'group flex w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-left text-[11px] font-medium shadow-sm transition-colors',
                               statusClassName(plantao.status),

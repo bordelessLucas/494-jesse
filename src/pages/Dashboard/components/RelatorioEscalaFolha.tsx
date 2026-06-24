@@ -3,14 +3,30 @@ import { BrandedLogoOrInitial } from '../../../components/branding/BrandedLogoOr
 import {
   fmtPeriodo,
   LEGENDA_ESCALA,
-  montarGradeEscalaMes,
-} from '../relatoriosMockData'
+  type CelulaCalendarioEscala,
+} from '../relatoriosGerenciaisTypes'
 
 type RelatorioEscalaFolhaProps = {
   dataInicio: string
   dataFim: string
   dataGeracao: string
   nomeEmpresa: string
+  semanas: CelulaCalendarioEscala[][]
+  isLoading?: boolean
+}
+
+function SkeletonGrade() {
+  return (
+    <div className="space-y-2 animate-pulse">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="grid grid-cols-7 gap-1">
+          {Array.from({ length: 7 }).map((__, j) => (
+            <div key={j} className="min-h-[72px] rounded border border-gray-200 bg-gray-100" />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export function RelatorioEscalaFolha({
@@ -18,9 +34,9 @@ export function RelatorioEscalaFolha({
   dataFim,
   dataGeracao,
   nomeEmpresa,
+  semanas,
+  isLoading = false,
 }: RelatorioEscalaFolhaProps) {
-  const semanas = montarGradeEscalaMes(dataInicio, dataFim)
-
   return (
     <>
       <header className="mb-4 border-b border-gray-300 pb-3">
@@ -47,47 +63,51 @@ export function RelatorioEscalaFolha({
         </div>
       </header>
 
-      <div className="space-y-0">
-        {semanas.map((semana, idxSemana) => (
-          <div
-            key={`semana-${idxSemana}`}
-            className="grid grid-cols-7 border-collapse break-inside-avoid"
-          >
-            {semana.map((celula) => (
-              <div
-                key={celula.iso}
-                className={cn(
-                  'min-h-[72px] border border-gray-300 p-1',
-                  celula.foraMes ? 'bg-gray-50 text-gray-400' : 'bg-white',
-                )}
-              >
-                <p
+      {isLoading ? (
+        <SkeletonGrade />
+      ) : (
+        <div className="space-y-0">
+          {semanas.map((semana, idxSemana) => (
+            <div
+              key={`semana-${idxSemana}`}
+              className="grid grid-cols-7 border-collapse break-inside-avoid"
+            >
+              {semana.map((celula) => (
+                <div
+                  key={celula.iso}
                   className={cn(
-                    'mb-0.5 border-b border-gray-200 pb-0.5 text-[10px] font-bold uppercase',
-                    celula.foraMes ? 'text-gray-400' : 'text-gray-800',
+                    'min-h-[72px] border border-gray-300 p-1',
+                    celula.foraMes ? 'bg-gray-50 text-gray-400' : 'bg-white',
                   )}
                 >
-                  {celula.rotulo}
-                </p>
-                <div className="space-y-0.5">
-                  {celula.linhas.length === 0 ? (
-                    <p className="text-[9px] text-gray-400">—</p>
-                  ) : (
-                    celula.linhas.map((linha, idx) => (
-                      <p
-                        key={`${celula.iso}-${idx}`}
-                        className="text-[9px] leading-tight text-gray-800"
-                      >
-                        {linha}
-                      </p>
-                    ))
-                  )}
+                  <p
+                    className={cn(
+                      'mb-0.5 border-b border-gray-200 pb-0.5 text-[10px] font-bold uppercase',
+                      celula.foraMes ? 'text-gray-400' : 'text-gray-800',
+                    )}
+                  >
+                    {celula.rotulo}
+                  </p>
+                  <div className="space-y-0.5">
+                    {celula.linhas.length === 0 ? (
+                      <p className="text-[9px] text-gray-400">—</p>
+                    ) : (
+                      celula.linhas.map((linha, idx) => (
+                        <p
+                          key={`${celula.iso}-${idx}`}
+                          className="text-[9px] leading-tight text-gray-800"
+                        >
+                          {linha}
+                        </p>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
 
       <footer className="mt-4 border-t border-gray-300 pt-2 text-[9px] leading-relaxed text-gray-700">
         {LEGENDA_ESCALA}

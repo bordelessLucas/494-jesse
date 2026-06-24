@@ -24,6 +24,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 
 import { PontoPlantaoHojeBanner } from '../../components/Ponto/PontoPlantaoHojeBanner'
+import { CardConfirmacaoPendente } from '../../components/ConfirmacaoEscala/CardConfirmacaoPendente'
+import { useConfirmacaoEscala } from '../../hooks/useConfirmacaoEscala'
 import { useTenantUserId } from '../../hooks/useTenantUserId'
 import {
   buscarPlantoesHojeProfissional,
@@ -320,6 +322,7 @@ export function MinhaAgendaPage() {
   const [carregandoProfissionais, setCarregandoProfissionais] = useState(true)
   const [carregandoPlantoes, setCarregandoPlantoes] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const { plantoes: plantoesConfirmacao, totalPendentes } = useConfirmacaoEscala()
 
   useEffect(() => {
     if (isLoadingUser) return
@@ -602,6 +605,23 @@ export function MinhaAgendaPage() {
         >
           {erro}
         </div>
+      ) : null}
+
+      {totalPendentes > 0 ? (
+        <section className="rounded-xl border border-amber-200 bg-amber-50/80 p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-amber-950">
+            ⚠️ Aguardando sua confirmação
+          </h2>
+          <p className="mt-1 text-xs text-amber-900/80">
+            Confirme ou recuse os plantões abaixo para que a coordenação possa
+            organizar a escala.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {plantoesConfirmacao.map((p) => (
+              <CardConfirmacaoPendente key={p.id} plantao={p} />
+            ))}
+          </div>
+        </section>
       ) : null}
 
       <header className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/80">

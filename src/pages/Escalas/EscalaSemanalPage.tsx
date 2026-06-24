@@ -33,7 +33,9 @@ import {
   buscarPlantoesIntervalo,
   buscarProfissionaisEscala,
   chaveDataPlantaoDb,
+  confirmacaoStatusDeRow,
   formatarHoraDb,
+  plantaoAguardaConfirmacaoProfissional,
   plantaoRowParaCartao,
   tomParaData,
   type PlantaoRowDb,
@@ -71,6 +73,7 @@ import {
 import { duracaoHorasPlantao } from '../../lib/dashboard/plantaoHoras'
 import { supabase } from '../../lib/supabase'
 import { useContaMembro } from '../../hooks/useContaMembro'
+import { BadgeConfirmacaoPlantao } from '../../components/ConfirmacaoEscala/BadgeConfirmacaoPlantao'
 import { useTenantUserId } from '../../hooks/useTenantUserId'
 import { useNotificacoes } from '../../hooks/useNotificacoes'
 import { SeletorModeloEscala } from './components/SeletorModeloEscala'
@@ -991,6 +994,21 @@ export function ModalAlterarPlantao({
 
             {aba === 'informacoes' && (
               <div className="space-y-0 p-5 sm:p-6">
+                {contexto?.plantaoId && isCoordenador ? (
+                  <BadgeConfirmacaoPlantao
+                    className="mb-4"
+                    profissionalId={contexto.profissionalId ?? profissionalSel}
+                    confirmadoProfissional={contexto.confirmadoProfissional}
+                    dataConfirmacao={contexto.dataConfirmacaoProfissional}
+                    confirmacaoStatus={contexto.confirmacaoStatus}
+                    motivoRecusa={contexto.motivoRecusa}
+                    onRealocar={() => {
+                      setProfissionalSel('')
+                      setSituacao('vago')
+                      setErroSalvar(null)
+                    }}
+                  />
+                ) : null}
                 {exigeJustificativaCarga ? (
                   <section className="mb-6 rounded-lg border border-warning-200 bg-warning-50/60 p-4">
                     <label
@@ -1804,6 +1822,7 @@ export function EscalaSemanalPage() {
   const [plantaoModal, setPlantaoModal] = useState<ContextoModalPlantao | null>(
     null,
   )
+  const [somenteNaoConfirmados, setSomenteNaoConfirmados] = useState(false)
 
   const carregarProfissionais = useCallback(async () => {
     if (authLoading) return
@@ -1899,7 +1918,8 @@ export function EscalaSemanalPage() {
           (p) =>
             chaveDataPlantaoDb(p.data_plantao) === k &&
             p.local_id === localId &&
-            filtraSetor(p),
+            filtraSetor(p) &&
+            (!somenteNaoConfirmados || plantaoAguardaConfirmacaoProfissional(p)),
         )
         .map((p) => ({
           cartao: plantaoRowParaCartao(p),
@@ -1916,7 +1936,7 @@ export function EscalaSemanalPage() {
       mapa.set(k, lista)
     }
     return mapa
-  }, [dias, localId, plantoes, setorId, setores])
+  }, [dias, localId, plantoes, setorId, setores, somenteNaoConfirmados])
 
   const mesAnoCabecalho = useMemo(
     () => rotuloMesAnoRefSemana(inicioSemana),
@@ -2158,6 +2178,15 @@ export function EscalaSemanalPage() {
                 </option>
               ))}
             </select>
+            <label className="mb-3 flex cursor-pointer items-center gap-2 text-[10px] font-medium text-slate-700">
+              <input
+                type="checkbox"
+                checked={somenteNaoConfirmados}
+                onChange={(e) => setSomenteNaoConfirmados(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-slate-300 text-primary focus:ring-primary/30"
+              />
+              Mostrar apenas não confirmados
+            </label>
             <SeletorModeloEscala
               compacto
               className="mb-3"
@@ -2211,6 +2240,11 @@ export function EscalaSemanalPage() {
                       linhaAuxiliar={linhaAuxiliar}
                       onClick={() => {
                         const row = plantoes.find((p) => p.id === c.id)
+                        const confStatus = row ? confirmacaoStatusDeRow(row) : null
+                        const confArr = row?.escala_confirmacoes
+                        const motivoConf = Array.isArray(confArr)
+                          ? confArr[0]?.motivo_recusa
+                          : confArr?.motivo_recusa
                         setPlantaoModal({
                           dia: new Date(dia),
                           cartao: c,
@@ -2221,6 +2255,11 @@ export function EscalaSemanalPage() {
                           valorPlantao:
                             row != null ? Number(row.valor_plantao ?? 0) : 0,
                           disponivelMural: row?.disponivel_mural ?? false,
+                          confirmadoProfissional: row?.confirmado_profissional,
+                          dataConfirmacaoProfissional:
+                            row?.data_confirmacao_profissional ?? null,
+                          motivoRecusa: row?.motivo_recusa ?? motivoConf ?? null,
+                          confirmacaoStatus: confStatus,
                         })
                       }}
                     />

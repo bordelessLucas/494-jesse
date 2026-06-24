@@ -40,6 +40,10 @@ export async function buscarPlantoesMensais(
       valor_plantao,
       ajuste_financeiro,
       observacao_ajuste,
+      confirmado_profissional,
+      data_confirmacao_profissional,
+      motivo_recusa,
+      escala_confirmacoes ( status, motivo_recusa, confirmado_em ),
       profissionais ( id, nome )
     `,
     )
@@ -52,6 +56,6 @@ export async function buscarPlantoesMensais(
 
   const { data, error } = await q.order('data_plantao', { ascending: true })
   if (error) throw new Error(error.message)
-  return (data ?? []) as PlantaoRowDb[]
+  return (data ?? []) as unknown as PlantaoRowDb[]
 }
 

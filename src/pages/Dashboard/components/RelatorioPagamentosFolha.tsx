@@ -4,7 +4,7 @@ import {
   fmtPeriodo,
   totaisPagamentos,
   type LinhaPagamentoProfissional,
-} from '../relatoriosMockData'
+} from '../relatoriosGerenciaisTypes'
 
 type RelatorioPagamentosFolhaProps = {
   linhas: LinhaPagamentoProfissional[]
@@ -15,6 +15,19 @@ type RelatorioPagamentosFolhaProps = {
   selecionados: Set<string>
   onAlternarSelecao: (id: string) => void
   listarTelefone: boolean
+  isLoading?: boolean
+}
+
+function SkeletonTabela() {
+  return (
+    <div className="animate-pulse space-y-2">
+      <div className="h-8 rounded bg-gray-200" />
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="h-6 rounded bg-gray-100" />
+      ))}
+      <div className="h-8 rounded bg-gray-200" />
+    </div>
+  )
 }
 
 export function RelatorioPagamentosFolha({
@@ -26,6 +39,7 @@ export function RelatorioPagamentosFolha({
   selecionados,
   onAlternarSelecao,
   listarTelefone,
+  isLoading = false,
 }: RelatorioPagamentosFolhaProps) {
   const totais = totaisPagamentos(linhas)
 
@@ -55,87 +69,95 @@ export function RelatorioPagamentosFolha({
         </div>
       </header>
 
-      <table className="w-full border-collapse text-xs text-black">
-        <thead>
-          <tr className="border-b border-gray-400">
-            <th
-              scope="col"
-              className="no-print w-8 border border-gray-300 px-1 py-1 text-center font-bold"
-            >
-              sim
-            </th>
-            <th scope="col" className="border border-gray-300 px-2 py-1 text-left font-bold">
-              Total Geral
-            </th>
-            {listarTelefone ? (
-              <th scope="col" className="border border-gray-300 px-2 py-1 text-left font-bold">
-                Telefone
+      {isLoading ? (
+        <SkeletonTabela />
+      ) : linhas.length === 0 ? (
+        <p className="py-8 text-center text-sm text-gray-500">
+          Nenhum plantão encontrado para os filtros selecionados.
+        </p>
+      ) : (
+        <table className="w-full border-collapse text-xs text-black">
+          <thead>
+            <tr className="border-b border-gray-400">
+              <th
+                scope="col"
+                className="no-print w-8 border border-gray-300 px-1 py-1 text-center font-bold"
+              >
+                sim
               </th>
-            ) : null}
-            <th scope="col" className="border border-gray-300 px-2 py-1 text-center font-bold">
-              Plantões
-            </th>
-            <th scope="col" className="border border-gray-300 px-2 py-1 text-center font-bold">
-              Duração (h)
-            </th>
-            <th scope="col" className="border border-gray-300 px-2 py-1 text-right font-bold">
-              Valor (R$)
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {linhas.map((linha) => (
-            <tr key={linha.id} className="border-b border-gray-200">
-              <td className="no-print border border-gray-300 px-1 py-1 text-center align-middle">
-                <input
-                  type="checkbox"
-                  checked={selecionados.has(linha.id)}
-                  onChange={() => onAlternarSelecao(linha.id)}
-                  className="h-3 w-3 print:pointer-events-none"
-                  aria-label={`Selecionar ${linha.profissionalNome}`}
-                />
-              </td>
-              <td className="border border-gray-300 px-2 py-1 align-middle font-medium">
-                {linha.profissionalNome}
-              </td>
+              <th scope="col" className="border border-gray-300 px-2 py-1 text-left font-bold">
+                Total Geral
+              </th>
               {listarTelefone ? (
-                <td className="border border-gray-300 px-2 py-1 align-middle tabular-nums text-gray-700">
-                  {linha.telefone || '—'}
-                </td>
+                <th scope="col" className="border border-gray-300 px-2 py-1 text-left font-bold">
+                  Telefone
+                </th>
               ) : null}
-              <td className="border border-gray-300 px-2 py-1 text-center align-middle tabular-nums">
-                {linha.plantoes}
+              <th scope="col" className="border border-gray-300 px-2 py-1 text-center font-bold">
+                Plantões
+              </th>
+              <th scope="col" className="border border-gray-300 px-2 py-1 text-center font-bold">
+                Duração (h)
+              </th>
+              <th scope="col" className="border border-gray-300 px-2 py-1 text-right font-bold">
+                Valor (R$)
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {linhas.map((linha) => (
+              <tr key={linha.id} className="border-b border-gray-200">
+                <td className="no-print border border-gray-300 px-1 py-1 text-center align-middle">
+                  <input
+                    type="checkbox"
+                    checked={selecionados.has(linha.id)}
+                    onChange={() => onAlternarSelecao(linha.id)}
+                    className="h-3 w-3 print:pointer-events-none"
+                    aria-label={`Selecionar ${linha.profissionalNome}`}
+                  />
+                </td>
+                <td className="border border-gray-300 px-2 py-1 align-middle font-medium">
+                  {linha.profissionalNome}
+                </td>
+                {listarTelefone ? (
+                  <td className="border border-gray-300 px-2 py-1 align-middle tabular-nums text-gray-700">
+                    {linha.telefone || '—'}
+                  </td>
+                ) : null}
+                <td className="border border-gray-300 px-2 py-1 text-center align-middle tabular-nums">
+                  {linha.plantoes}
+                </td>
+                <td className="border border-gray-300 px-2 py-1 text-center align-middle tabular-nums">
+                  {linha.duracaoHoras}
+                </td>
+                <td className="border border-gray-300 px-2 py-1 text-right align-middle tabular-nums">
+                  {fmtBRL(linha.valor)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="font-bold">
+              <td className="no-print border border-gray-400 px-1 py-1.5" />
+              <td
+                colSpan={listarTelefone ? 2 : 1}
+                className="border border-gray-400 px-2 py-1.5 text-right uppercase"
+              >
+                Total geral
               </td>
-              <td className="border border-gray-300 px-2 py-1 text-center align-middle tabular-nums">
-                {linha.duracaoHoras}
+              <td className="border border-gray-400 px-2 py-1.5 text-center tabular-nums">
+                {totais.plantoes}
               </td>
-              <td className="border border-gray-300 px-2 py-1 text-right align-middle tabular-nums">
-                {fmtBRL(linha.valor)}
+              <td className="border border-gray-400 px-2 py-1.5 text-center tabular-nums">
+                {totais.horas}
+              </td>
+              <td className="border border-gray-400 px-2 py-1.5 text-right tabular-nums">
+                {fmtBRL(totais.valor)}
               </td>
             </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr className="font-bold">
-            <td className="no-print border border-gray-400 px-1 py-1.5" />
-            <td
-              colSpan={listarTelefone ? 2 : 1}
-              className="border border-gray-400 px-2 py-1.5 text-right uppercase"
-            >
-              Total geral
-            </td>
-            <td className="border border-gray-400 px-2 py-1.5 text-center tabular-nums">
-              {totais.plantoes}
-            </td>
-            <td className="border border-gray-400 px-2 py-1.5 text-center tabular-nums">
-              {totais.horas}
-            </td>
-            <td className="border border-gray-400 px-2 py-1.5 text-right tabular-nums">
-              {fmtBRL(totais.valor)}
-            </td>
-          </tr>
-        </tfoot>
-      </table>
+          </tfoot>
+        </table>
+      )}
     </>
   )
 }
