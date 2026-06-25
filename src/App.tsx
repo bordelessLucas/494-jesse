@@ -96,6 +96,11 @@ const NotificacoesPage = lazy(() =>
     default: m.NotificacoesPage,
   })),
 )
+const SuporteInboxPage = lazy(() =>
+  import('./pages/Admin/SuporteInboxPage').then((m) => ({
+    default: m.SuporteInboxPage,
+  })),
+)
 const ProfissionaisPage = lazy(() =>
   import('./pages/ProfissionaisPage').then((m) => ({
     default: m.ProfissionaisPage,
@@ -295,6 +300,14 @@ function App() {
                 element={
                   <Suspense fallback={<PageLoader />}>
                     <ConfirmacoesPainelPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="admin/suporte"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <SuporteInboxPage />
                   </Suspense>
                 }
               />

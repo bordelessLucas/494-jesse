@@ -3,6 +3,7 @@ import {
   CalendarClock,
   ArrowLeftRight,
   FileText,
+  Headphones,
   LayoutDashboard,
   MapPin,
   Settings2,
@@ -35,6 +36,7 @@ export const navigationItems: NavigationItem[] = [
       { to: '/painel/carga-horaria', label: 'Carga Horária' },
       { to: '/painel/relatorios', label: 'Relatórios Gerenciais' },
       { to: '/painel/confirmacoes', label: 'Confirmações de Plantões' },
+      { to: '/admin/suporte', label: 'Suporte · Inbox', icon: Headphones },
     ],
   },
   {

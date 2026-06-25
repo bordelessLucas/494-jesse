@@ -1137,6 +1137,150 @@ export type Database = {
         }
         Relationships: []
       }
+      suporte_artigos: {
+        Row: {
+          id: string
+          tenant_user_id: string | null
+          titulo: string
+          palavras_chave: string[]
+          conteudo: string
+          ativo: boolean
+          criado_em: string
+        }
+        Insert: {
+          id?: string
+          tenant_user_id?: string | null
+          titulo: string
+          palavras_chave?: string[]
+          conteudo: string
+          ativo?: boolean
+          criado_em?: string
+        }
+        Update: {
+          id?: string
+          tenant_user_id?: string | null
+          titulo?: string
+          palavras_chave?: string[]
+          conteudo?: string
+          ativo?: boolean
+          criado_em?: string
+        }
+        Relationships: []
+      }
+      suporte_conversas: {
+        Row: {
+          id: string
+          tenant_user_id: string
+          usuario_id: string
+          status: string
+          fluxo_atual_id: string | null
+          criada_em: string
+          atualizada_em: string
+        }
+        Insert: {
+          id?: string
+          tenant_user_id: string
+          usuario_id: string
+          status?: string
+          fluxo_atual_id?: string | null
+          criada_em?: string
+          atualizada_em?: string
+        }
+        Update: {
+          id?: string
+          tenant_user_id?: string
+          usuario_id?: string
+          status?: string
+          fluxo_atual_id?: string | null
+          criada_em?: string
+          atualizada_em?: string
+        }
+        Relationships: []
+      }
+      suporte_fluxo_opcoes: {
+        Row: {
+          id: string
+          fluxo_id: string
+          label: string
+          proximo_fluxo_id: string | null
+          ordem: number
+          criado_em: string
+        }
+        Insert: {
+          id?: string
+          fluxo_id: string
+          label: string
+          proximo_fluxo_id?: string | null
+          ordem?: number
+          criado_em?: string
+        }
+        Update: {
+          id?: string
+          fluxo_id?: string
+          label?: string
+          proximo_fluxo_id?: string | null
+          ordem?: number
+          criado_em?: string
+        }
+        Relationships: []
+      }
+      suporte_fluxos: {
+        Row: {
+          id: string
+          titulo: string
+          mensagem: string
+          tipo: string
+          slug: string | null
+          criado_em: string
+        }
+        Insert: {
+          id?: string
+          titulo: string
+          mensagem: string
+          tipo?: string
+          slug?: string | null
+          criado_em?: string
+        }
+        Update: {
+          id?: string
+          titulo?: string
+          mensagem?: string
+          tipo?: string
+          slug?: string | null
+          criado_em?: string
+        }
+        Relationships: []
+      }
+      suporte_mensagens: {
+        Row: {
+          id: string
+          conversa_id: string
+          autor_tipo: string
+          autor_id: string | null
+          texto: string
+          fluxo_opcao_id: string | null
+          criada_em: string
+        }
+        Insert: {
+          id?: string
+          conversa_id: string
+          autor_tipo: string
+          autor_id?: string | null
+          texto: string
+          fluxo_opcao_id?: string | null
+          criada_em?: string
+        }
+        Update: {
+          id?: string
+          conversa_id?: string
+          autor_tipo?: string
+          autor_id?: string | null
+          texto?: string
+          fluxo_opcao_id?: string | null
+          criada_em?: string
+        }
+        Relationships: []
+      }
       user_branding: {
         Row: {
           user_id: string

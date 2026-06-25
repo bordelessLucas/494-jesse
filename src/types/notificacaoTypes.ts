@@ -7,6 +7,7 @@ export type TipoNotificacao =
   | 'confirmacao_escala'
   | 'recusa_escala'
   | 'lembrete_confirmacao'
+  | 'suporte'
 
 export type Notificacao = {
   id: string

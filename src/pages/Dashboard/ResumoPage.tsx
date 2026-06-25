@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   DollarSign,
   Loader2,
@@ -120,26 +120,165 @@ function CardShell({
   titulo,
   children,
   acaoTopo,
+  filtros,
+  filtrosAtivos = false,
 }: {
   titulo: ReactNode
   children: ReactNode
   acaoTopo?: ReactNode
+  filtros?: ReactNode
+  filtrosAtivos?: boolean
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl border border-slate-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
       <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
         <div className="min-w-0">{titulo}</div>
-        {acaoTopo ?? (
-          <button
-            type="button"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
-            Filtros
-          </button>
-        )}
+        {acaoTopo ??
+          (filtros ? (
+            <BotaoFiltrosPopover filtrosAtivos={filtrosAtivos}>
+              {filtros}
+            </BotaoFiltrosPopover>
+          ) : null)}
       </div>
       <div className="min-h-0 flex-1 px-5 py-4">{children}</div>
+    </div>
+  )
+}
+
+function BotaoFiltrosPopover({
+  children,
+  filtrosAtivos = false,
+}: {
+  children: ReactNode
+  filtrosAtivos?: boolean
+}) {
+  const [aberto, setAberto] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const painelId = useId()
+
+  useEffect(() => {
+    if (!aberto) return
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const container = containerRef.current
+      if (!container) return
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (!container.contains(target)) setAberto(false)
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAberto(false)
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('touchstart', handlePointerDown, { passive: true })
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('touchstart', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [aberto])
+
+  return (
+    <div className="relative shrink-0" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        aria-expanded={aberto}
+        aria-controls={painelId}
+        aria-haspopup="dialog"
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-md border bg-white px-2.5 py-1.5 text-xs font-medium shadow-sm transition-colors',
+          filtrosAtivos
+            ? 'border-primary-300 text-primary-800 hover:border-primary-400 hover:bg-primary-50'
+            : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50',
+          aberto && 'border-primary-400 ring-2 ring-primary/20',
+        )}
+      >
+        <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
+        Filtros
+        {filtrosAtivos ? (
+          <span
+            className="h-1.5 w-1.5 rounded-full bg-primary-600"
+            aria-label="Filtros ativos"
+          />
+        ) : null}
+      </button>
+
+      {aberto ? (
+        <div
+          id={painelId}
+          role="dialog"
+          aria-label="Filtros do painel"
+          className="absolute right-0 z-30 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-xl shadow-slate-300/30 ring-1 ring-black/5"
+        >
+          {children}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function PainelFiltrosResumo({
+  setor,
+  onSetorChange,
+  setoresOpcoes,
+  periodo,
+  onPeriodoChange,
+  mostrarPeriodo = true,
+}: {
+  setor: string
+  onSetorChange: (valor: string) => void
+  setoresOpcoes: { id: string; nome: string }[]
+  periodo: PeriodoResumo
+  onPeriodoChange: (valor: PeriodoResumo) => void
+  mostrarPeriodo?: boolean
+}) {
+  const idBase = useId()
+  const idSetor = `${idBase}-setor`
+  const idPeriodo = `${idBase}-periodo`
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <label htmlFor={idSetor} className="text-xs font-semibold text-slate-700">
+          Setor
+        </label>
+        <select
+          id={idSetor}
+          className={cn(SELECT_CLASS, 'w-full min-w-0')}
+          value={setor}
+          onChange={(e) => onSetorChange(e.target.value)}
+        >
+          <option value="">Todos os setores</option>
+          {setoresOpcoes.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.nome}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {mostrarPeriodo ? (
+        <div className="space-y-1.5">
+          <label htmlFor={idPeriodo} className="text-xs font-semibold text-slate-700">
+            Período
+          </label>
+          <select
+            id={idPeriodo}
+            className={cn(SELECT_CLASS, 'w-full min-w-0')}
+            value={periodo}
+            onChange={(e) => onPeriodoChange(e.target.value as PeriodoResumo)}
+          >
+            <option value="mes">Mês atual</option>
+            <option value="trimestre">Trimestre</option>
+            <option value="ano">Ano corrente</option>
+          </select>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -874,6 +1013,31 @@ export function ResumoPage() {
 
   const rotuloPeriodo = rotuloPeriodoBi(periodo)
 
+  const filtrosAtivosSetor = setor !== ''
+  const filtrosAtivosPeriodo = periodo !== 'mes'
+  const filtrosAtivosCompletos = filtrosAtivosSetor || filtrosAtivosPeriodo
+
+  const painelFiltrosCompleto = (
+    <PainelFiltrosResumo
+      setor={setor}
+      onSetorChange={setSetor}
+      setoresOpcoes={setoresOpcoes}
+      periodo={periodo}
+      onPeriodoChange={setPeriodo}
+    />
+  )
+
+  const painelFiltrosSomenteSetor = (
+    <PainelFiltrosResumo
+      setor={setor}
+      onSetorChange={setSetor}
+      setoresOpcoes={setoresOpcoes}
+      periodo={periodo}
+      onPeriodoChange={setPeriodo}
+      mostrarPeriodo={false}
+    />
+  )
+
   const candidaturasFiltradas = useMemo(() => {
     const noSetor = setor
       ? candidaturasPendentes.filter((c) => c.setorId === setor)
@@ -1090,6 +1254,8 @@ export function ResumoPage() {
                 </p>
               </div>
             }
+            filtros={painelFiltrosCompleto}
+            filtrosAtivos={filtrosAtivosCompletos}
           >
             <GraficoBarrasSetor barras={barrasSetor} yMax={yMaxBarrasSetor} />
           </CardShell>
@@ -1108,6 +1274,8 @@ export function ResumoPage() {
                 </p>
               </div>
             }
+            filtros={painelFiltrosCompleto}
+            filtrosAtivos={filtrosAtivosCompletos}
           >
             <GraficoCoberturaSemanal pontos={serieSemanal} yMax={yMaxSemanal} />
           </CardShell>
@@ -1130,6 +1298,8 @@ export function ResumoPage() {
               </div>
             </div>
           }
+          filtros={painelFiltrosCompleto}
+          filtrosAtivos={filtrosAtivosCompletos}
         >
           <RankingProfissionaisAtivos ranking={rankingPeriodo} />
         </CardShell>
@@ -1182,6 +1352,8 @@ export function ResumoPage() {
               </span>
             </h2>
           }
+          filtros={painelFiltrosSomenteSetor}
+          filtrosAtivos={filtrosAtivosSetor}
         >
           <div className="-mx-5 -mt-4 border-b border-slate-100">
             <div
@@ -1236,6 +1408,8 @@ export function ResumoPage() {
               </span>
             </h2>
           }
+          filtros={painelFiltrosCompleto}
+          filtrosAtivos={filtrosAtivosCompletos}
         >
           <DonutTiposPlantao
             fatias={donut.fatias}
@@ -1252,6 +1426,8 @@ export function ResumoPage() {
               </span>
             </h2>
           }
+          filtros={painelFiltrosSomenteSetor}
+          filtrosAtivos={filtrosAtivosSetor}
         >
           <p className="mb-3 text-xs text-slate-500">
             Visão histórica independente do filtro de período (total, coberturas e furos).
