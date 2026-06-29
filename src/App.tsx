@@ -152,6 +152,71 @@ const MuralTrocasPage = lazy(() =>
 const PontoPage = lazy(() =>
   import('./pages/Profissional/PontoPage').then((m) => ({ default: m.PontoPage })),
 )
+const RelatorioPlantaoFaltasPage = lazy(() =>
+  import('./pages/RelatoriosPlantao/RelatoriosPlantaoPlaceholderPages').then((m) => ({
+    default: m.RelatorioPlantaoFaltasPage,
+  })),
+)
+const RelatorioPlantaoEscalasPage = lazy(() =>
+  import('./pages/RelatoriosPlantao/RelatoriosPlantaoPlaceholderPages').then((m) => ({
+    default: m.RelatorioPlantaoEscalasPage,
+  })),
+)
+const RelatorioPlantaoProfissionaisPage = lazy(() =>
+  import('./pages/RelatoriosPlantao/RelatoriosPlantaoPlaceholderPages').then((m) => ({
+    default: m.RelatorioPlantaoProfissionaisPage,
+  })),
+)
+const RelatorioPlantaoCoordenadoresPage = lazy(() =>
+  import('./pages/RelatoriosPlantao/RelatoriosPlantaoPlaceholderPages').then((m) => ({
+    default: m.RelatorioPlantaoCoordenadoresPage,
+  })),
+)
+const GestaoEmissaoUtiAdultoPage = lazy(() =>
+  import('./pages/Gestao/GestaoEmissaoPlaceholderPages').then((m) => ({
+    default: m.GestaoEmissaoUtiAdultoPage,
+  })),
+)
+const GestaoEmissaoUtiPediatricaPage = lazy(() =>
+  import('./pages/Gestao/GestaoEmissaoPlaceholderPages').then((m) => ({
+    default: m.GestaoEmissaoUtiPediatricaPage,
+  })),
+)
+const FrequenciaQuinzenalPage = lazy(() =>
+  import('./pages/Gestao/FrequenciaPlaceholderPages').then((m) => ({
+    default: m.FrequenciaQuinzenalPage,
+  })),
+)
+const FrequenciaMensalPage = lazy(() =>
+  import('./pages/Gestao/FrequenciaPlaceholderPages').then((m) => ({
+    default: m.FrequenciaMensalPage,
+  })),
+)
+const FrequenciaSemanalPage = lazy(() =>
+  import('./pages/Gestao/FrequenciaPlaceholderPages').then((m) => ({
+    default: m.FrequenciaSemanalPage,
+  })),
+)
+const TipoServicoPage = lazy(() =>
+  import('./pages/Gestao/CadastrosGestaoPlaceholderPages').then((m) => ({
+    default: m.TipoServicoPage,
+  })),
+)
+const UtilizadorCoordenadorGestaoPage = lazy(() =>
+  import('./pages/Gestao/CadastrosGestaoPlaceholderPages').then((m) => ({
+    default: m.UtilizadorCoordenadorGestaoPage,
+  })),
+)
+const UtilizadorAuditorPage = lazy(() =>
+  import('./pages/Gestao/CadastrosGestaoPlaceholderPages').then((m) => ({
+    default: m.UtilizadorAuditorPage,
+  })),
+)
+const UtilizadorFaturistaPage = lazy(() =>
+  import('./pages/Gestao/CadastrosGestaoPlaceholderPages').then((m) => ({
+    default: m.UtilizadorFaturistaPage,
+  })),
+)
 
 function App() {
   return (
@@ -295,6 +360,110 @@ function App() {
             />
 
             <Route element={<MasterOnlyOutlet />}>
+              <Route
+                path="relatorios-plantao/faltas"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <RelatorioPlantaoFaltasPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="relatorios-plantao/escalas"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <RelatorioPlantaoEscalasPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="relatorios-plantao/profissionais"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <RelatorioPlantaoProfissionaisPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="relatorios-plantao/coordenadores"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <RelatorioPlantaoCoordenadoresPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="gestao/emissao/uti-adulto"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <GestaoEmissaoUtiAdultoPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="gestao/emissao/uti-pediatrica"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <GestaoEmissaoUtiPediatricaPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="gestao/frequencia/quinzenal"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <FrequenciaQuinzenalPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="gestao/frequencia/mensal"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <FrequenciaMensalPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="gestao/frequencia/semanal"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <FrequenciaSemanalPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="gestao/cadastros/tipo-servico"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <TipoServicoPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="gestao/cadastros/utilizadores/coordenador"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <UtilizadorCoordenadorGestaoPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="gestao/cadastros/utilizadores/auditor"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <UtilizadorAuditorPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="gestao/cadastros/utilizadores/faturista"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <UtilizadorFaturistaPage />
+                  </Suspense>
+                }
+              />
               <Route
                 path="painel/confirmacoes"
                 element={

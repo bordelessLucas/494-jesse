@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { flushSync } from 'react-dom'
-import { Loader2, Printer } from 'lucide-react'
+import { ChevronDown, Loader2, Printer } from 'lucide-react'
 
 import { useContaMembro } from '../../hooks/useContaMembro'
 import { useTenantUserId } from '../../hooks/useTenantUserId'
@@ -218,7 +218,7 @@ function extrairTextoCabecalho(
   return texto
 }
 
-const CAMPOS_CABECALHO_FORMULARIO: {
+const CAMPOS_CONTRATUAIS_ACCORDION: {
   chave: keyof CabecalhoTextoEditavel
   label: string
 }[] = [
@@ -226,10 +226,10 @@ const CAMPOS_CABECALHO_FORMULARIO: {
   { chave: 'contratoPrestacao', label: 'Contrato de Prestação de Serviços' },
   { chave: 'local', label: 'Local' },
   { chave: 'servico', label: 'Serviço' },
+  { chave: 'coordenador', label: 'Coordenador' },
   { chave: 'tomador', label: 'Tomador' },
   { chave: 'empresa', label: 'Empresa' },
   { chave: 'cnpj', label: 'CNPJ' },
-  { chave: 'coordenador', label: 'Coordenador' },
   { chave: 'competencia', label: 'Competência (texto no relatório)' },
 ]
 
@@ -802,6 +802,57 @@ type PainelConfiguracaoProps = {
   children?: ReactNode
 }
 
+function AccordionSecao({
+  titulo,
+  defaultAberto = false,
+  children,
+}: {
+  titulo: string
+  defaultAberto?: boolean
+  children: ReactNode
+}) {
+  const [aberto, setAberto] = useState(defaultAberto)
+
+  return (
+    <details
+      open={aberto}
+      onToggle={(e) => setAberto(e.currentTarget.open)}
+      className="group overflow-hidden rounded-lg border border-slate-200"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-900 [&::-webkit-details-marker]:hidden">
+        <span>{titulo}</span>
+        <ChevronDown
+          className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-180"
+          aria-hidden
+        />
+      </summary>
+      <div className="space-y-2.5 border-t border-slate-100 p-3">{children}</div>
+    </details>
+  )
+}
+
+function CampoCabecalhoTexto({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (valor: string) => void
+}) {
+  return (
+    <label className="flex flex-col gap-0.5 text-xs font-medium text-slate-700">
+      {label}
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm font-normal text-slate-900 shadow-sm outline-none transition-colors focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+      />
+    </label>
+  )
+}
+
 function PainelConfiguracao({
   tipoSelecionado,
   onChangeTipoSelecionado,
@@ -832,181 +883,162 @@ function PainelConfiguracao({
   onRestaurarRotulosTurnosPadrao,
   children,
 }: PainelConfiguracaoProps) {
+  const mostrarTurnos =
+    tipoSelecionado === 'FrequenciaSetor' &&
+    rotulosTurnosFrequenciaSetor &&
+    onAlterarRotuloTurnoFrequencia &&
+    onRestaurarRotulosTurnosPadrao
+
   return (
     <aside className="no-print flex h-[100dvh] max-h-[100dvh] w-full max-w-md shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white print:hidden lg:w-1/3">
-      <div className="shrink-0 p-6 pb-4">
-        <h1 className="text-xl font-bold tracking-tight text-slate-900">
+      {/* Topo fixo */}
+      <div className="shrink-0 border-b border-slate-100 px-4 pb-4 pt-5">
+        <h1 className="text-lg font-bold tracking-tight text-slate-900">
           Emissão de Relatórios
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Configure o documento e visualize o preview ao lado antes de imprimir.
-        </p>
+        <div className="mt-4">
+          <CampoSelect
+            label="Tipo de Relatório"
+            value={tipoSelecionado}
+            onChange={(valor) => onChangeTipoSelecionado(valor as TipoRelatorio)}
+            opcoes={TIPOS_RELATORIO}
+          />
+          <p className="mt-2 text-xs text-slate-500">
+            Configure o documento e visualize o preview ao lado antes de imprimir.
+          </p>
+        </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-        <div className="flex flex-col gap-4 px-6 pb-4">
-        <CampoSelect
-          label="Tipo de Relatório"
-          value={tipoSelecionado}
-          onChange={(valor) => onChangeTipoSelecionado(valor as TipoRelatorio)}
-          opcoes={TIPOS_RELATORIO}
-        />
+      {/* Área central scrollável */}
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4">
+        <div className="space-y-4">
+          <CampoSelect
+            label="Competência"
+            value={competenciaId}
+            onChange={onChangeCompetencia}
+            opcoes={competencias}
+          />
 
-        <CampoSelect
-          label="Competência"
-          value={competenciaId}
-          onChange={onChangeCompetencia}
-          opcoes={competencias}
-        />
+          <CampoSelect
+            label="Local / Contrato"
+            value={localId}
+            onChange={(valor) => onChangeLocal(valor as LocalContratoId)}
+            opcoes={
+              locaisOpcoes.length > 0
+                ? locaisOpcoes
+                : [{ id: '', label: carregandoLocais ? 'A carregar locais…' : 'Nenhum local' }]
+            }
+          />
 
-        <CampoSelect
-          label="Local / Contrato"
-          value={localId}
-          onChange={(valor) => onChangeLocal(valor as LocalContratoId)}
-          opcoes={
-            locaisOpcoes.length > 0
-              ? locaisOpcoes
-              : [{ id: '', label: carregandoLocais ? 'A carregar locais…' : 'Nenhum local' }]
-          }
-        />
-
-        <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs text-slate-600">
-          {carregandoPlantoes ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-              A carregar plantões realizados…
-            </span>
-          ) : erroPlantoes ? (
-            <span className="text-red-700">{erroPlantoes}</span>
-          ) : (
-            <span>
-              <strong className="text-slate-800">{totalPlantoesRealizados}</strong>{' '}
-              plantão(ões) com status «realizado» nesta competência e local.
-            </span>
-          )}
-        </div>
-
-        <div className="max-h-[min(380px,52vh)] overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-          <p className="text-sm font-semibold text-slate-900">
-            Dados do cabeçalho
-          </p>
-          <p className="mt-0.5 text-xs text-slate-500">
-            Aparecem no relatório impresso. O logotipo vem da marca da
-            plataforma (configuração).
-          </p>
-          <div className="mt-3 space-y-2.5">
-            {CAMPOS_CABECALHO_FORMULARIO.map(({ chave, label }) => (
-              <label
-                key={chave}
-                className="flex flex-col gap-0.5 text-xs font-medium text-slate-700"
-              >
-                {label}
-                <input
-                  type="text"
-                  value={cabecalhoTexto[chave]}
-                  onChange={(e) =>
-                    onAlterarCampoCabecalho(chave, e.target.value)
-                  }
-                  className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm font-normal text-slate-900 shadow-sm outline-none transition-colors focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
-                />
-              </label>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={onRestaurarCabecalhoContrato}
-            className="mt-3 text-xs font-medium text-primary-700 underline-offset-2 hover:underline"
-          >
-            Restaurar texto do contrato e competência seleccionados
-          </button>
-        </div>
-
-        {tipoSelecionado === 'FrequenciaSetor' &&
-        rotulosTurnosFrequenciaSetor &&
-        onAlterarRotuloTurnoFrequencia &&
-        onRestaurarRotulosTurnosPadrao ? (
-          <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
-            <p className="text-sm font-medium text-slate-800">
-              Horários dos turnos
-            </p>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Estes textos aparecem no cabeçalho da tabela da lista de presença.
-            </p>
-            <ul className="mt-3 space-y-2">
-              {rotulosTurnosFrequenciaSetor.map((rotulo, indice) => (
-                <li key={indice}>
-                  <label className="flex flex-col gap-0.5 text-xs font-medium text-slate-700">
-                    <span>Coluna {indice + 1}</span>
-                    <input
-                      type="text"
-                      value={rotulo}
-                      onChange={(e) =>
-                        onAlterarRotuloTurnoFrequencia(indice, e.target.value)
-                      }
-                      placeholder="ex.: 07-13H"
-                      className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm font-normal text-slate-900 shadow-sm outline-none transition-colors focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
-                    />
-                  </label>
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              onClick={onRestaurarRotulosTurnosPadrao}
-              className="mt-3 text-xs font-medium text-primary-700 underline-offset-2 hover:underline"
-            >
-              Restaurar horários do contrato
-            </button>
-          </div>
-        ) : null}
-        </div>
-
-        {isTitular ? (
-          <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
-            <p className="text-sm font-medium text-slate-800">
-              Profissional assinante
-            </p>
-            <p className="mt-0.5 text-xs text-slate-500">
-              O certificado digital ICP-Brasil deste profissional será aplicado ao PDF.
-            </p>
-            {carregandoEmissores ? (
-              <p className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+          <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs text-slate-600">
+            {carregandoPlantoes ? (
+              <span className="flex items-center gap-2">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                A carregar profissionais com certificado…
-              </p>
-            ) : profissionaisComCertificado.length === 0 ? (
-              <p className="mt-2 text-xs text-amber-800">
-                Nenhum profissional com certificado ativo. Peça ao médico que registe o
-                certificado em <strong>Meus dados</strong>.
-              </p>
+                A carregar plantões realizados…
+              </span>
+            ) : erroPlantoes ? (
+              <span className="text-red-700">{erroPlantoes}</span>
             ) : (
-              <select
-                value={profissionalEmissorId}
-                onChange={(e) => onChangeProfissionalEmissor?.(e.target.value)}
-                className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
-              >
-                {profissionaisComCertificado.map((prof) => (
-                  <option key={prof.profissionalId} value={prof.profissionalId}>
-                    {prof.nome}
-                  </option>
-                ))}
-              </select>
+              <span>
+                <strong className="text-slate-800">{totalPlantoesRealizados}</strong>{' '}
+                plantão(ões) com status «realizado» nesta competência e local.
+              </span>
             )}
           </div>
-        ) : null}
 
-        {children ? (
-          <div className="border-t border-slate-100 px-6 py-4">{children}</div>
-        ) : null}
+          <AccordionSecao titulo="Configurações Contratuais" defaultAberto>
+            <p className="text-xs text-slate-500">
+              Aparecem no relatório impresso. O logotipo vem da marca da plataforma.
+            </p>
+            {CAMPOS_CONTRATUAIS_ACCORDION.map(({ chave, label }) => (
+              <CampoCabecalhoTexto
+                key={chave}
+                label={label}
+                value={cabecalhoTexto[chave]}
+                onChange={(valor) => onAlterarCampoCabecalho(chave, valor)}
+              />
+            ))}
+            <button
+              type="button"
+              onClick={onRestaurarCabecalhoContrato}
+              className="text-xs font-medium text-primary-700 underline-offset-2 hover:underline"
+            >
+              Restaurar texto do contrato e competência seleccionados
+            </button>
+          </AccordionSecao>
+
+          {mostrarTurnos ? (
+            <AccordionSecao titulo="Configuração de Turnos">
+              <p className="text-xs text-slate-500">
+                Estes textos aparecem no cabeçalho da tabela da lista de presença.
+              </p>
+              <ul className="space-y-2">
+                {rotulosTurnosFrequenciaSetor!.map((rotulo, indice) => (
+                  <li key={indice}>
+                    <CampoCabecalhoTexto
+                      label={`Coluna ${indice + 1}`}
+                      value={rotulo}
+                      onChange={(valor) => onAlterarRotuloTurnoFrequencia!(indice, valor)}
+                    />
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                onClick={onRestaurarRotulosTurnosPadrao}
+                className="text-xs font-medium text-primary-700 underline-offset-2 hover:underline"
+              >
+                Restaurar horários do contrato
+              </button>
+            </AccordionSecao>
+          ) : null}
+
+          {isTitular ? (
+            <AccordionSecao titulo="Assinatura & Validação">
+              <p className="text-xs text-slate-500">
+                O certificado digital ICP-Brasil deste profissional será aplicado ao PDF.
+              </p>
+              {carregandoEmissores ? (
+                <p className="flex items-center gap-2 text-xs text-slate-600">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  A carregar profissionais com certificado…
+                </p>
+              ) : profissionaisComCertificado.length === 0 ? (
+                <p className="text-xs text-amber-800">
+                  Nenhum profissional com certificado ativo. Peça ao médico que registe o
+                  certificado em <strong>Meus dados</strong>.
+                </p>
+              ) : (
+                <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
+                  Profissional assinante
+                  <select
+                    value={profissionalEmissorId}
+                    onChange={(e) => onChangeProfissionalEmissor?.(e.target.value)}
+                    className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-900 shadow-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+                  >
+                    {profissionaisComCertificado.map((prof) => (
+                      <option key={prof.profissionalId} value={prof.profissionalId}>
+                        {prof.nome}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </AccordionSecao>
+          ) : null}
+
+          {children ? <div>{children}</div> : null}
+
+          {painelHistorico ? (
+            <div className="rounded-lg border border-slate-200 p-3">
+              {painelHistorico}
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      {painelHistorico ? (
-        <div className="shrink-0 border-t border-slate-100 bg-slate-50/50 px-6 py-4">
-          {painelHistorico}
-        </div>
-      ) : null}
-
-      <div className="shrink-0 border-t border-slate-100 bg-white p-6">
+      {/* Rodapé fixo */}
+      <div className="mt-auto shrink-0 border-t border-slate-100 bg-white p-4">
         {avisoHistorico ? (
           <p role="status" className="mb-3 text-xs text-amber-800">
             {avisoHistorico}
@@ -1028,8 +1060,7 @@ function PainelConfiguracao({
             : 'Imprimir / Salvar PDF'}
         </button>
         <p className="mt-2 text-center text-xs text-slate-500">
-          O PDF assinado digitalmente será aberto numa nova aba para impressão ou
-          download.
+          O PDF assinado digitalmente será aberto numa nova aba para impressão ou download.
         </p>
       </div>
     </aside>

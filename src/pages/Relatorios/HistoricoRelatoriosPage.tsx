@@ -12,11 +12,17 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { PreviewRelatorioHistorico } from '../../features/relatorios/components/PreviewRelatorioHistorico'
+import { RelatorioWorkflowPainel } from '../../features/relatorios/components/RelatorioWorkflowPainel'
 import {
   ROTULOS_TIPO_RELATORIO,
   parseHistoricoParaPreview,
 } from '../../features/relatorios/utils/parseHistoricoRelatorio'
+import {
+  ROTULOS_STATUS_WORKFLOW,
+  statusWorkflowSeguro,
+} from '../../features/relatorios/workflow/relatorioWorkflowTypes'
 import { useTenantUserId } from '../../hooks/useTenantUserId'
+import { useWorkflowRelatorioRole } from '../../hooks/useWorkflowRelatorioRole'
 import { cn } from '../../lib/cn'
 import {
   excluirHistoricoRelatorio,
@@ -39,9 +45,29 @@ function formatarDataHora(iso: string): string {
   }
 }
 
+function BadgeStatusWorkflow({ status }: { status: RelatorioHistoricoRow['status_workflow'] }) {
+  const seguro = statusWorkflowSeguro(status)
+  const rotulo = ROTULOS_STATUS_WORKFLOW[seguro]
+
+  return (
+    <span
+      className={cn(
+        'inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold',
+        seguro === 'rascunho' && 'bg-slate-100 text-slate-700',
+        seguro === 'em_auditoria' && 'bg-primary-50 text-primary-800',
+        seguro === 'aprovado' && 'bg-success-50 text-success-800',
+        seguro === 'faturado' && 'bg-slate-200 text-slate-800',
+      )}
+    >
+      {rotulo}
+    </span>
+  )
+}
+
 export function HistoricoRelatoriosPage() {
   const { user, tenantUserId, isLoading: authLoading } = useTenantUserId()
   const { logoUrl } = useThemeBranding()
+  const { isCoordenador } = useWorkflowRelatorioRole()
 
   const [itens, setItens] = useState<RelatorioHistoricoRow[]>([])
   const [carregando, setCarregando] = useState(false)
@@ -91,6 +117,7 @@ export function HistoricoRelatoriosPage() {
         item.local_nome,
         item.competencia,
         ROTULOS_TIPO_RELATORIO[item.tipo_relatorio],
+        ROTULOS_STATUS_WORKFLOW[statusWorkflowSeguro(item.status_workflow)],
       ]
         .join(' ')
         .toLowerCase()
@@ -108,8 +135,15 @@ export function HistoricoRelatoriosPage() {
     return parseHistoricoParaPreview(selecionado, logoUrl)
   }, [logoUrl, selecionado])
 
+  function aoRelatorioAtualizado(atualizado: RelatorioHistoricoRow) {
+    setItens((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
+  }
+
   async function aoExcluir(id: string) {
     if (!tenantUserId) return
+    const item = itens.find((x) => x.id === id)
+    if (item && statusWorkflowSeguro(item.status_workflow) !== 'rascunho') return
+
     const ok = window.confirm('Remover este registo do histórico?')
     if (!ok) return
 
@@ -128,6 +162,9 @@ export function HistoricoRelatoriosPage() {
   function aoImprimir() {
     window.print()
   }
+
+  const podeExcluir = (item: RelatorioHistoricoRow) =>
+    isCoordenador && statusWorkflowSeguro(item.status_workflow) === 'rascunho'
 
   return (
     <div className="mx-auto w-full max-w-7xl">
@@ -231,6 +268,9 @@ export function HistoricoRelatoriosPage() {
                         Tipo
                       </th>
                       <th className="px-4 py-3 text-left font-semibold text-slate-700">
+                        Estado
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700">
                         Local
                       </th>
                       <th className="px-4 py-3 text-left font-semibold text-slate-700">
@@ -258,6 +298,9 @@ export function HistoricoRelatoriosPage() {
                           <td className="px-4 py-3 text-slate-700">
                             {ROTULOS_TIPO_RELATORIO[item.tipo_relatorio]}
                           </td>
+                          <td className="px-4 py-3">
+                            <BadgeStatusWorkflow status={item.status_workflow} />
+                          </td>
                           <td className="px-4 py-3 text-slate-700">{item.local_nome}</td>
                           <td className="px-4 py-3 text-slate-700">{item.competencia}</td>
                           <td className="px-4 py-3">
@@ -271,20 +314,22 @@ export function HistoricoRelatoriosPage() {
                               >
                                 <Eye className="h-4 w-4" />
                               </button>
-                              <button
-                                type="button"
-                                title="Remover do histórico"
-                                aria-label="Remover do histórico"
-                                disabled={aExcluirId === item.id}
-                                onClick={() => void aoExcluir(item.id)}
-                                className="rounded p-2 text-slate-400 hover:bg-danger-50 hover:text-danger-700 disabled:opacity-50"
-                              >
-                                {aExcluirId === item.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4" />
-                                )}
-                              </button>
+                              {podeExcluir(item) ? (
+                                <button
+                                  type="button"
+                                  title="Remover do histórico"
+                                  aria-label="Remover do histórico"
+                                  disabled={aExcluirId === item.id}
+                                  onClick={() => void aoExcluir(item.id)}
+                                  className="rounded p-2 text-slate-400 hover:bg-danger-50 hover:text-danger-700 disabled:opacity-50"
+                                >
+                                  {aExcluirId === item.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                  )}
+                                </button>
+                              ) : null}
                             </div>
                           </td>
                         </tr>
@@ -296,13 +341,14 @@ export function HistoricoRelatoriosPage() {
             )}
           </div>
 
-          {selecionado && previewDados ? (
+          {selecionado && previewDados && tenantUserId ? (
             <section className="no-print mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-slate-900">
-                    {selecionado.titulo}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate font-semibold text-slate-900">{selecionado.titulo}</p>
+                    <BadgeStatusWorkflow status={selecionado.status_workflow} />
+                  </div>
                   <p className="mt-0.5 text-sm text-slate-600">
                     {selecionado.local_nome} · {selecionado.competencia} ·{' '}
                     {formatarDataHora(selecionado.impresso_em)}
@@ -327,6 +373,13 @@ export function HistoricoRelatoriosPage() {
                   </button>
                 </div>
               </div>
+
+              <RelatorioWorkflowPainel
+                relatorio={selecionado}
+                tenantUserId={tenantUserId}
+                onRelatorioAtualizado={aoRelatorioAtualizado}
+              />
+
               <div className="overflow-x-auto bg-slate-300 p-6">
                 <div className="mx-auto flex justify-center">
                   <PreviewRelatorioHistorico dados={previewDados} />

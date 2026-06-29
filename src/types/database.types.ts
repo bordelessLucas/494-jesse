@@ -154,8 +154,8 @@ export type Database = {
           id: string
           tenant_user_id: string
           auth_user_id: string
-          profissional_id: string
-          role: string
+          profissional_id: string | null
+          role: 'profissional' | 'auditor' | 'faturista'
           permissoes: Json
           must_change_password: boolean
           created_at: string
@@ -165,8 +165,8 @@ export type Database = {
           id?: string
           tenant_user_id: string
           auth_user_id: string
-          profissional_id: string
-          role?: string
+          profissional_id?: string | null
+          role?: 'profissional' | 'auditor' | 'faturista'
           permissoes?: Json
           must_change_password?: boolean
           created_at?: string
@@ -176,8 +176,8 @@ export type Database = {
           id?: string
           tenant_user_id?: string
           auth_user_id?: string
-          profissional_id?: string
-          role?: string
+          profissional_id?: string | null
+          role?: 'profissional' | 'auditor' | 'faturista'
           permissoes?: Json
           must_change_password?: boolean
           created_at?: string
@@ -968,6 +968,10 @@ export type Database = {
           pdf_assinado_url: string | null
           profissional_emissor_id: string | null
           assinado_em: string | null
+          status_workflow: 'rascunho' | 'em_auditoria' | 'aprovado' | 'faturado'
+          anexos_urls: string[]
+          auditor_id: string | null
+          faturista_id: string | null
         }
         Insert: {
           id?: string
@@ -984,6 +988,10 @@ export type Database = {
           pdf_assinado_url?: string | null
           profissional_emissor_id?: string | null
           assinado_em?: string | null
+          status_workflow?: 'rascunho' | 'em_auditoria' | 'aprovado' | 'faturado'
+          anexos_urls?: string[]
+          auditor_id?: string | null
+          faturista_id?: string | null
         }
         Update: {
           id?: string
@@ -1000,6 +1008,10 @@ export type Database = {
           pdf_assinado_url?: string | null
           profissional_emissor_id?: string | null
           assinado_em?: string | null
+          status_workflow?: 'rascunho' | 'em_auditoria' | 'aprovado' | 'faturado'
+          anexos_urls?: string[]
+          auditor_id?: string | null
+          faturista_id?: string | null
         }
         Relationships: []
       }
@@ -1314,6 +1326,22 @@ export type Database = {
         Returns: string
       }
       auth_is_titular_conta: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      auth_membro_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      auth_is_auditor: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      auth_is_faturista: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      auth_is_coordenador_workflow: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }

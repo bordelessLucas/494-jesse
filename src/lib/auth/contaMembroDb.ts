@@ -1,11 +1,14 @@
 import { supabase } from '../supabase'
+import type { Database } from '../../types/database.types'
+
+export type ContaMembroRole = Database['public']['Tables']['contas_membros']['Row']['role']
 
 export type ContaMembroRow = {
   id: string
   tenant_user_id: string
   auth_user_id: string
-  profissional_id: string
-  role: 'profissional'
+  profissional_id: string | null
+  role: ContaMembroRole
   permissoes: Record<string, boolean>
   must_change_password: boolean
 }
@@ -54,7 +57,7 @@ export async function buscarContaMembroAtual(
     tenant_user_id: data.tenant_user_id,
     auth_user_id: data.auth_user_id,
     profissional_id: data.profissional_id,
-    role: 'profissional',
+    role: data.role as ContaMembroRole,
     permissoes: (data.permissoes as Record<string, boolean>) ?? {},
     must_change_password: data.must_change_password,
   }
@@ -97,7 +100,7 @@ export async function buscarContaMembroPorProfissional(
     tenant_user_id: data.tenant_user_id,
     auth_user_id: data.auth_user_id,
     profissional_id: data.profissional_id,
-    role: 'profissional',
+    role: data.role as ContaMembroRole,
     permissoes: (data.permissoes as Record<string, boolean>) ?? {},
     must_change_password: data.must_change_password,
   }

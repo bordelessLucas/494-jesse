@@ -2,30 +2,51 @@ import { CalendarClock, MapPinned, User } from 'lucide-react'
 import { useMemo } from 'react'
 
 import { chavePermissaoParaRotaSidebar } from '../components/Profissionais/profissionalAcessoTypes'
-import { navigationItems, type NavigationItem } from '../lib/navigationItems'
+import {
+  itemMenuRestritoAGestor,
+  navigationSections,
+  type NavigationItem,
+  type NavigationSection,
+} from '../lib/navigationItems'
 import { useContaMembro } from './useContaMembro'
 
+function filtrarItensPorPermissao(
+  items: NavigationItem[],
+  permissoes: Record<string, boolean>,
+): NavigationItem[] {
+  const filtrarSub = (subItems: NavigationItem['subItems']) =>
+    (subItems ?? []).filter((sub) => {
+      const chave = chavePermissaoParaRotaSidebar(sub.to)
+      if (!chave) return false
+      return Boolean(permissoes[chave])
+    })
+
+  const filtrados: NavigationItem[] = []
+
+  for (const item of items) {
+    if (itemMenuRestritoAGestor(item.to)) continue
+    const subItems = filtrarSub(item.subItems)
+    if (subItems.length === 0) continue
+    filtrados.push({ ...item, subItems })
+  }
+
+  return filtrados
+}
+
 export function useVisibleNavigationItems(): {
-  itensVisiveis: NavigationItem[]
+  secoesVisiveis: NavigationSection[]
   isLoading: boolean
   isMembroProfissional: boolean
 } {
   const { isLoading, isMembroProfissional, permissoes } = useContaMembro()
 
-  const itensVisiveis = useMemo(() => {
-    if (!isMembroProfissional) return navigationItems
+  const secoesVisiveis = useMemo(() => {
+    if (!isMembroProfissional) return navigationSections
 
-    const filtrarSub = (subItems: NavigationItem['subItems']) =>
-      (subItems ?? []).filter((sub) => {
-        const chave = chavePermissaoParaRotaSidebar(sub.to)
-        if (!chave) return false
-        return Boolean(permissoes[chave])
-      })
-
-    const filtrados: NavigationItem[] = []
+    const itensProfissional: NavigationItem[] = []
 
     if (permissoes.minha_agenda) {
-      filtrados.push({
+      itensProfissional.push({
         to: '/minha-agenda',
         label: 'Minha Agenda',
         icon: CalendarClock,
@@ -33,30 +54,28 @@ export function useVisibleNavigationItems(): {
     }
 
     if (permissoes.registro_ponto) {
-      filtrados.push({
+      itensProfissional.push({
         to: '/ponto',
         label: 'Ponto eletrónico',
         icon: MapPinned,
       })
     }
 
-    for (const item of navigationItems) {
-      if (item.to === '/usuarios' || item.to === '/configuracao' || item.to === '/financeiro') {
-        continue
-      }
-      const subItems = filtrarSub(item.subItems)
-      if (subItems.length === 0) continue
-      filtrados.push({ ...item, subItems })
-    }
+    const itensOperacao = filtrarItensPorPermissao(
+      navigationSections.find((s) => s.id === 'operacao')?.items ?? [],
+      permissoes,
+    )
 
-    filtrados.push({
+    itensProfissional.push(...itensOperacao)
+
+    itensProfissional.push({
       to: '/meus-dados',
       label: 'Meus dados',
       icon: User,
     })
 
-    return filtrados
+    return [{ id: 'operacao' as const, label: 'Operação', items: itensProfissional }]
   }, [isMembroProfissional, permissoes])
 
-  return { itensVisiveis, isLoading, isMembroProfissional }
+  return { secoesVisiveis, isLoading, isMembroProfissional }
 }
