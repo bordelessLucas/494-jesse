@@ -10,6 +10,10 @@ export type ContaMembroContext = {
   isMaster: boolean
   /** Profissional convidado com login próprio. */
   isMembroProfissional: boolean
+  /** Perfil visualizador (auditoria externa / direção). */
+  isVisualizador: boolean
+  /** Bloqueia ações de escrita em toda a aplicação. */
+  isSomenteLeitura: boolean
   membro: ContaMembroRow | null
   empresa: EmpresaRow | null
   permissoes: Record<string, boolean>

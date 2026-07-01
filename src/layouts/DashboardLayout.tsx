@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { MembroAcessoGuard } from '../components/auth/MembroAcessoGuard'
+import { ModoSomenteLeituraShell } from '../components/somente-leitura/ModoSomenteLeituraShell'
 import { BannerConfirmacaoPendente } from '../components/ConfirmacaoEscala/BannerConfirmacaoPendente'
 import { MobileNavDrawer } from '../components/MobileNavDrawer'
 import { ContaMembroProvider } from '../contexts/ContaMembroProvider'
@@ -37,7 +38,9 @@ export function DashboardLayout() {
 
           <main className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:p-8 print:p-0">
             <MembroAcessoGuard>
-              <Outlet />
+              <ModoSomenteLeituraShell>
+                <Outlet />
+              </ModoSomenteLeituraShell>
             </MembroAcessoGuard>
           </main>
         </div>

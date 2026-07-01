@@ -8,12 +8,15 @@ const corsHeaders = {
 
 const DEFAULT_MEMBER_PASSWORD = 'PlantaoCheck@'
 
+type MembroRole = 'profissional' | 'auditor' | 'faturista' | 'visualizador'
+
 type CreateProfessionalAccessBody = {
-  profissionalId: string
+  profissionalId?: string
   email: string
   nome: string
   permissoes: Record<string, boolean>
   senha?: string
+  role?: MembroRole
 }
 
 const PLANTAOCHECK_SERVICE_ROLE_SECRET = 'PLANTAOCHECK_SERVICE_ROLE_KEY'
@@ -67,27 +70,69 @@ Deno.serve(async (req) => {
     const body = (await req.json()) as CreateProfessionalAccessBody
     const email = body.email?.trim().toLowerCase()
     const nome = body.nome?.trim()
-    const profissionalId = body.profissionalId?.trim()
+    let profissionalId = body.profissionalId?.trim()
     const permissoes = body.permissoes ?? {}
     const senha = (body.senha?.trim() || DEFAULT_MEMBER_PASSWORD).slice(0, 72)
+    const role: MembroRole = body.role ?? 'profissional'
 
-    if (!email || !nome || !profissionalId) {
-      return json({ error: 'E-mail, nome e profissional são obrigatórios.' }, 400)
+    if (!email || !nome) {
+      return json({ error: 'E-mail e nome são obrigatórios.' }, 400)
     }
 
-    const { data: profissional, error: profError } = await supabaseAdmin
-      .from('profissionais')
-      .select('id, user_id, auth_user_id, email, nome')
-      .eq('id', profissionalId)
-      .eq('user_id', caller.id)
-      .maybeSingle()
+    if (role === 'profissional' && !profissionalId) {
+      const agoraStub = new Date().toISOString()
+      const { data: novoProf, error: stubError } = await supabaseAdmin
+        .from('profissionais')
+        .insert({
+          user_id: caller.id,
+          nome,
+          email,
+          profissao: 'Coordenador',
+          sigla_conselho: '—',
+          conselho_numero: '—',
+          registro_uf: '—',
+          detalhes: { origem: 'gestao_coordenador' },
+          updated_at: agoraStub,
+        })
+        .select('id')
+        .single()
 
-    if (profError || !profissional) {
-      return json({ error: 'Profissional não encontrado nesta conta.' }, 404)
+      if (stubError || !novoProf) {
+        return json({ error: stubError?.message ?? 'Erro ao criar registo de coordenador.' }, 400)
+      }
+      profissionalId = novoProf.id
     }
 
-    if (profissional.auth_user_id) {
-      return json({ error: 'Este profissional já possui acesso criado.' }, 409)
+    if (role === 'profissional' && !profissionalId) {
+      return json({ error: 'Profissional é obrigatório para este tipo de acesso.' }, 400)
+    }
+
+    if (role === 'profissional' && profissionalId) {
+      const { data: profissional, error: profError } = await supabaseAdmin
+        .from('profissionais')
+        .select('id, user_id, auth_user_id, email, nome')
+        .eq('id', profissionalId)
+        .eq('user_id', caller.id)
+        .maybeSingle()
+
+      if (profError || !profissional) {
+        return json({ error: 'Profissional não encontrado nesta conta.' }, 404)
+      }
+
+      if (profissional.auth_user_id) {
+        return json({ error: 'Este profissional já possui acesso criado.' }, 409)
+      }
+    }
+
+    const userMetadata: Record<string, unknown> = {
+      full_name: nome,
+      role: role === 'profissional' ? 'funcionario' : role,
+      tenant_user_id: caller.id,
+      must_change_password: true,
+    }
+
+    if (role === 'profissional' && profissionalId) {
+      userMetadata.profissional_id = profissionalId
     }
 
     const { data: authUser, error: createError } =
@@ -95,13 +140,7 @@ Deno.serve(async (req) => {
         email,
         password: senha,
         email_confirm: true,
-        user_metadata: {
-          full_name: nome,
-          role: 'funcionario',
-          tenant_user_id: caller.id,
-          profissional_id: profissionalId,
-          must_change_password: true,
-        },
+        user_metadata: userMetadata,
       })
 
     if (createError || !authUser.user) {
@@ -124,8 +163,10 @@ Deno.serve(async (req) => {
     const { error: membroError } = await supabaseAdmin.from('contas_membros').insert({
       tenant_user_id: caller.id,
       auth_user_id: authUserId,
-      profissional_id: profissionalId,
-      role: 'profissional',
+      profissional_id: role === 'profissional' ? profissionalId : null,
+      role,
+      nome,
+      email,
       permissoes,
       must_change_password: true,
       updated_at: agora,
@@ -136,27 +177,29 @@ Deno.serve(async (req) => {
       return json({ error: membroError.message }, 400)
     }
 
-    const { error: updateProfError } = await supabaseAdmin
-      .from('profissionais')
-      .update({
-        auth_user_id: authUserId,
-        email,
-        updated_at: agora,
-      })
-      .eq('id', profissionalId)
-      .eq('user_id', caller.id)
+    if (role === 'profissional' && profissionalId) {
+      const { error: updateProfError } = await supabaseAdmin
+        .from('profissionais')
+        .update({
+          auth_user_id: authUserId,
+          email,
+          updated_at: agora,
+        })
+        .eq('id', profissionalId)
+        .eq('user_id', caller.id)
 
-    if (updateProfError) {
-      await supabaseAdmin.from('contas_membros').delete().eq('auth_user_id', authUserId)
-      await supabaseAdmin.auth.admin.deleteUser(authUserId)
-      return json({ error: updateProfError.message }, 400)
+      if (updateProfError) {
+        await supabaseAdmin.from('contas_membros').delete().eq('auth_user_id', authUserId)
+        await supabaseAdmin.auth.admin.deleteUser(authUserId)
+        return json({ error: updateProfError.message }, 400)
+      }
     }
 
     return json({
       authUserId,
       senhaInicial: senha === DEFAULT_MEMBER_PASSWORD ? DEFAULT_MEMBER_PASSWORD : undefined,
       mensagem:
-        'Acesso criado. O profissional deve entrar com o e-mail informado e alterar a senha no primeiro acesso.',
+        'Acesso criado. O utilizador deve entrar com o e-mail informado e alterar a senha no primeiro acesso.',
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro interno.'

@@ -39,14 +39,34 @@ const MarcaPlataformaPage = lazy(() =>
     default: m.MarcaPlataformaPage,
   })),
 )
-const ConfiguracaoSecaoPage = lazy(() =>
-  import('./pages/configuracao/ConfiguracaoSecaoPage').then((m) => ({
-    default: m.ConfiguracaoSecaoPage,
+const ConfiguracaoParametrosPage = lazy(() =>
+  import('./pages/configuracao/ConfiguracaoParametrosPage').then((m) => ({
+    default: m.ConfiguracaoParametrosPage,
+  })),
+)
+const PoliticaPrivacidadePage = lazy(() =>
+  import('./pages/Suporte/PoliticaPrivacidade').then((m) => ({
+    default: m.PoliticaPrivacidadePage,
+  })),
+)
+const TermosUsoPage = lazy(() =>
+  import('./pages/Suporte/TermosUso').then((m) => ({
+    default: m.TermosUsoPage,
   })),
 )
 const ConfiguracoesAvancadasPage = lazy(() =>
   import('./pages/configuracao/ConfiguracoesAvancadasPage').then((m) => ({
     default: m.ConfiguracoesAvancadasPage,
+  })),
+)
+const VisualizadoresPage = lazy(() =>
+  import('./pages/Usuarios/VisualizadoresPage').then((m) => ({
+    default: m.VisualizadoresPage,
+  })),
+)
+const EspecialidadesPage = lazy(() =>
+  import('./pages/Usuarios/EspecialidadesPage').then((m) => ({
+    default: m.EspecialidadesPage,
   })),
 )
 const EscalasPage = lazy(() =>
@@ -173,67 +193,67 @@ const RelatorioPlantaoCoordenadoresPage = lazy(() =>
   })),
 )
 const GestaoEmissaoUtiAdultoPage = lazy(() =>
-  import('./pages/Gestao/GestaoEmissaoPlaceholderPages').then((m) => ({
-    default: m.GestaoEmissaoUtiAdultoPage,
+  import('./pages/Gestao/EmissaoUtiAdulto').then((m) => ({
+    default: m.EmissaoUtiAdultoPage,
   })),
 )
 const GestaoEmissaoUtiPediatricaPage = lazy(() =>
-  import('./pages/Gestao/GestaoEmissaoPlaceholderPages').then((m) => ({
-    default: m.GestaoEmissaoUtiPediatricaPage,
+  import('./pages/Gestao/EmissaoUtiPediatrica').then((m) => ({
+    default: m.EmissaoUtiPediatricaPage,
   })),
 )
 const FrequenciaQuinzenalPage = lazy(() =>
-  import('./pages/Gestao/FrequenciaPlaceholderPages').then((m) => ({
+  import('./pages/Gestao/FrequenciaPages').then((m) => ({
     default: m.FrequenciaQuinzenalPage,
   })),
 )
 const FrequenciaMensalPage = lazy(() =>
-  import('./pages/Gestao/FrequenciaPlaceholderPages').then((m) => ({
+  import('./pages/Gestao/FrequenciaPages').then((m) => ({
     default: m.FrequenciaMensalPage,
   })),
 )
 const FrequenciaSemanalPage = lazy(() =>
-  import('./pages/Gestao/FrequenciaPlaceholderPages').then((m) => ({
+  import('./pages/Gestao/FrequenciaPages').then((m) => ({
     default: m.FrequenciaSemanalPage,
   })),
 )
 const FrequenciaProducaoPage = lazy(() =>
-  import('./pages/Gestao/FrequenciaPlaceholderPages').then((m) => ({
+  import('./pages/Gestao/FrequenciaPages').then((m) => ({
     default: m.FrequenciaProducaoPage,
   })),
 )
 const TipoServicoPage = lazy(() =>
-  import('./pages/Gestao/CadastrosGestaoPlaceholderPages').then((m) => ({
+  import('./pages/Gestao/TipoServicoPages').then((m) => ({
     default: m.TipoServicoPage,
   })),
 )
 const TipoServicoScihPage = lazy(() =>
-  import('./pages/Gestao/CadastrosGestaoPlaceholderPages').then((m) => ({
+  import('./pages/Gestao/TipoServicoPages').then((m) => ({
     default: m.TipoServicoScihPage,
   })),
 )
 const TipoServicoUtiAdultoPage = lazy(() =>
-  import('./pages/Gestao/CadastrosGestaoPlaceholderPages').then((m) => ({
+  import('./pages/Gestao/TipoServicoPages').then((m) => ({
     default: m.TipoServicoUtiAdultoPage,
   })),
 )
 const TipoServicoUtiPediatricaPage = lazy(() =>
-  import('./pages/Gestao/CadastrosGestaoPlaceholderPages').then((m) => ({
+  import('./pages/Gestao/TipoServicoPages').then((m) => ({
     default: m.TipoServicoUtiPediatricaPage,
   })),
 )
 const UtilizadorCoordenadorGestaoPage = lazy(() =>
-  import('./pages/Gestao/CadastrosGestaoPlaceholderPages').then((m) => ({
+  import('./pages/Gestao/UtilizadoresGestaoPages').then((m) => ({
     default: m.UtilizadorCoordenadorGestaoPage,
   })),
 )
 const UtilizadorAuditorPage = lazy(() =>
-  import('./pages/Gestao/CadastrosGestaoPlaceholderPages').then((m) => ({
+  import('./pages/Gestao/UtilizadoresGestaoPages').then((m) => ({
     default: m.UtilizadorAuditorPage,
   })),
 )
 const UtilizadorFaturistaPage = lazy(() =>
-  import('./pages/Gestao/CadastrosGestaoPlaceholderPages').then((m) => ({
+  import('./pages/Gestao/UtilizadoresGestaoPages').then((m) => ({
     default: m.UtilizadorFaturistaPage,
   })),
 )
@@ -243,6 +263,27 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="auth" element={<Navigate to="/login" replace />} />
+
+        <Route
+          path="suporte/politica-privacidade"
+          element={
+            <div className="min-h-dvh bg-slate-100 px-4 py-10">
+              <Suspense fallback={<PageLoader />}>
+                <PoliticaPrivacidadePage />
+              </Suspense>
+            </div>
+          }
+        />
+        <Route
+          path="suporte/termos-uso"
+          element={
+            <div className="min-h-dvh bg-slate-100 px-4 py-10">
+              <Suspense fallback={<PageLoader />}>
+                <TermosUsoPage />
+              </Suspense>
+            </div>
+          }
+        />
 
         <Route element={<RedirectIfAuthenticated />}>
           <Route element={<AuthLayout />}>
@@ -279,7 +320,7 @@ function App() {
               path="painel/relatorios"
               element={
                 <Suspense fallback={<PageLoader />}>
-                  <RelatoriosPage />
+                  <RelatoriosPage key="relatorio-financeiro" tipoInicial="pagamentos" />
                 </Suspense>
               }
             />
@@ -292,7 +333,7 @@ function App() {
               path="relatorios/emissao"
               element={
                 <Suspense fallback={<PageLoader />}>
-                  <EmissaoRelatoriosPage />
+                  <EmissaoRelatoriosPage key="emissao-scih" />
                 </Suspense>
               }
             />
@@ -570,11 +611,19 @@ function App() {
               />
               <Route
                 path="usuarios/visualizadores"
-                element={<Navigate to="/usuarios/profissionais" replace />}
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <VisualizadoresPage />
+                  </Suspense>
+                }
               />
               <Route
                 path="usuarios/especialidades"
-                element={<Navigate to="/usuarios/profissionais" replace />}
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <EspecialidadesPage />
+                  </Suspense>
+                }
               />
 
               <Route
@@ -591,7 +640,7 @@ function App() {
               />
               <Route
                 path="cadastros/especialidades"
-                element={<Navigate to="/usuarios/profissionais" replace />}
+                element={<Navigate to="/usuarios/especialidades" replace />}
               />
 
               <Route
@@ -655,7 +704,7 @@ function App() {
                 path="configuracao/:secao"
                 element={
                   <Suspense fallback={<PageLoader />}>
-                    <ConfiguracaoSecaoPage />
+                    <ConfiguracaoParametrosPage />
                   </Suspense>
                 }
               />

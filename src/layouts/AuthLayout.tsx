@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom'
+import { Link, Outlet } from 'react-router-dom'
 
 export function AuthLayout() {
   return (
@@ -33,8 +33,19 @@ export function AuthLayout() {
         </div>
 
         <div className="mt-6 flex justify-center">
-          <p className="max-w-[34ch] rounded-xl border border-white/55 bg-white/90 px-4 py-2 text-center text-xs font-semibold text-slate-900 shadow-[0_10px_22px_-18px_rgba(2,6,23,0.65)] ring-1 ring-slate-900/5 backdrop-blur-md">
-            Ao continuar, você concorda com nossos termos (placeholder).
+          <p className="max-w-[42ch] rounded-xl border border-white/55 bg-white/90 px-4 py-2 text-center text-xs text-slate-700 shadow-[0_10px_22px_-18px_rgba(2,6,23,0.65)] ring-1 ring-slate-900/5 backdrop-blur-md">
+            Ao continuar, você concorda com os{' '}
+            <Link to="/suporte/termos-uso" className="font-semibold text-blue-700 hover:underline">
+              Termos de Uso
+            </Link>{' '}
+            e a{' '}
+            <Link
+              to="/suporte/politica-privacidade"
+              className="font-semibold text-blue-700 hover:underline"
+            >
+              Política de Privacidade
+            </Link>
+            .
           </p>
         </div>
       </div>

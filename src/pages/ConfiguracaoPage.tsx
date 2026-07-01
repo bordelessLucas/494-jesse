@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
-import { Calculator, Palette } from 'lucide-react'
+import { Calculator, Palette, SlidersHorizontal } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { atualizarNomeEmpresa, buscarEmpresaDoTenant } from '../lib/auth/empresaDb'
+import { SECOES_PARAMETROS } from '../lib/configuracao/parametrosConfig'
 
 export function ConfiguracaoPage() {
   const [empresaNome, setEmpresaNome] = useState('')
@@ -70,6 +71,35 @@ export function ConfiguracaoPage() {
         {empresaMsg ? (
           <p className="mt-2 text-sm text-slate-600">{empresaMsg}</p>
         ) : null}
+      </div>
+
+      <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
+        <h2 className="text-base font-semibold text-slate-900">
+          Parametrização operacional
+        </h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Catálogos de grupos, turnos, situações, valores, auto-ajustes de ponto, contratação e
+          habilidades técnicas.
+        </p>
+        <Link
+          to="/configuracao/grupos"
+          className="mt-4 inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-primary-700 shadow-sm transition-colors hover:border-primary-300 hover:bg-primary-50/50"
+        >
+          <SlidersHorizontal className="h-4 w-4" aria-hidden />
+          Abrir painel de parametrização
+        </Link>
+        <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+          {SECOES_PARAMETROS.map((sec) => (
+            <li key={sec.slug}>
+              <Link
+                to={`/configuracao/${sec.slug}`}
+                className="block rounded-lg border border-slate-100 px-3 py-2 text-sm text-slate-700 hover:border-primary-200 hover:bg-primary-50/40"
+              >
+                {sec.titulo}
+              </Link>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">

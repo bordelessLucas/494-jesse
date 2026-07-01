@@ -6,12 +6,21 @@ import {
   rotaPermitidaParaMembro,
 } from '../Profissionais/profissionalAcessoTypes'
 import { useContaMembro } from '../../hooks/useContaMembro'
+import {
+  rotaInicialVisualizador,
+  rotaPermitidaParaVisualizador,
+} from '../../lib/visualizadores/visualizadorTypes'
 
 /** Bloqueia rotas não autorizadas para profissionais convidados. */
 export function MembroAcessoGuard({ children }: { children: React.ReactNode }) {
   const location = useLocation()
-  const { isLoading, isMembroProfissional, permissoes, mustChangePassword } =
-    useContaMembro()
+  const {
+    isLoading,
+    isMembroProfissional,
+    isVisualizador,
+    permissoes,
+    mustChangePassword,
+  } = useContaMembro()
 
   if (isLoading) {
     return (
@@ -24,9 +33,18 @@ export function MembroAcessoGuard({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (isMembroProfissional && mustChangePassword) {
+  const isMembroConvidado = isMembroProfissional || isVisualizador
+
+  if (isMembroConvidado && mustChangePassword) {
     if (location.pathname !== '/alterar-senha-obrigatoria') {
       return <Navigate to="/alterar-senha-obrigatoria" replace />
+    }
+    return <>{children}</>
+  }
+
+  if (isVisualizador) {
+    if (!rotaPermitidaParaVisualizador(location.pathname, permissoes)) {
+      return <Navigate to={rotaInicialVisualizador(permissoes)} replace />
     }
     return <>{children}</>
   }

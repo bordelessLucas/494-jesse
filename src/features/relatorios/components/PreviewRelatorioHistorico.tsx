@@ -2,7 +2,8 @@ import { FrequenciaCoordenacaoTemplate } from '../templates/FrequenciaCoordenaca
 import { FrequenciaListaDetalhadaTemplate } from '../templates/FrequenciaListaDetalhadaTemplate'
 import { FrequenciaSetorTemplate } from '../templates/FrequenciaSetorTemplate'
 import { RelatorioAtividadesTemplate } from '../templates/RelatorioAtividadesTemplate'
-import type { DadosPreviewHistorico } from '../utils/parseHistoricoRelatorio'
+import { RelatorioAtividadesUtiTemplate } from '../../gestao/templates/RelatorioAtividadesUtiTemplate'
+import { ROTULOS_TIPO_RELATORIO, type DadosPreviewHistorico } from '../utils/parseHistoricoRelatorio'
 
 type PreviewRelatorioHistoricoProps = {
   dados: DadosPreviewHistorico
@@ -58,6 +59,22 @@ export function PreviewRelatorioHistorico({ dados }: PreviewRelatorioHistoricoPr
           competenciaRotulo={dados.competenciaRotulo}
           indicadorUti={dados.indicadorUti}
           indicadorCirurgico={dados.indicadorCirurgico}
+          indicadoresEscala={dados.indicadoresEscala}
+          indicadoresCarregando={false}
+          assinatura={dados.assinatura}
+        />
+      )
+
+    case 'RelatorioUTIAdulto':
+    case 'RelatorioUTIPediatrica':
+      return (
+        <RelatorioAtividadesUtiTemplate
+          cabecalho={dados.cabecalho}
+          tituloRelatorio={ROTULOS_TIPO_RELATORIO[dados.tipo].toUpperCase()}
+          dataEmissao={dados.dataEmissao}
+          conteudo={dados.blocosSCIRAS}
+          competenciaRotulo={dados.competenciaRotulo}
+          indicadorUti={dados.indicadorUti}
           indicadoresEscala={dados.indicadoresEscala}
           indicadoresCarregando={false}
           assinatura={dados.assinatura}

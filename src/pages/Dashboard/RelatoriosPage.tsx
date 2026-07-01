@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Loader2, Printer, RefreshCw } from 'lucide-react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
 import { useCatalogoLocaisSetores } from '../../hooks/useCatalogoLocaisSetores'
@@ -37,6 +37,7 @@ import {
   TITULOS_RELATORIO_GERENCIAL,
   RELATORIOS_COM_PERIODO,
 } from './relatoriosGerenciaisTypes'
+import { tipoRelatorioDaRota } from './relatoriosGerenciaisRoutes'
 
 type FiltrosGerador = {
   tipoRelatorio: TipoRelatorioGerador
@@ -142,8 +143,11 @@ type RelatoriosPageProps = {
 }
 
 export function RelatoriosPage({ tipoInicial }: RelatoriosPageProps = {}) {
+  const { pathname } = useLocation()
   const [searchParams] = useSearchParams()
-  const tipoUrl = tipoInicial ?? tipoValido(searchParams.get('tipo'))
+  const tipoPorRota = tipoRelatorioDaRota(pathname)
+  const tipoUrl = tipoInicial ?? tipoPorRota ?? tipoValido(searchParams.get('tipo'))
+  const tipoTravado = tipoInicial !== undefined || tipoPorRota !== undefined
 
   const { empresa } = useContaMembro()
   const { logoUrl } = useThemeBranding()
@@ -158,8 +162,13 @@ export function RelatoriosPage({ tipoInicial }: RelatoriosPageProps = {}) {
   const [exportandoPdf, setExportandoPdf] = useState(false)
 
   useEffect(() => {
-    setFiltros((p) => ({ ...p, tipoRelatorio: tipoUrl }))
-  }, [tipoUrl])
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    setFiltros(filtrosIniciais(tipoUrl))
+    setFiltrosGerados(null)
+    setDataGeracao('')
+    setExportandoXls(false)
+    setExportandoPdf(false)
+  }, [pathname, tipoUrl])
 
   const setoresDisponiveis = useMemo(() => {
     if (!filtros.localId) {
@@ -476,20 +485,29 @@ export function RelatoriosPage({ tipoInicial }: RelatoriosPageProps = {}) {
       <div className="no-print border-b border-gray-200 bg-white p-3">
         <div className="flex flex-wrap items-end gap-x-2 gap-y-2">
           <CampoFiltro label="Relatório" htmlFor="filtro-relatorio" className="min-w-[160px]">
-            <select
-              id="filtro-relatorio"
-              className={SELECT}
-              value={filtros.tipoRelatorio}
-              onChange={(e) =>
-                patchFiltros('tipoRelatorio', e.target.value as TipoRelatorioGerador)
-              }
-            >
-              {TIPOS_VALIDOS.map((tipo) => (
-                <option key={tipo} value={tipo}>
-                  {TITULOS_RELATORIO_GERENCIAL[tipo]}
-                </option>
-              ))}
-            </select>
+            {tipoTravado ? (
+              <div
+                id="filtro-relatorio"
+                className={cn(INPUT, 'cursor-default bg-slate-50 font-medium text-gray-800')}
+              >
+                {TITULOS_RELATORIO_GERENCIAL[filtros.tipoRelatorio]}
+              </div>
+            ) : (
+              <select
+                id="filtro-relatorio"
+                className={SELECT}
+                value={filtros.tipoRelatorio}
+                onChange={(e) =>
+                  patchFiltros('tipoRelatorio', e.target.value as TipoRelatorioGerador)
+                }
+              >
+                {TIPOS_VALIDOS.map((tipo) => (
+                  <option key={tipo} value={tipo}>
+                    {TITULOS_RELATORIO_GERENCIAL[tipo]}
+                  </option>
+                ))}
+              </select>
+            )}
           </CampoFiltro>
 
           {filtros.tipoRelatorio !== 'locais_setores' ? (

@@ -1,5 +1,5 @@
 import { BrandedLogoOrInitial } from './branding/BrandedLogoOrInitial'
-import { SidebarNavMenu, SidebarSectionHeader } from './sidebar/SidebarNavMenu'
+import { SidebarNavMenu, SidebarSectionHeader, sectionNavVariant } from './sidebar/SidebarNavMenu'
 import { cn } from '../lib/cn'
 import { Loader2, ShieldPlus } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
@@ -63,12 +63,12 @@ export function Sidebar() {
           >
             <SidebarSectionHeader
               section={section}
-              variant={section.id === 'gestao' ? 'gestao' : 'default'}
+              variant={sectionNavVariant(section.id)}
             />
             <SidebarNavMenu
               section={section}
               pathname={pathname}
-              variant={section.id === 'gestao' ? 'gestao' : 'default'}
+              variant={sectionNavVariant(section.id)}
             />
           </div>
         ))}

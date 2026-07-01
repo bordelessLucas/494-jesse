@@ -45,6 +45,18 @@ import { useTenantUserId } from './useTenantUserId'
 
 const STALE_TIME_MS = 5 * 60 * 1000
 
+const PAGAMENTOS_VAZIO: LinhaPagamentoProfissional[] = []
+const TROCAS_VAZIO: LinhaTrocaPassagem[] = []
+const FALTAS_VAZIO: LinhaFaltaRelatorio[] = []
+const CANDIDATURAS_VAZIO: LinhaCandidaturaRelatorio[] = []
+const PLANTOES_VAZIO: LinhaPlantaoListagem[] = []
+const PAGAMENTOS_DETALHE_VAZIO: GrupoPagamentoProfissional[] = []
+const LOCAIS_SETORES_VAZIO: LinhaLocalSetorRelatorio[] = []
+const PLANTOES_MES_VAZIO: PlantoesPorMesRow[] = []
+const RANKING_VAZIO: ProfissionalRankingRow[] = []
+const RESUMO_SETOR_VAZIO: ResumoSetorRow[] = []
+const SOBRECARGA_VAZIO: ProfissionalSobrecargaRow[] = []
+
 type CacheEntry<T> = {
   data: T
   fetchedAt: number
@@ -89,6 +101,9 @@ function useQueryRpc<T>(
   const [error, setError] = useState<string | null>(null)
   const fetcherRef = useRef(fetcher)
   fetcherRef.current = fetcher
+  const initialRef = useRef(initial)
+  initialRef.current = initial
+  const keyAnteriorRef = useRef<string | null | undefined>(undefined)
 
   const executar = useCallback(
     async (modo: 'inicial' | 'refetch') => {
@@ -120,14 +135,21 @@ function useQueryRpc<T>(
   )
 
   useEffect(() => {
+    const keyAnterior = keyAnteriorRef.current
+    keyAnteriorRef.current = key
+
     if (!key) {
-      setData(initial)
-      setIsLoading(false)
-      setError(null)
+      if (keyAnterior) {
+        setData(initialRef.current)
+        setIsLoading(false)
+        setIsFetching(false)
+        setError(null)
+      }
       return
     }
+
     void executar('inicial')
-  }, [key, executar, initial])
+  }, [key, executar])
 
   const refetch = useCallback(() => {
     if (key) cache.delete(key)
@@ -217,7 +239,7 @@ export function usePlantoesPorMes(
     [localId, meses],
   )
 
-  return useQueryRpc(key, fetcher, [])
+  return useQueryRpc(key, fetcher, PLANTOES_MES_VAZIO)
 }
 
 /** Ranking de profissionais por competência (suporta intervalo multi-mês). */
@@ -238,7 +260,7 @@ export function useRankingProfissionais(
     [competencia, localId],
   )
 
-  return useQueryRpc(key, fetcher, [])
+  return useQueryRpc(key, fetcher, RANKING_VAZIO)
 }
 
 /** Resumo por setor na competência. */
@@ -255,7 +277,7 @@ export function useResumoPorSetor(
 
   const fetcher = useCallback(() => rpcResumoSetor(competencia!), [competencia])
 
-  return useQueryRpc(key, fetcher, [])
+  return useQueryRpc(key, fetcher, RESUMO_SETOR_VAZIO)
 }
 
 /** Profissionais com sobrecarga (>60h) na semana. */
@@ -275,7 +297,7 @@ export function useProfissionaisSobrecarga(
     [semanaInicio],
   )
 
-  return useQueryRpc(key, fetcher, [])
+  return useQueryRpc(key, fetcher, SOBRECARGA_VAZIO)
 }
 
 export type FiltroRelatorioPagamentos = {
@@ -284,8 +306,6 @@ export type FiltroRelatorioPagamentos = {
   localId?: string
   listarTelefone: boolean
 }
-
-const PAGAMENTOS_VAZIO: LinhaPagamentoProfissional[] = []
 
 /** Linhas do relatório de pagamentos (ranking agregado no intervalo). */
 export function useRelatorioPagamentos(
@@ -297,6 +317,7 @@ export function useRelatorioPagamentos(
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const keyAnteriorRef = useRef<string | null | undefined>(undefined)
 
   const key =
     enabled && filtro && tenantUserId
@@ -350,12 +371,19 @@ export function useRelatorioPagamentos(
   )
 
   useEffect(() => {
+    const keyAnterior = keyAnteriorRef.current
+    keyAnteriorRef.current = key
+
     if (!key) {
-      setData(PAGAMENTOS_VAZIO)
-      setIsLoading(false)
-      setError(null)
+      if (keyAnterior) {
+        setData(PAGAMENTOS_VAZIO)
+        setIsLoading(false)
+        setIsFetching(false)
+        setError(null)
+      }
       return
     }
+
     void executar('inicial')
   }, [key, executar])
 
@@ -386,6 +414,8 @@ function useRelatorioGenerico<T>(
   vazio: T,
 ): QueryState<T> {
   const { tenantUserId } = useTenantUserId()
+  const vazioRef = useRef(vazio)
+  vazioRef.current = vazio
 
   const key =
     enabled && filtro && tenantUserId
@@ -393,9 +423,9 @@ function useRelatorioGenerico<T>(
       : null
 
   const executarFetcher = useCallback(async (): Promise<T> => {
-    if (!filtro || !tenantUserId) return vazio
+    if (!filtro || !tenantUserId) return vazioRef.current
     return fetcher(tenantUserId, filtro)
-  }, [fetcher, filtro, tenantUserId, vazio])
+  }, [fetcher, filtro, tenantUserId])
 
   return useQueryRpc(key, executarFetcher, vazio)
 }
@@ -409,7 +439,7 @@ export function useRelatorioTrocasPassagens(
     filtro,
     enabled,
     (tenantUserId, f) => buscarTrocasPassagensRelatorio({ tenantUserId, ...f }),
-    [],
+    TROCAS_VAZIO,
   )
 }
 
@@ -422,7 +452,7 @@ export function useRelatorioFaltas(
     filtro,
     enabled,
     (tenantUserId, f) => buscarFaltasRelatorio({ tenantUserId, ...f }),
-    [],
+    FALTAS_VAZIO,
   )
 }
 
@@ -435,7 +465,7 @@ export function useRelatorioCandidaturas(
     filtro,
     enabled,
     (tenantUserId, f) => buscarCandidaturasRelatorio({ tenantUserId, ...f }),
-    [],
+    CANDIDATURAS_VAZIO,
   )
 }
 
@@ -448,7 +478,7 @@ export function useRelatorioPlantoesListagem(
     filtro,
     enabled,
     (tenantUserId, f) => buscarPlantoesListagemRelatorio({ tenantUserId, ...f }),
-    [],
+    PLANTOES_VAZIO,
   )
 }
 
@@ -461,7 +491,7 @@ export function useRelatorioPagamentosDetalhado(
     filtro,
     enabled,
     (tenantUserId, f) => buscarPagamentosDetalhadoRelatorio({ tenantUserId, ...f }),
-    [],
+    PAGAMENTOS_DETALHE_VAZIO,
   )
 }
 
@@ -481,7 +511,7 @@ export function useRelatorioLocaisSetores(
     [incluirInativos, tenantUserId],
   )
 
-  return useQueryRpc(key, fetcher, [])
+  return useQueryRpc(key, fetcher, LOCAIS_SETORES_VAZIO)
 }
 
 /** Invalida cache de relatórios gerenciais (ex.: após gerar novo relatório). */

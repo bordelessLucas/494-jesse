@@ -41,7 +41,10 @@ import type {
 } from '../../features/sciras/types'
 
 import { EditorBlocosRelatorio } from '../../features/relatorios/components/EditorBlocosRelatorio'
+import { EmissaoRelatorioCarregando } from '../../features/relatorios/components/EmissaoRelatorioCarregando'
 import { HistoricoRelatoriosPanel } from '../../features/relatorios/components/HistoricoRelatoriosPanel'
+import { useDebouncedEffect } from '../../features/relatorios/hooks/useDebouncedEffect'
+import { useEmissaoRelatorioNavegacao } from '../../features/relatorios/hooks/useEmissaoRelatorioNavegacao'
 import { useBlocosRelatorio } from '../../features/relatorios/hooks/useBlocosRelatorio'
 import {
   lerEmissaoRelatorioRascunho,
@@ -254,6 +257,7 @@ export function EmissaoRelatoriosPage() {
     useContaMembro()
   const { logoUrl } = useThemeBranding()
   const previewCapturaRef = useRef<HTMLDivElement>(null)
+  const { previewScrollRef } = useEmissaoRelatorioNavegacao('plantao-check:emissao-scih')
   const competencias = useMemo(() => gerarCompetencias(), [])
   const rascunhoGuardado = useMemo(() => lerEmissaoRelatorioRascunho(), [])
 
@@ -412,7 +416,7 @@ export function EmissaoRelatoriosPage() {
 
   const modoPreviewAssinatura = !dataHoraAssinaturaPdf
 
-  useEffect(() => {
+  useDebouncedEffect(() => {
     salvarEmissaoRelatorioRascunho({
       tipoSelecionado,
       competenciaId,
@@ -462,6 +466,7 @@ export function EmissaoRelatoriosPage() {
     if (!tenantUserId || !localId || !competenciaId) {
       setPlantoesRelatorio([])
       setErroPlantoes(null)
+      setCarregandoPlantoes(false)
       return
     }
     let cancelado = false
@@ -694,6 +699,10 @@ export function EmissaoRelatoriosPage() {
 
   const mostrarEditorBlocos = tipoSelecionado === 'RelatorioSCIRAS'
 
+  if (carregandoLocais && locaisOpcoes.length === 0) {
+    return <EmissaoRelatorioCarregando titulo="Emissão de Relatórios — SCIH" />
+  }
+
   return (
     <div className="-m-8 flex min-h-screen print:m-0 print:block print:min-h-0">
       <PainelConfiguracao
@@ -736,7 +745,7 @@ export function EmissaoRelatoriosPage() {
         ) : null}
       </PainelConfiguracao>
 
-      <PainelPreview capturaRef={previewCapturaRef}>
+      <PainelPreview capturaRef={previewCapturaRef} scrollRef={previewScrollRef}>
         <PreviewRelatorioSelecionado
           tipoSelecionado={tipoSelecionado}
           cabecalho={cabecalho}
@@ -1074,11 +1083,15 @@ function PainelConfiguracao({
 type PainelPreviewProps = {
   children: ReactNode
   capturaRef?: React.RefObject<HTMLDivElement | null>
+  scrollRef?: React.RefObject<HTMLElement | null>
 }
 
-function PainelPreview({ children, capturaRef }: PainelPreviewProps) {
+function PainelPreview({ children, capturaRef, scrollRef }: PainelPreviewProps) {
   return (
-    <section className="flex-1 overflow-y-auto bg-slate-300 p-8 print:overflow-visible print:bg-white print:p-0">
+    <section
+      ref={scrollRef}
+      className="flex-1 overflow-y-auto bg-slate-300 p-8 print:overflow-visible print:bg-white print:p-0"
+    >
       <div ref={capturaRef} className="flex justify-center">
         {children}
       </div>

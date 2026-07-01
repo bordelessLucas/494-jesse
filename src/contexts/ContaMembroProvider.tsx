@@ -12,6 +12,7 @@ import {
   PERMISSOES_PROFISSIONAL,
   permissoesProfissionalPadrao,
 } from '../components/Profissionais/profissionalAcessoTypes'
+import { permissoesPadraoVisualizador } from '../lib/visualizadores/visualizadorTypes'
 import { buscarContaMembroAtual, type ContaMembroRow } from '../lib/auth/contaMembroDb'
 import { buscarEmpresaDoTenant, type EmpresaRow } from '../lib/auth/empresaDb'
 import { useSupabaseUser } from '../hooks/useSupabaseUser'
@@ -76,13 +77,21 @@ export function ContaMembroProvider({ children }: { children: ReactNode }) {
   }, [authLoading, carregar])
 
   const isMembroProfissional = Boolean(membro)
+  const isVisualizador = membro?.role === 'visualizador'
+  const isSomenteLeitura = isVisualizador
   const isTitular = Boolean(user) && !isMembroProfissional
   const isMaster = isTitular
 
-  const permissoes = useMemo(
-    () => (membro ? resolverPermissoesMembro(membro.permissoes) : {}),
-    [membro],
-  )
+  const permissoes = useMemo(() => {
+    if (!membro) return {}
+    if (membro.role === 'visualizador') {
+      return {
+        ...permissoesPadraoVisualizador(),
+        ...normalizarPermissoes(membro.permissoes),
+      }
+    }
+    return resolverPermissoesMembro(membro.permissoes)
+  }, [membro])
 
   const value = useMemo(
     (): ContaMembroContext => ({
@@ -90,6 +99,8 @@ export function ContaMembroProvider({ children }: { children: ReactNode }) {
       isTitular,
       isMaster,
       isMembroProfissional,
+      isVisualizador,
+      isSomenteLeitura,
       membro,
       empresa,
       permissoes,
@@ -104,6 +115,8 @@ export function ContaMembroProvider({ children }: { children: ReactNode }) {
       isTitular,
       isMaster,
       isMembroProfissional,
+      isVisualizador,
+      isSomenteLeitura,
       membro,
       empresa,
       permissoes,

@@ -147,3 +147,17 @@
   }
 }
 
+/* Modo somente leitura — perfil visualizador */
+body[data-somente-leitura='1'] .somente-leitura-conteudo button:not([data-permitir-escrita='true']),
+body[data-somente-leitura='1'] .somente-leitura-conteudo [role='button']:not([data-permitir-escrita='true']) {
+  pointer-events: none;
+}
+
+body[data-somente-leitura='1'] .somente-leitura-conteudo input:not([type='checkbox']):not([type='radio']):not([readonly]),
+body[data-somente-leitura='1'] .somente-leitura-conteudo textarea:not([readonly]),
+body[data-somente-leitura='1'] .somente-leitura-conteudo select {
+  pointer-events: none;
+  opacity: 0.85;
+  background-color: rgb(248 250 252);
+}
+

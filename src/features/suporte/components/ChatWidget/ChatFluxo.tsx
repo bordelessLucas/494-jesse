@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { ChevronLeft, Send, X } from 'lucide-react'
 
 import { Marcadagua } from './ChatInicio'
@@ -40,8 +41,25 @@ export function ChatFluxo({ onVoltar, onFechar, onIniciarChat, iniciando }: Chat
           </div>
           <div className="rounded-xl bg-white p-4 shadow-sm">
             <p className="text-center text-sm leading-relaxed text-slate-800">
-              Para mais informações, consulte a nossa Política de Privacidade e os nossos Termos
-              de Uso (em breve).
+              Para mais informações, consulte a nossa{' '}
+              <Link
+                to="/suporte/politica-privacidade"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary-700 underline"
+              >
+                Política de Privacidade
+              </Link>{' '}
+              e os nossos{' '}
+              <Link
+                to="/suporte/termos-uso"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary-700 underline"
+              >
+                Termos de Uso
+              </Link>
+              .
             </p>
           </div>
           <div className="rounded-xl bg-white p-4 shadow-sm">

@@ -5,7 +5,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { useVisibleNavigationItems } from '../hooks/useVisibleNavigationItems'
 import { cn } from '../lib/cn'
 import { BrandedLogoOrInitial } from './branding/BrandedLogoOrInitial'
-import { SidebarNavMenu, SidebarSectionHeader } from './sidebar/SidebarNavMenu'
+import { SidebarNavMenu, SidebarSectionHeader, sectionNavVariant } from './sidebar/SidebarNavMenu'
 
 type MobileNavDrawerProps = {
   aberto: boolean
@@ -89,12 +89,12 @@ export function MobileNavDrawer({ aberto, onFechar }: MobileNavDrawerProps) {
             >
               <SidebarSectionHeader
                 section={section}
-                variant={section.id === 'gestao' ? 'gestao' : 'default'}
+                variant={sectionNavVariant(section.id)}
               />
               <SidebarNavMenu
                 section={section}
                 pathname={pathname}
-                variant={section.id === 'gestao' ? 'gestao' : 'default'}
+                variant={sectionNavVariant(section.id)}
                 onNavigate={onFechar}
               />
             </div>

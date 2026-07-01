@@ -33,6 +33,8 @@ export const ROTULOS_TIPO_RELATORIO: Record<TipoRelatorioHistorico, string> = {
   FrequenciaSetor: 'Lista de Frequência — UTI Pediátrica',
   FrequenciaCoordenacao: 'Lista de Frequência — SCIH (Coordenação)',
   RelatorioSCIRAS: 'Relatório de Atividades — SCIRAS',
+  RelatorioUTIAdulto: 'Relatório de Atividades — UTI Adulto',
+  RelatorioUTIPediatrica: 'Relatório de Atividades — UTI Pediátrica',
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -123,7 +125,7 @@ export function parseHistoricoParaPreview(
   const snap = isRecord(row.snapshot) ? row.snapshot : {}
   const cabecalho = parseCabecalhoHistorico(row, logoUrlFallback)
 
-  const blocosRaw = snap.blocosSCIRAS
+  const blocosRaw = snap.blocosSCIRAS ?? snap.blocos
   const blocosSCIRAS = Array.isArray(blocosRaw)
     ? (blocosRaw as RelatorioAtividadesBloco[])
     : []

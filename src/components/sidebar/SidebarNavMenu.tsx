@@ -6,11 +6,46 @@ import { cn } from '../../lib/cn'
 import type { NavigationItem, NavigationSection } from '../../lib/navigationItems'
 import { isItemMenuAtivo, subItensDoMenu } from './sidebarNavUtils'
 
+export type SidebarNavVariant = 'operacao' | 'gestao'
+
 type SidebarNavMenuProps = {
   section: NavigationSection
   pathname: string
-  variant?: 'default' | 'gestao'
+  variant?: SidebarNavVariant
   onNavigate?: () => void
+}
+
+function classesSubItem(variant: SidebarNavVariant, isSubItemActive: boolean) {
+  return cn(
+    'flex items-start gap-2 rounded-lg py-1.5 text-sm transition-colors',
+    'px-3 pl-9',
+    variant === 'operacao' && 'text-current/85 hover:bg-white/10 hover:text-current',
+    variant === 'operacao' &&
+      isSubItemActive &&
+      'bg-blue-400 font-medium text-white hover:bg-blue-400',
+    variant === 'gestao' && 'text-current/85 hover:bg-black/15 hover:text-current',
+    variant === 'gestao' && isSubItemActive && 'bg-black/25 text-current',
+  )
+}
+
+function BulletSubItem({
+  variant,
+  isSubItemActive,
+}: {
+  variant: SidebarNavVariant
+  isSubItemActive: boolean
+}) {
+  return (
+    <span
+      className={cn(
+        'mt-0.5 shrink-0',
+        variant === 'operacao' && isSubItemActive ? 'text-white' : 'text-current/45',
+      )}
+      aria-hidden
+    >
+      •
+    </span>
+  )
 }
 
 function SubItensLista({
@@ -19,20 +54,12 @@ function SubItensLista({
   onNavigate,
 }: {
   item: NavigationItem
-  variant: 'default' | 'gestao'
+  variant: SidebarNavVariant
   onNavigate?: () => void
 }) {
-  const isGestao = variant === 'gestao'
-
   if (item.subGroups?.length) {
     return (
-      <div
-        className={cn(
-          'mt-1 space-y-1',
-          !isGestao &&
-            'ml-4 overflow-hidden rounded-md border border-current/10 bg-black/10 p-2',
-        )}
-      >
+      <div className="mt-1 space-y-1">
         {item.subGroups.map((grupo) => (
           <div key={grupo.heading ?? grupo.items[0]?.to}>
             {grupo.heading ? (
@@ -45,20 +72,15 @@ function SubItensLista({
                     to={subItem.to}
                     onClick={onNavigate}
                     className={({ isActive: isSubItemActive }) =>
-                      cn(
-                        'flex items-start gap-2 rounded-md py-1.5 text-sm transition-colors',
-                        isGestao ? 'px-3 pl-5' : 'px-3',
-                        'text-current/85 hover:bg-black/15 hover:text-current',
-                        isSubItemActive && 'bg-black/25 text-current',
-                      )
+                      classesSubItem(variant, isSubItemActive)
                     }
                   >
-                    {isGestao ? (
-                      <span className="mt-0.5 shrink-0 text-current/45" aria-hidden>
-                        •
-                      </span>
-                    ) : null}
-                    <span className="leading-tight">{subItem.label}</span>
+                    {({ isActive: isSubItemActive }) => (
+                      <>
+                        <BulletSubItem variant={variant} isSubItemActive={isSubItemActive} />
+                        <span className="leading-tight">{subItem.label}</span>
+                      </>
+                    )}
                   </NavLink>
                 </li>
               ))}
@@ -72,13 +94,7 @@ function SubItensLista({
   if (!item.subItems?.length) return null
 
   return (
-    <div
-      className={cn(
-        'mt-1',
-        !isGestao &&
-          'ml-4 overflow-hidden rounded-md border border-current/10 bg-black/10 p-2',
-      )}
-    >
+    <div className="mt-1">
       <ul className="space-y-0.5">
         {item.subItems.map((subItem) => (
           <li key={subItem.to}>
@@ -86,20 +102,15 @@ function SubItensLista({
               to={subItem.to}
               onClick={onNavigate}
               className={({ isActive: isSubItemActive }) =>
-                cn(
-                  'flex items-start gap-2 rounded-md py-1.5 text-sm transition-colors',
-                  isGestao ? 'px-3 pl-5' : 'px-3',
-                  'text-current/85 hover:bg-black/15 hover:text-current',
-                  isSubItemActive && 'bg-black/25 text-current',
-                )
+                classesSubItem(variant, isSubItemActive)
               }
             >
-              {isGestao ? (
-                <span className="mt-0.5 shrink-0 text-current/45" aria-hidden>
-                  •
-                </span>
-              ) : null}
-              <span className="leading-tight">{subItem.label}</span>
+              {({ isActive: isSubItemActive }) => (
+                <>
+                  <BulletSubItem variant={variant} isSubItemActive={isSubItemActive} />
+                  <span className="leading-tight">{subItem.label}</span>
+                </>
+              )}
             </NavLink>
           </li>
         ))}
@@ -116,7 +127,7 @@ function NavMenuItem({
 }: {
   item: NavigationItem
   pathname: string
-  variant: 'default' | 'gestao'
+  variant: SidebarNavVariant
   onNavigate?: () => void
 }) {
   const { to, label, icon: Icon } = item
@@ -135,9 +146,10 @@ function NavMenuItem({
   const classesPai = cn(
     'flex w-full items-center justify-between gap-3 rounded-lg p-3 text-sm font-medium transition-colors',
     'text-current/80 hover:bg-current/10 hover:text-current',
-    isActive &&
-      !isGestao &&
-      'rounded-l-none border-l-4 border-current/70 bg-black/25 text-current hover:bg-black/25',
+    variant === 'operacao' &&
+      isActive &&
+      !temSubmenu &&
+      'bg-blue-400 text-white hover:bg-blue-400',
     isActive && isGestao && 'text-current',
   )
 
@@ -200,7 +212,7 @@ export function SidebarSectionHeader({
   variant,
 }: {
   section: NavigationSection
-  variant: 'default' | 'gestao'
+  variant: SidebarNavVariant
 }) {
   const SectionIcon = section.icon
 
@@ -222,7 +234,16 @@ export function SidebarSectionHeader({
   )
 }
 
-export function SidebarNavMenu({ section, pathname, variant = 'default', onNavigate }: SidebarNavMenuProps) {
+export function sectionNavVariant(sectionId: NavigationSection['id']): SidebarNavVariant {
+  return sectionId === 'gestao' ? 'gestao' : 'operacao'
+}
+
+export function SidebarNavMenu({
+  section,
+  pathname,
+  variant = 'operacao',
+  onNavigate,
+}: SidebarNavMenuProps) {
   return (
     <ul className="space-y-1">
       {section.items.map((item) => (

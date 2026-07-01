@@ -5,6 +5,8 @@ export type TipoRelatorioHistorico =
   | 'FrequenciaSetor'
   | 'FrequenciaCoordenacao'
   | 'RelatorioSCIRAS'
+  | 'RelatorioUTIAdulto'
+  | 'RelatorioUTIPediatrica'
 
 export type StatusWorkflowRelatorio =
   | 'rascunho'

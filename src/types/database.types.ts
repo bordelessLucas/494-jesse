@@ -155,9 +155,11 @@ export type Database = {
           tenant_user_id: string
           auth_user_id: string
           profissional_id: string | null
-          role: 'profissional' | 'auditor' | 'faturista'
+          role: 'profissional' | 'auditor' | 'faturista' | 'visualizador'
           permissoes: Json
           must_change_password: boolean
+          nome: string | null
+          email: string | null
           created_at: string
           updated_at: string
         }
@@ -166,9 +168,11 @@ export type Database = {
           tenant_user_id: string
           auth_user_id: string
           profissional_id?: string | null
-          role?: 'profissional' | 'auditor' | 'faturista'
+          role?: 'profissional' | 'auditor' | 'faturista' | 'visualizador'
           permissoes?: Json
           must_change_password?: boolean
+          nome?: string | null
+          email?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -177,11 +181,142 @@ export type Database = {
           tenant_user_id?: string
           auth_user_id?: string
           profissional_id?: string | null
-          role?: 'profissional' | 'auditor' | 'faturista'
+          role?: 'profissional' | 'auditor' | 'faturista' | 'visualizador'
           permissoes?: Json
           must_change_password?: boolean
+          nome?: string | null
+          email?: string | null
           created_at?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      especialidades: {
+        Row: {
+          id: string
+          user_id: string
+          nome: string
+          conselho_classe: 'CRM' | 'COREN'
+          valor_base_hora: number
+          ativo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          nome: string
+          conselho_classe: 'CRM' | 'COREN'
+          valor_base_hora?: number
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          nome?: string
+          conselho_classe?: 'CRM' | 'COREN'
+          valor_base_hora?: number
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      gestao_tipos_servico: {
+        Row: {
+          id: string
+          user_id: string
+          slug: 'scih' | 'uti_adulto' | 'uti_pediatrica'
+          titulo: string
+          observacoes: string | null
+          ativo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          slug: 'scih' | 'uti_adulto' | 'uti_pediatrica'
+          titulo: string
+          observacoes?: string | null
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          slug?: 'scih' | 'uti_adulto' | 'uti_pediatrica'
+          titulo?: string
+          observacoes?: string | null
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      gestao_tipo_servico_acrescimos: {
+        Row: {
+          id: string
+          user_id: string
+          tipo_servico_id: string
+          especialidade: string
+          tipo_calculo: 'percentual' | 'valor_fixo_hora' | 'valor_fixo_plantao'
+          valor: number
+          ativo: boolean
+          ordem: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          tipo_servico_id: string
+          especialidade: string
+          tipo_calculo?: 'percentual' | 'valor_fixo_hora' | 'valor_fixo_plantao'
+          valor?: number
+          ativo?: boolean
+          ordem?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          tipo_servico_id?: string
+          especialidade?: string
+          tipo_calculo?: 'percentual' | 'valor_fixo_hora' | 'valor_fixo_plantao'
+          valor?: number
+          ativo?: boolean
+          ordem?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      gestao_tipo_servico_setores: {
+        Row: {
+          id: string
+          user_id: string
+          tipo_servico_id: string
+          setor_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          tipo_servico_id: string
+          setor_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          tipo_servico_id?: string
+          setor_id?: string
+          created_at?: string
         }
         Relationships: []
       }
@@ -1431,6 +1566,10 @@ export type Database = {
         Returns: boolean
       }
       auth_is_faturista: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      auth_is_visualizador: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }

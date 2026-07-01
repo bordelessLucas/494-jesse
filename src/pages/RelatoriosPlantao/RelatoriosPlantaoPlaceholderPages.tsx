@@ -1,17 +1,19 @@
 import { RelatoriosPage } from '../Dashboard/RelatoriosPage'
 
 export function RelatorioPlantaoFaltasPage() {
-  return <RelatoriosPage tipoInicial="faltas" />
+  return <RelatoriosPage key="relatorio-faltas" tipoInicial="faltas" />
 }
 
 export function RelatorioPlantaoEscalasPage() {
-  return <RelatoriosPage tipoInicial="escala" />
+  return <RelatoriosPage key="relatorio-escalas" tipoInicial="escala" />
 }
 
 export function RelatorioPlantaoProfissionaisPage() {
-  return <RelatoriosPage tipoInicial="plantoes" />
+  return <RelatoriosPage key="relatorio-profissionais" tipoInicial="plantoes" />
 }
 
 export function RelatorioPlantaoCoordenadoresPage() {
-  return <RelatoriosPage tipoInicial="trocas_passagens" />
+  return (
+    <RelatoriosPage key="relatorio-coordenadores" tipoInicial="trocas_passagens" />
+  )
 }
