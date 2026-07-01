@@ -1,29 +1,24 @@
 import { cn } from '../../../lib/cn'
-import { BrandedLogoOrInitial } from '../../../components/branding/BrandedLogoOrInitial'
-import {
-  fmtPeriodo,
-  LEGENDA_ESCALA,
-  type CelulaCalendarioEscala,
-} from '../relatoriosGerenciaisTypes'
+import type { SemanaEscalaPega } from '../../../lib/relatorios/montarGradeEscalaPegaPlantao'
+import { LEGENDA_ESCALA_PEGA } from '../../../lib/relatorios/formatoPegaPlantao'
+import { fmtPeriodoTilde } from '../../../lib/relatorios/formatoPegaPlantao'
+import { RelatorioCabecalhoPegaPlantao } from './RelatorioCabecalhoPegaPlantao'
 
-type RelatorioEscalaFolhaProps = {
+type Props = {
   dataInicio: string
   dataFim: string
   dataGeracao: string
   nomeEmpresa: string
-  semanas: CelulaCalendarioEscala[][]
+  semanas: SemanaEscalaPega[]
+  rotuloLocal?: string
   isLoading?: boolean
 }
 
 function SkeletonGrade() {
   return (
-    <div className="space-y-2 animate-pulse">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="grid grid-cols-7 gap-1">
-          {Array.from({ length: 7 }).map((__, j) => (
-            <div key={j} className="min-h-[72px] rounded border border-gray-200 bg-gray-100" />
-          ))}
-        </div>
+    <div className="space-y-3 animate-pulse">
+      {Array.from({ length: 2 }).map((_, i) => (
+        <div key={i} className="h-24 rounded bg-gray-100" />
       ))}
     </div>
   )
@@ -35,82 +30,83 @@ export function RelatorioEscalaFolha({
   dataGeracao,
   nomeEmpresa,
   semanas,
+  rotuloLocal,
   isLoading = false,
-}: RelatorioEscalaFolhaProps) {
+}: Props) {
+  const titulo = rotuloLocal
+    ? `Escala de Plantões - Local: ${rotuloLocal.toUpperCase()} - Profissional de Plantão - ${fmtPeriodoTilde(dataInicio, dataFim)}`
+    : `Escala de Plantões - Profissional de Plantão - ${fmtPeriodoTilde(dataInicio, dataFim)}`
+
   return (
     <>
-      <header className="mb-4 border-b border-gray-300 pb-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <BrandedLogoOrInitial
-              className="h-12 w-12 shrink-0"
-              surface="light"
-              alt=""
-            />
-            <div className="min-w-0">
-              <h1 className="text-base font-bold uppercase tracking-wide text-[#1e40af]">
-                Escala de Plantões
-              </h1>
-              <p className="truncate text-xs text-gray-700">{nomeEmpresa}</p>
-              <p className="text-xs text-gray-600">
-                Período: {fmtPeriodo(dataInicio, dataFim)}
-              </p>
-            </div>
-          </div>
-          <p className="shrink-0 text-[10px] text-gray-600">
-            Gerado em: {dataGeracao}
-          </p>
-        </div>
-      </header>
+      <RelatorioCabecalhoPegaPlantao
+        nomeEmpresa={nomeEmpresa}
+        titulo={titulo}
+        dataGeracao={dataGeracao}
+      />
 
       {isLoading ? (
         <SkeletonGrade />
+      ) : semanas.length === 0 ? (
+        <p className="py-8 text-center text-sm text-gray-500">
+          Nenhum plantão no período para os filtros selecionados.
+        </p>
       ) : (
-        <div className="space-y-0">
+        <div className="space-y-4">
           {semanas.map((semana, idxSemana) => (
-            <div
-              key={`semana-${idxSemana}`}
-              className="grid grid-cols-7 border-collapse break-inside-avoid"
-            >
-              {semana.map((celula) => (
-                <div
-                  key={celula.iso}
-                  className={cn(
-                    'min-h-[72px] border border-gray-300 p-1',
-                    celula.foraMes ? 'bg-gray-50 text-gray-400' : 'bg-white',
-                  )}
-                >
-                  <p
-                    className={cn(
-                      'mb-0.5 border-b border-gray-200 pb-0.5 text-[10px] font-bold uppercase',
-                      celula.foraMes ? 'text-gray-400' : 'text-gray-800',
-                    )}
-                  >
-                    {celula.rotulo}
-                  </p>
-                  <div className="space-y-0.5">
-                    {celula.linhas.length === 0 ? (
-                      <p className="text-[9px] text-gray-400">—</p>
-                    ) : (
-                      celula.linhas.map((linha, idx) => (
-                        <p
-                          key={`${celula.iso}-${idx}`}
-                          className="text-[9px] leading-tight text-gray-800"
+            <div key={`semana-${idxSemana}`} className="break-inside-avoid">
+              <table className="w-full border-collapse text-[8px] text-black">
+                <thead>
+                  <tr>
+                    <th className="w-16 border border-gray-400 bg-gray-100 p-0.5" />
+                    {semana.rotulosDias.map((rotulo) => (
+                      <th
+                        key={rotulo}
+                        className="border border-gray-400 bg-gray-100 p-0.5 text-center font-bold uppercase"
+                      >
+                        {rotulo}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {semana.faixas.map((faixa) => (
+                    <tr key={faixa.faixaRotulo}>
+                      <td className="border border-gray-400 bg-gray-50 p-0.5 align-top font-semibold whitespace-nowrap">
+                        {faixa.faixaRotulo}
+                      </td>
+                      {faixa.dias.map((celula, idxDia) => (
+                        <td
+                          key={`${faixa.faixaRotulo}-${idxDia}`}
+                          className={cn(
+                            'min-h-[36px] border border-gray-400 p-0.5 align-top',
+                            celula.linhas.length === 0 && 'bg-gray-50/50',
+                          )}
                         >
-                          {linha}
-                        </p>
-                      ))
-                    )}
-                  </div>
-                </div>
-              ))}
+                          {celula.linhas.length === 0 ? (
+                            <span className="text-gray-300"> </span>
+                          ) : (
+                            <div className="space-y-0.5">
+                              {celula.linhas.map((linha, idx) => (
+                                <p key={idx} className="leading-tight">
+                                  {linha}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ))}
         </div>
       )}
 
-      <footer className="mt-4 border-t border-gray-300 pt-2 text-[9px] leading-relaxed text-gray-700">
-        {LEGENDA_ESCALA}
+      <footer className="mt-3 border-t border-gray-400 pt-1 text-[8px] leading-relaxed text-gray-700">
+        {LEGENDA_ESCALA_PEGA}
       </footer>
     </>
   )

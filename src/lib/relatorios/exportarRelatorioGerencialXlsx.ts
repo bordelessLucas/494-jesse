@@ -1,16 +1,17 @@
 import ExcelJS from 'exceljs'
 
+import type { SemanaEscalaPega } from './montarGradeEscalaPegaPlantao'
 import type {
-  CelulaCalendarioEscala,
-  LinhaPagamentoProfissional,
-  TipoRelatorioGerador,
-} from '../../pages/Dashboard/relatoriosMockData'
+  GrupoPagamentoProfissional,
+  LinhaPlantaoListagem,
+} from './relatoriosPlantaoDb'
 import {
-  fmtPeriodo,
-  LEGENDA_ESCALA,
-  montarGradeEscalaMes,
-  totaisPagamentos,
-} from '../../pages/Dashboard/relatoriosMockData'
+  fmtDataPlantaoHora,
+  fmtDuracaoHHMM,
+  LEGENDA_ESCALA_PEGA,
+} from './formatoPegaPlantao'
+import type { TipoRelatorioGerador } from '../../pages/Dashboard/relatoriosGerenciaisTypes'
+import { TITULOS_RELATORIO_GERENCIAL, fmtPeriodo } from '../../pages/Dashboard/relatoriosGerenciaisTypes'
 import { carregarImagemUrlBase64 } from './carregarImagemUrlBase64'
 
 const COR_TITULO = 'FF1E40AF'
@@ -18,7 +19,6 @@ const COR_SUBTITULO = 'FF334155'
 const COR_CABECALHO_FUNDO = 'FFE2E8F0'
 const COR_BORDA = 'FFCBD5E1'
 const COR_BORDA_FORTE = 'FF94A3B8'
-const COR_RODAPE_FUNDO = 'FFF1F5F9'
 const NOME_PLATAFORMA_PADRAO = 'PlantaoCheck'
 
 const BORDA_FINA: Partial<ExcelJS.Borders> = {
@@ -43,12 +43,13 @@ export type ExportarRelatorioGerencialXlsxInput = {
   dataInicio: string
   dataFim: string
   dataGeracao: string
-  listarTelefone?: boolean
-  linhasPagamentos?: LinhaPagamentoProfissional[]
+  semanasEscala?: SemanaEscalaPega[]
+  gruposPagamentos?: GrupoPagamentoProfissional[]
+  linhasPlantoes?: LinhaPlantaoListagem[]
 }
 
 function tituloRelatorio(tipo: TipoRelatorioGerador): string {
-  return tipo === 'pagamentos' ? 'Pagamentos para Plantões' : 'Escala de Plantões'
+  return TITULOS_RELATORIO_GERENCIAL[tipo] ?? 'Relatório'
 }
 
 function sanitizeNomeFicheiro(s: string): string {
@@ -146,131 +147,107 @@ async function exportarPagamentos(
   wb: ExcelJS.Workbook,
   input: ExportarRelatorioGerencialXlsxInput,
 ) {
-  const linhas = input.linhasPagamentos ?? []
-  const totais = totaisPagamentos(linhas)
-  const listarTelefone = Boolean(input.listarTelefone)
-  const colunas = listarTelefone ? 5 : 4
-
+  const grupos = input.gruposPagamentos ?? []
   const ws = wb.addWorksheet('Pagamentos', {
-    pageSetup: {
-      orientation: 'landscape',
-      fitToPage: true,
-      fitToWidth: 1,
-      fitToHeight: 0,
-    },
+    pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
     views: [{ showGridLines: false }],
   })
 
-  await montarCabecalhoPlanilha(ws, wb, input, colunas)
+  await montarCabecalhoPlanilha(ws, wb, input, 5)
 
-  const linhaCabecalhoTabela = 6
-  const cabecalhos = listarTelefone
-    ? ['Profissional', 'Telefone', 'Plantões', 'Duração (h)', 'Valor (R$)']
-    : ['Profissional', 'Plantões', 'Duração (h)', 'Valor (R$)']
+  let r = 6
+  for (const grupo of grupos) {
+    ws.mergeCells(r, 1, r, 5)
+    ws.getCell(r, 1).value = grupo.profissionalNome
+    ws.getCell(r, 1).font = { bold: true, size: 11 }
+    r++
 
+    const cabecalhos = ['Data', 'Setor', 'Tipo', 'Duração (h)', 'Valor']
+    cabecalhos.forEach((texto, i) => {
+      const cell = ws.getCell(r, i + 1)
+      cell.value = texto
+      aplicarEstiloCabecalhoTabela(cell)
+    })
+    r++
+
+    for (const linha of grupo.linhas) {
+      const valores = [
+        fmtDataPlantaoHora(linha.dataPlantao, linha.horaInicio),
+        linha.setorLabel,
+        linha.tipo,
+        linha.duracao,
+        linha.valor,
+      ]
+      valores.forEach((valor, i) => {
+        const cell = ws.getCell(r, i + 1)
+        cell.value = valor
+        if (i === 4) {
+          cell.numFmt = 'R$ #,##0.00'
+          aplicarEstiloCelulaDados(cell, 'right')
+        } else {
+          aplicarEstiloCelulaDados(cell, i === 3 ? 'center' : 'left')
+        }
+      })
+      r++
+    }
+    r++
+  }
+
+  ws.columns = [{ width: 22 }, { width: 40 }, { width: 16 }, { width: 12 }, { width: 14 }]
+}
+
+async function exportarPlantoes(
+  wb: ExcelJS.Workbook,
+  input: ExportarRelatorioGerencialXlsxInput,
+) {
+  const linhas = input.linhasPlantoes ?? []
+  const ws = wb.addWorksheet('Plantões', {
+    pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+    views: [{ showGridLines: false }],
+  })
+
+  await montarCabecalhoPlanilha(ws, wb, input, 6)
+
+  const cabecalhos = ['Data', 'Duração (h)', 'Setor', 'Responsável', 'Tipo', 'Valor']
+  const linhaCabecalho = 6
   cabecalhos.forEach((texto, i) => {
-    const cell = ws.getCell(linhaCabecalhoTabela, i + 1)
+    const cell = ws.getCell(linhaCabecalho, i + 1)
     cell.value = texto
     aplicarEstiloCabecalhoTabela(cell)
   })
-  ws.getRow(linhaCabecalhoTabela).height = 22
 
-  let r = linhaCabecalhoTabela + 1
+  let r = linhaCabecalho + 1
   for (const linha of linhas) {
-    const valores: (string | number)[] = listarTelefone
-      ? [
-          linha.profissionalNome,
-          linha.telefone || '—',
-          linha.plantoes,
-          linha.duracaoHoras,
-          linha.valor,
-        ]
-      : [linha.profissionalNome, linha.plantoes, linha.duracaoHoras, linha.valor]
-
+    const valores = [
+      fmtDataPlantaoHora(linha.dataPlantao, linha.horaInicio),
+      fmtDuracaoHHMM(linha.dataPlantao, linha.horaInicio, linha.horaFim),
+      linha.setorLabel,
+      linha.responsavelNome,
+      linha.tipo,
+      linha.valor,
+    ]
     valores.forEach((valor, i) => {
       const cell = ws.getCell(r, i + 1)
-      if (i === valores.length - 1) {
-        cell.value = linha.valor
+      cell.value = valor
+      if (i === 5) {
         cell.numFmt = 'R$ #,##0.00'
         aplicarEstiloCelulaDados(cell, 'right')
-      } else if (typeof valor === 'number') {
-        cell.value = valor
-        aplicarEstiloCelulaDados(cell, 'center')
       } else {
-        cell.value = valor
-        aplicarEstiloCelulaDados(cell, 'left')
+        aplicarEstiloCelulaDados(cell, i === 1 ? 'center' : 'left')
       }
     })
     r++
   }
 
-  const colSpanRodape = listarTelefone ? 2 : 1
-  ws.mergeCells(r, 1, r, colSpanRodape)
-  const cellTotalLabel = ws.getCell(r, 1)
-  cellTotalLabel.value = 'TOTAL GERAL'
-  cellTotalLabel.font = { bold: true, size: 10 }
-  cellTotalLabel.alignment = { horizontal: 'right', vertical: 'middle' }
-  cellTotalLabel.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: COR_RODAPE_FUNDO },
-  }
-  cellTotalLabel.border = BORDA_FORTE
-
-  const colPlantoes = listarTelefone ? 3 : 2
-  const colHoras = listarTelefone ? 4 : 3
-  const colValor = listarTelefone ? 5 : 4
-
-  const cellPlantoes = ws.getCell(r, colPlantoes)
-  cellPlantoes.value = totais.plantoes
-  aplicarEstiloCelulaDados(cellPlantoes, 'center')
-  cellPlantoes.font = { bold: true, size: 10 }
-  cellPlantoes.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: COR_RODAPE_FUNDO },
-  }
-  cellPlantoes.border = BORDA_FORTE
-
-  const cellHoras = ws.getCell(r, colHoras)
-  cellHoras.value = totais.horas
-  aplicarEstiloCelulaDados(cellHoras, 'center')
-  cellHoras.font = { bold: true, size: 10 }
-  cellHoras.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: COR_RODAPE_FUNDO },
-  }
-  cellHoras.border = BORDA_FORTE
-
-  const cellValor = ws.getCell(r, colValor)
-  cellValor.value = totais.valor
-  cellValor.numFmt = 'R$ #,##0.00'
-  aplicarEstiloCelulaDados(cellValor, 'right')
-  cellValor.font = { bold: true, size: 10 }
-  cellValor.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: COR_RODAPE_FUNDO },
-  }
-  cellValor.border = BORDA_FORTE
-
-  ws.columns = listarTelefone
-    ? [{ width: 34 }, { width: 18 }, { width: 12 }, { width: 14 }, { width: 16 }]
-    : [{ width: 38 }, { width: 12 }, { width: 14 }, { width: 16 }]
-}
-
-function textoCelulaEscala(celula: CelulaCalendarioEscala): string {
-  const linhas = celula.linhas.length > 0 ? celula.linhas : ['—']
-  return [celula.rotulo, ...linhas].join('\n')
+  ws.columns = [{ width: 20 }, { width: 12 }, { width: 36 }, { width: 28 }, { width: 14 }, { width: 14 }]
 }
 
 async function exportarEscala(
   wb: ExcelJS.Workbook,
   input: ExportarRelatorioGerencialXlsxInput,
 ) {
-  const semanas = montarGradeEscalaMes(input.dataInicio, input.dataFim)
-  const colunas = 7
+  const semanas = input.semanasEscala ?? []
+  const colunas = 8
 
   const ws = wb.addWorksheet('Escala', {
     pageSetup: {
@@ -284,48 +261,38 @@ async function exportarEscala(
 
   await montarCabecalhoPlanilha(ws, wb, input, colunas)
 
-  const diasSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
-  const linhaCabecalhoTabela = 6
-
-  diasSemana.forEach((dia, i) => {
-    const cell = ws.getCell(linhaCabecalhoTabela, i + 1)
-    cell.value = dia
-    aplicarEstiloCabecalhoTabela(cell)
-  })
-  ws.getRow(linhaCabecalhoTabela).height = 20
-
-  let r = linhaCabecalhoTabela + 1
+  let r = 6
   for (const semana of semanas) {
-    ws.getRow(r).height = 56
-    semana.forEach((celula, i) => {
-      const cell = ws.getCell(r, i + 1)
-      cell.value = textoCelulaEscala(celula)
-      aplicarEstiloCelulaDados(cell, 'left')
-      if (celula.foraMes) {
-        cell.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFF8FAFC' },
-        }
-        cell.font = { size: 9, color: { argb: 'FF94A3B8' } }
-      } else {
-        cell.font = { size: 9, color: { argb: 'FF0F172A' } }
-      }
+    ws.getCell(r, 1).value = ''
+    semana.rotulosDias.forEach((rotulo, i) => {
+      const cell = ws.getCell(r, i + 2)
+      cell.value = rotulo
+      aplicarEstiloCabecalhoTabela(cell)
     })
+    r++
+
+    for (const faixa of semana.faixas) {
+      ws.getCell(r, 1).value = faixa.faixaRotulo
+      aplicarEstiloCelulaDados(ws.getCell(r, 1), 'left')
+      faixa.dias.forEach((celula, i) => {
+        const cell = ws.getCell(r, i + 2)
+        cell.value = celula.linhas.join('\n') || '—'
+        aplicarEstiloCelulaDados(cell, 'left')
+      })
+      ws.getRow(r).height = 40
+      r++
+    }
     r++
   }
 
   ws.mergeCells(r, 1, r, colunas)
   const cellLegenda = ws.getCell(r, 1)
-  cellLegenda.value = LEGENDA_ESCALA
+  cellLegenda.value = LEGENDA_ESCALA_PEGA
   cellLegenda.font = { size: 8, color: { argb: 'FF475569' } }
   cellLegenda.alignment = { vertical: 'top', horizontal: 'left', wrapText: true }
-  cellLegenda.border = {
-    top: { style: 'thin', color: { argb: COR_BORDA_FORTE } },
-  }
   ws.getRow(r).height = 28
 
-  ws.columns = Array.from({ length: colunas }, () => ({ width: 18 }))
+  ws.columns = [{ width: 12 }, ...Array.from({ length: 7 }, () => ({ width: 16 }))]
 }
 
 /**
@@ -340,6 +307,10 @@ export async function exportarRelatorioGerencialParaXlsx(
 
   if (input.tipoRelatorio === 'pagamentos') {
     await exportarPagamentos(wb, input)
+  } else if (input.tipoRelatorio === 'plantoes') {
+    await exportarPlantoes(wb, input)
+  } else if (input.tipoRelatorio === 'escala') {
+    await exportarEscala(wb, input)
   } else {
     await exportarEscala(wb, input)
   }

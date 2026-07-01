@@ -197,9 +197,29 @@ const FrequenciaSemanalPage = lazy(() =>
     default: m.FrequenciaSemanalPage,
   })),
 )
+const FrequenciaProducaoPage = lazy(() =>
+  import('./pages/Gestao/FrequenciaPlaceholderPages').then((m) => ({
+    default: m.FrequenciaProducaoPage,
+  })),
+)
 const TipoServicoPage = lazy(() =>
   import('./pages/Gestao/CadastrosGestaoPlaceholderPages').then((m) => ({
     default: m.TipoServicoPage,
+  })),
+)
+const TipoServicoScihPage = lazy(() =>
+  import('./pages/Gestao/CadastrosGestaoPlaceholderPages').then((m) => ({
+    default: m.TipoServicoScihPage,
+  })),
+)
+const TipoServicoUtiAdultoPage = lazy(() =>
+  import('./pages/Gestao/CadastrosGestaoPlaceholderPages').then((m) => ({
+    default: m.TipoServicoUtiAdultoPage,
+  })),
+)
+const TipoServicoUtiPediatricaPage = lazy(() =>
+  import('./pages/Gestao/CadastrosGestaoPlaceholderPages').then((m) => ({
+    default: m.TipoServicoUtiPediatricaPage,
   })),
 )
 const UtilizadorCoordenadorGestaoPage = lazy(() =>
@@ -433,10 +453,42 @@ function App() {
                 }
               />
               <Route
+                path="gestao/frequencia/producao"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <FrequenciaProducaoPage />
+                  </Suspense>
+                }
+              />
+              <Route
                 path="gestao/cadastros/tipo-servico"
                 element={
                   <Suspense fallback={<PageLoader />}>
                     <TipoServicoPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="gestao/cadastros/tipo-servico/scih"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <TipoServicoScihPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="gestao/cadastros/tipo-servico/uti-adulto"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <TipoServicoUtiAdultoPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="gestao/cadastros/tipo-servico/uti-pediatrica"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <TipoServicoUtiPediatricaPage />
                   </Suspense>
                 }
               />

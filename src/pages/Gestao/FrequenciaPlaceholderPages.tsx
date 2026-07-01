@@ -17,3 +17,12 @@ export function FrequenciaSemanalPage() {
     <EmDesenvolvimentoPlaceholder titulo="Semanal" secao="Modelos de Frequência" />
   )
 }
+
+export function FrequenciaProducaoPage() {
+  return (
+    <EmDesenvolvimentoPlaceholder
+      titulo="Produção de Frequência"
+      secao="Modelos de Frequência"
+    />
+  )
+}

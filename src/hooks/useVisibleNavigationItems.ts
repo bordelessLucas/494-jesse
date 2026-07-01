@@ -21,13 +21,31 @@ function filtrarItensPorPermissao(
       return Boolean(permissoes[chave])
     })
 
+  const filtrarGrupos = (subGroups: NavigationItem['subGroups']) =>
+    (subGroups ?? [])
+      .map((grupo) => ({
+        ...grupo,
+        items: grupo.items.filter((sub) => {
+          const chave = chavePermissaoParaRotaSidebar(sub.to)
+          if (!chave) return false
+          return Boolean(permissoes[chave])
+        }),
+      }))
+      .filter((grupo) => grupo.items.length > 0)
+
   const filtrados: NavigationItem[] = []
 
   for (const item of items) {
     if (itemMenuRestritoAGestor(item.to)) continue
     const subItems = filtrarSub(item.subItems)
-    if (subItems.length === 0) continue
-    filtrados.push({ ...item, subItems })
+    const subGroups = filtrarGrupos(item.subGroups)
+    const temSubmenu = subItems.length > 0 || subGroups.length > 0
+    if (!temSubmenu) continue
+    filtrados.push({
+      ...item,
+      ...(subItems.length > 0 ? { subItems } : {}),
+      ...(subGroups.length > 0 ? { subGroups } : {}),
+    })
   }
 
   return filtrados

@@ -1,6 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
+  buscarPlantoesComCobertura,
+  buscarCandidaturasRelatorio,
+  buscarFaltasRelatorio,
+  buscarLocaisSetoresRelatorio,
+  buscarPagamentosDetalhadoRelatorio,
+  buscarPlantoesListagemRelatorio,
+  buscarTrocasPassagensRelatorio,
+  type GrupoPagamentoProfissional,
+  type LinhaCandidaturaRelatorio,
+  type LinhaFaltaRelatorio,
+  type LinhaLocalSetorRelatorio,
+  type LinhaPlantaoListagem,
+  type LinhaTrocaPassagem,
+} from '../lib/relatorios/relatoriosPlantaoDb'
+import {
   agregarRankingsMultiplosMeses,
   buscarPlantoesRelatorioEscala,
   buscarTelefonesProfissionais,
@@ -14,6 +29,10 @@ import {
   type ProfissionalSobrecargaRow,
   type ResumoSetorRow,
 } from '../lib/dashboard/relatoriosGerenciaisRpc'
+import {
+  montarGradeEscalaPegaPlantao,
+  type SemanaEscalaPega,
+} from '../lib/relatorios/montarGradeEscalaPegaPlantao'
 import {
   montarGradeEscalaMes,
   rankingParaLinhasPagamento,
@@ -121,9 +140,10 @@ function useQueryRpc<T>(
 export type RelatorioEscalaResult = {
   plantoes: PlantaoEscalaRow[]
   grade: CelulaCalendarioEscala[][]
+  semanasPega: SemanaEscalaPega[]
 }
 
-const ESCALA_VAZIO: RelatorioEscalaResult = { plantoes: [], grade: [] }
+const ESCALA_VAZIO: RelatorioEscalaResult = { plantoes: [], grade: [], semanasPega: [] }
 
 /** Dados da grade de escala para o relatório gerencial. */
 export function useRelatorioEscala(
@@ -151,6 +171,8 @@ export function useRelatorioEscala(
       setorIds: filtro.setorIds,
     })
 
+    const cobertura = await buscarPlantoesComCobertura(tenantUserId)
+
     const grade = montarGradeEscalaMes(filtro.dataInicio, filtro.dataFim, plantoes, {
       identificarProfissional: filtro.identificarProfissional,
       tipoTurno: filtro.tipoTurno,
@@ -158,7 +180,20 @@ export function useRelatorioEscala(
       incluirSetoresInativos: filtro.incluirSetoresInativos,
     })
 
-    return { plantoes, grade }
+    const semanasPega = montarGradeEscalaPegaPlantao(
+      filtro.dataInicio,
+      filtro.dataFim,
+      plantoes,
+      {
+        identificarProfissional: filtro.identificarProfissional,
+        tipoTurno: filtro.tipoTurno,
+        setorIds: filtro.setorIds,
+        incluirSetoresInativos: filtro.incluirSetoresInativos,
+        plantoesCobertura: cobertura,
+      },
+    )
+
+    return { plantoes, grade, semanasPega }
   }, [filtro, tenantUserId])
 
   return useQueryRpc(key, fetcher, ESCALA_VAZIO)
@@ -335,12 +370,125 @@ export function useRelatorioPagamentos(
   )
 }
 
+export type FiltroRelatorioPeriodo = {
+  dataInicio: string
+  dataFim: string
+  localId?: string
+  setorIds?: string[]
+  incluirSetoresInativos?: boolean
+}
+
+function useRelatorioGenerico<T>(
+  prefixo: string,
+  filtro: FiltroRelatorioPeriodo | null,
+  enabled: boolean,
+  fetcher: (tenantUserId: string, filtro: FiltroRelatorioPeriodo) => Promise<T>,
+  vazio: T,
+): QueryState<T> {
+  const { tenantUserId } = useTenantUserId()
+
+  const key =
+    enabled && filtro && tenantUserId
+      ? cacheKey(prefixo, { tenantUserId, ...filtro })
+      : null
+
+  const executarFetcher = useCallback(async (): Promise<T> => {
+    if (!filtro || !tenantUserId) return vazio
+    return fetcher(tenantUserId, filtro)
+  }, [fetcher, filtro, tenantUserId, vazio])
+
+  return useQueryRpc(key, executarFetcher, vazio)
+}
+
+export function useRelatorioTrocasPassagens(
+  filtro: FiltroRelatorioPeriodo | null,
+  enabled = true,
+): QueryState<LinhaTrocaPassagem[]> {
+  return useRelatorioGenerico(
+    'relatorio-trocas',
+    filtro,
+    enabled,
+    (tenantUserId, f) => buscarTrocasPassagensRelatorio({ tenantUserId, ...f }),
+    [],
+  )
+}
+
+export function useRelatorioFaltas(
+  filtro: FiltroRelatorioPeriodo | null,
+  enabled = true,
+): QueryState<LinhaFaltaRelatorio[]> {
+  return useRelatorioGenerico(
+    'relatorio-faltas',
+    filtro,
+    enabled,
+    (tenantUserId, f) => buscarFaltasRelatorio({ tenantUserId, ...f }),
+    [],
+  )
+}
+
+export function useRelatorioCandidaturas(
+  filtro: FiltroRelatorioPeriodo | null,
+  enabled = true,
+): QueryState<LinhaCandidaturaRelatorio[]> {
+  return useRelatorioGenerico(
+    'relatorio-candidaturas',
+    filtro,
+    enabled,
+    (tenantUserId, f) => buscarCandidaturasRelatorio({ tenantUserId, ...f }),
+    [],
+  )
+}
+
+export function useRelatorioPlantoesListagem(
+  filtro: FiltroRelatorioPeriodo | null,
+  enabled = true,
+): QueryState<LinhaPlantaoListagem[]> {
+  return useRelatorioGenerico(
+    'relatorio-plantoes',
+    filtro,
+    enabled,
+    (tenantUserId, f) => buscarPlantoesListagemRelatorio({ tenantUserId, ...f }),
+    [],
+  )
+}
+
+export function useRelatorioPagamentosDetalhado(
+  filtro: FiltroRelatorioPeriodo | null,
+  enabled = true,
+): QueryState<GrupoPagamentoProfissional[]> {
+  return useRelatorioGenerico(
+    'relatorio-pagamentos-detalhe',
+    filtro,
+    enabled,
+    (tenantUserId, f) => buscarPagamentosDetalhadoRelatorio({ tenantUserId, ...f }),
+    [],
+  )
+}
+
+export function useRelatorioLocaisSetores(
+  incluirInativos: boolean,
+  enabled = true,
+): QueryState<LinhaLocalSetorRelatorio[]> {
+  const { tenantUserId } = useTenantUserId()
+
+  const key =
+    enabled && tenantUserId
+      ? cacheKey('relatorio-locais-setores', { tenantUserId, incluirInativos })
+      : null
+
+  const fetcher = useCallback(
+    () => buscarLocaisSetoresRelatorio(tenantUserId!, incluirInativos),
+    [incluirInativos, tenantUserId],
+  )
+
+  return useQueryRpc(key, fetcher, [])
+}
+
 /** Invalida cache de relatórios gerenciais (ex.: após gerar novo relatório). */
 export function invalidarCacheRelatoriosGerenciais(): void {
   for (const k of cache.keys()) {
     if (
-      k.startsWith('relatorio-escala:') ||
-      k.startsWith('relatorio-pagamentos:') ||
+      k.startsWith('relatorio-') ||
       k.startsWith('plantoes-por-mes:') ||
       k.startsWith('ranking-prof:') ||
       k.startsWith('resumo-setor:') ||

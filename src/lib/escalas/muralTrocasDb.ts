@@ -5,6 +5,11 @@ import { inserirNotificacao, buscarAuthUserIdProfissional } from '../notificacoe
 
 import { dataLocalAPartirDeIsoData, formatarHoraDb } from './plantoesDb'
 import type { StatusPlantaoEscala } from './escalaTypes'
+import {
+  registrarEventoAprovacaoMural,
+  registrarEventoSubstituicaoCoordenacao,
+  buscarContextoPlantaoParaHistorico,
+} from './plantoesHistoricoEventosDb'
 
 export type PlantaoMuralRow = {
   id: string
@@ -244,6 +249,14 @@ export async function aprovarTrocaPlantao(params: {
 }): Promise<void> {
   const agora = new Date().toISOString()
 
+  const { data: solicitacao, error: erroSolicitacaoInfo } = await supabase
+    .from('plantoes_trocas_solicitacoes')
+    .select('anunciante_profissional_id')
+    .eq('id', params.solicitacaoId)
+    .maybeSingle()
+
+  if (erroSolicitacaoInfo) throw new Error(erroSolicitacaoInfo.message)
+
   const { error: erroPlantao } = await supabase
     .from('plantoes')
     .update({
@@ -264,6 +277,18 @@ export async function aprovarTrocaPlantao(params: {
   if (erroSolicitacao) throw new Error(erroSolicitacao.message)
 
   await reprovarDemaisSolicitacoesAbertas(params.plantaoId, params.solicitacaoId)
+
+  try {
+    await registrarEventoAprovacaoMural({
+      plantaoId: params.plantaoId,
+      solicitacaoId: params.solicitacaoId,
+      anuncianteProfissionalId: solicitacao?.anunciante_profissional_id ?? '',
+      candidatoProfissionalId: params.candidatoProfissionalId,
+      realizadoEm: agora,
+    })
+  } catch (e) {
+    console.error('Falha ao registrar histórico de aprovação no mural:', e)
+  }
 }
 
 export async function substituirProfissionalPlantao(params: {
@@ -271,6 +296,9 @@ export async function substituirProfissionalPlantao(params: {
   novoProfissionalId: string
 }): Promise<void> {
   const agora = new Date().toISOString()
+
+  const contexto = await buscarContextoPlantaoParaHistorico(params.plantaoId)
+  const profissionalAnteriorId = contexto?.profissionalFixoId ?? null
 
   const { error: erroPlantao } = await supabase
     .from('plantoes')
@@ -291,6 +319,17 @@ export async function substituirProfissionalPlantao(params: {
     .eq('status', 'aguardando_aprovacao_coordenador')
 
   if (erroSolicitacoes) throw new Error(erroSolicitacoes.message)
+
+  try {
+    await registrarEventoSubstituicaoCoordenacao({
+      plantaoId: params.plantaoId,
+      profissionalAnteriorId,
+      novoProfissionalId: params.novoProfissionalId,
+      realizadoEm: agora,
+    })
+  } catch (e) {
+    console.error('Falha ao registrar histórico de substituição pela coordenação:', e)
+  }
 }
 
 export async function reprovarSolicitacaoTroca(solicitacaoId: string): Promise<void> {

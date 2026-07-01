@@ -14,7 +14,33 @@ import {
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
-export type TipoRelatorioGerador = 'escala' | 'pagamentos'
+export type TipoRelatorioGerador =
+  | 'escala'
+  | 'pagamentos'
+  | 'plantoes'
+  | 'trocas_passagens'
+  | 'faltas'
+  | 'candidaturas'
+  | 'locais_setores'
+
+export const TITULOS_RELATORIO_GERENCIAL: Record<TipoRelatorioGerador, string> = {
+  escala: 'Escala de Plantões',
+  pagamentos: 'Pagamentos para Plantões',
+  plantoes: 'Listagem de Plantões',
+  trocas_passagens: 'Trocas e Passagens entre Profissionais',
+  faltas: 'Listagem de Faltas',
+  candidaturas: 'Listagem de Candidaturas',
+  locais_setores: 'Locais e Setores',
+}
+
+export const RELATORIOS_COM_PERIODO: TipoRelatorioGerador[] = [
+  'escala',
+  'pagamentos',
+  'plantoes',
+  'trocas_passagens',
+  'faltas',
+  'candidaturas',
+]
 
 export type LinhaPagamentoProfissional = {
   id: string
@@ -50,7 +76,7 @@ export type PlantaoEscalaRow = {
 }
 
 export const LEGENDA_ESCALA =
-  'Nome profissional - Afastado por motivos diversos e sem cobertura | Faltas... | CO: Cobertura | FR: Férias'
+  'Nome profissional: Afastado por motivos diversos e sem cobertura FU: Furo FJ: Falta Justificada FN: Falta Não Justificada CO: Cobertura FR: Férias'
 
 export const GRUPOS_OPCOES = [
   'Todos',

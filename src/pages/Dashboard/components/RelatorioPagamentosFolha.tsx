@@ -1,163 +1,133 @@
-import { BrandedLogoOrInitial } from '../../../components/branding/BrandedLogoOrInitial'
+import type { GrupoPagamentoProfissional } from '../../../lib/relatorios/relatoriosPlantaoDb'
 import {
-  fmtBRL,
-  fmtPeriodo,
-  totaisPagamentos,
-  type LinhaPagamentoProfissional,
-} from '../relatoriosGerenciaisTypes'
+  fmtBRLPega,
+  fmtDataPlantaoHora,
+  somarDuracoesHHMM,
+} from '../../../lib/relatorios/formatoPegaPlantao'
+import {
+  RelatorioCabecalhoPegaPlantao,
+  RelatorioRodapeTotais,
+  RelatorioTabelaPega,
+  TdPega,
+  ThPega,
+} from './RelatorioCabecalhoPegaPlantao'
 
-type RelatorioPagamentosFolhaProps = {
-  linhas: LinhaPagamentoProfissional[]
+type Props = {
+  grupos: GrupoPagamentoProfissional[]
+  nomeEmpresa: string
+  dataGeracao: string
   dataInicio: string
   dataFim: string
-  dataGeracao: string
-  nomeEmpresa: string
-  selecionados: Set<string>
-  onAlternarSelecao: (id: string) => void
-  listarTelefone: boolean
+  rotuloLocal?: string
   isLoading?: boolean
 }
 
-function SkeletonTabela() {
-  return (
-    <div className="animate-pulse space-y-2">
-      <div className="h-8 rounded bg-gray-200" />
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="h-6 rounded bg-gray-100" />
-      ))}
-      <div className="h-8 rounded bg-gray-200" />
-    </div>
-  )
-}
-
 export function RelatorioPagamentosFolha({
-  linhas,
+  grupos,
+  nomeEmpresa,
+  dataGeracao,
   dataInicio,
   dataFim,
-  dataGeracao,
-  nomeEmpresa,
-  selecionados,
-  onAlternarSelecao,
-  listarTelefone,
+  rotuloLocal,
   isLoading = false,
-}: RelatorioPagamentosFolhaProps) {
-  const totais = totaisPagamentos(linhas)
+}: Props) {
+  const totalPlantoes = grupos.reduce((acc, g) => acc + g.totalPlantoes, 0)
+  const totalDuracao = somarDuracoesHHMM(grupos.map((g) => g.totalDuracao))
+  const totalValor = grupos.reduce((acc, g) => acc + g.totalValor, 0)
+
+  const subtituloLocal = rotuloLocal
+    ? `LOCAL: ${rotuloLocal.toUpperCase()}`
+    : undefined
 
   return (
     <>
-      <header className="mb-4 border-b border-gray-300 pb-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <BrandedLogoOrInitial
-              className="h-12 w-12 shrink-0"
-              surface="light"
-              alt=""
-            />
-            <div className="min-w-0">
-              <h1 className="text-base font-bold uppercase tracking-wide text-[#1e40af]">
-                Pagamentos para Plantões
-              </h1>
-              <p className="truncate text-xs text-gray-700">{nomeEmpresa}</p>
-              <p className="text-xs text-gray-600">
-                Período: {fmtPeriodo(dataInicio, dataFim)}
-              </p>
-            </div>
-          </div>
-          <p className="shrink-0 text-[10px] text-gray-600">
-            Gerado em: {dataGeracao}
-          </p>
-        </div>
-      </header>
+      <RelatorioCabecalhoPegaPlantao
+        nomeEmpresa={nomeEmpresa}
+        titulo="Pagamentos para Plantões"
+        dataGeracao={dataGeracao}
+        periodoInicio={dataInicio}
+        periodoFim={dataFim}
+        subtituloLocal={subtituloLocal}
+        subtituloExtra="Mostrando período entre"
+      />
 
       {isLoading ? (
-        <SkeletonTabela />
-      ) : linhas.length === 0 ? (
+        <div className="h-40 animate-pulse rounded bg-gray-100" />
+      ) : grupos.length === 0 ? (
         <p className="py-8 text-center text-sm text-gray-500">
           Nenhum plantão encontrado para os filtros selecionados.
         </p>
       ) : (
-        <table className="w-full border-collapse text-xs text-black">
-          <thead>
-            <tr className="border-b border-gray-400">
-              <th
-                scope="col"
-                className="no-print w-8 border border-gray-300 px-1 py-1 text-center font-bold"
-              >
-                sim
-              </th>
-              <th scope="col" className="border border-gray-300 px-2 py-1 text-left font-bold">
-                Total Geral
-              </th>
-              {listarTelefone ? (
-                <th scope="col" className="border border-gray-300 px-2 py-1 text-left font-bold">
-                  Telefone
-                </th>
-              ) : null}
-              <th scope="col" className="border border-gray-300 px-2 py-1 text-center font-bold">
-                Plantões
-              </th>
-              <th scope="col" className="border border-gray-300 px-2 py-1 text-center font-bold">
-                Duração (h)
-              </th>
-              <th scope="col" className="border border-gray-300 px-2 py-1 text-right font-bold">
-                Valor (R$)
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {linhas.map((linha) => (
-              <tr key={linha.id} className="border-b border-gray-200">
-                <td className="no-print border border-gray-300 px-1 py-1 text-center align-middle">
-                  <input
-                    type="checkbox"
-                    checked={selecionados.has(linha.id)}
-                    onChange={() => onAlternarSelecao(linha.id)}
-                    className="h-3 w-3 print:pointer-events-none"
-                    aria-label={`Selecionar ${linha.profissionalNome}`}
-                  />
-                </td>
-                <td className="border border-gray-300 px-2 py-1 align-middle font-medium">
-                  {linha.profissionalNome}
-                </td>
-                {listarTelefone ? (
-                  <td className="border border-gray-300 px-2 py-1 align-middle tabular-nums text-gray-700">
-                    {linha.telefone || '—'}
-                  </td>
-                ) : null}
-                <td className="border border-gray-300 px-2 py-1 text-center align-middle tabular-nums">
-                  {linha.plantoes}
-                </td>
-                <td className="border border-gray-300 px-2 py-1 text-center align-middle tabular-nums">
-                  {linha.duracaoHoras}
-                </td>
-                <td className="border border-gray-300 px-2 py-1 text-right align-middle tabular-nums">
-                  {fmtBRL(linha.valor)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="font-bold">
-              <td className="no-print border border-gray-400 px-1 py-1.5" />
-              <td
-                colSpan={listarTelefone ? 2 : 1}
-                className="border border-gray-400 px-2 py-1.5 text-right uppercase"
-              >
-                Total geral
-              </td>
-              <td className="border border-gray-400 px-2 py-1.5 text-center tabular-nums">
-                {totais.plantoes}
-              </td>
-              <td className="border border-gray-400 px-2 py-1.5 text-center tabular-nums">
-                {totais.horas}
-              </td>
-              <td className="border border-gray-400 px-2 py-1.5 text-right tabular-nums">
-                {fmtBRL(totais.valor)}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+        <div className="space-y-4">
+          {grupos.map((grupo) => {
+            const rotuloProf =
+              grupo.registroConselho.trim().length > 0
+                ? `${grupo.profissionalNome} - ${grupo.registroConselho}`
+                : grupo.profissionalNome
+
+            return (
+              <section key={grupo.profissionalId} className="break-inside-avoid">
+                <p className="mb-1 text-[10px] font-bold text-gray-900">{rotuloProf}</p>
+                <RelatorioTabelaPega>
+                  <thead>
+                    <tr>
+                      <ThPega>Data</ThPega>
+                      <ThPega>Setor</ThPega>
+                      <ThPega>Tipo</ThPega>
+                      <ThPega>Duração (h)</ThPega>
+                      <ThPega>Valor</ThPega>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {grupo.linhas.map((l, idx) => (
+                      <tr key={`${grupo.profissionalId}-${idx}`}>
+                        <TdPega className="whitespace-nowrap">
+                          {fmtDataPlantaoHora(l.dataPlantao, l.horaInicio)}
+                        </TdPega>
+                        <TdPega>{l.setorLabel}</TdPega>
+                        <TdPega>{l.tipo}</TdPega>
+                        <TdPega className="text-center">{l.duracao}</TdPega>
+                        <TdPega className="text-right whitespace-nowrap">
+                          {fmtBRLPega(l.valor)}
+                        </TdPega>
+                      </tr>
+                    ))}
+                    <tr className="font-bold">
+                      <TdPega colSpan={3}>Total</TdPega>
+                      <TdPega className="text-center">
+                        {grupo.totalPlantoes} Plantão{grupo.totalPlantoes !== 1 ? 'ões' : ''}
+                      </TdPega>
+                      <TdPega className="text-right">
+                        <div>{grupo.totalDuracao}</div>
+                        <div>{fmtBRLPega(grupo.totalValor)}</div>
+                      </TdPega>
+                    </tr>
+                  </tbody>
+                </RelatorioTabelaPega>
+              </section>
+            )
+          })}
+        </div>
       )}
+
+      <RelatorioRodapeTotais>
+        <RelatorioTabelaPega>
+          <tbody>
+            <tr>
+              <TdPega className="font-bold">Plantões</TdPega>
+              <TdPega className="font-bold">Duração (h)</TdPega>
+              <TdPega className="font-bold">Valor</TdPega>
+            </tr>
+            <tr>
+              <TdPega>Total Geral</TdPega>
+              <TdPega>
+                {totalPlantoes} &nbsp; {totalDuracao}
+              </TdPega>
+              <TdPega className="text-right">{fmtBRLPega(totalValor)}</TdPega>
+            </tr>
+          </tbody>
+        </RelatorioTabelaPega>
+      </RelatorioRodapeTotais>
     </>
   )
 }

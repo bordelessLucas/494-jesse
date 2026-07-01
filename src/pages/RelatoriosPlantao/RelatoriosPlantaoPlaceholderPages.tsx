@@ -1,34 +1,17 @@
-import { EmDesenvolvimentoPlaceholder } from '../../components/placeholder/EmDesenvolvimentoPlaceholder'
+import { RelatoriosPage } from '../Dashboard/RelatoriosPage'
 
 export function RelatorioPlantaoFaltasPage() {
-  return (
-    <EmDesenvolvimentoPlaceholder
-      titulo="Faltas / Absenteísmo"
-      secao="Relatórios PlantãoCheck"
-    />
-  )
+  return <RelatoriosPage tipoInicial="faltas" />
 }
 
 export function RelatorioPlantaoEscalasPage() {
-  return (
-    <EmDesenvolvimentoPlaceholder titulo="Escalas" secao="Relatórios PlantãoCheck" />
-  )
+  return <RelatoriosPage tipoInicial="escala" />
 }
 
 export function RelatorioPlantaoProfissionaisPage() {
-  return (
-    <EmDesenvolvimentoPlaceholder
-      titulo="Profissionais"
-      secao="Relatórios PlantãoCheck"
-    />
-  )
+  return <RelatoriosPage tipoInicial="plantoes" />
 }
 
 export function RelatorioPlantaoCoordenadoresPage() {
-  return (
-    <EmDesenvolvimentoPlaceholder
-      titulo="Coordenadores"
-      secao="Relatórios PlantãoCheck"
-    />
-  )
+  return <RelatoriosPage tipoInicial="trocas_passagens" />
 }

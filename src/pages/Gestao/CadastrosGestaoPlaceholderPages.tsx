@@ -1,9 +1,26 @@
 import { EmDesenvolvimentoPlaceholder } from '../../components/placeholder/EmDesenvolvimentoPlaceholder'
 
-export function TipoServicoPage() {
+export function TipoServicoScihPage() {
+  return <EmDesenvolvimentoPlaceholder titulo="SCIH" secao="Cadastros (Gestão) — Tipo de Serviço" />
+}
+
+export function TipoServicoUtiAdultoPage() {
   return (
-    <EmDesenvolvimentoPlaceholder titulo="Tipo de Serviço" secao="Cadastros (Gestão)" />
+    <EmDesenvolvimentoPlaceholder titulo="UTI Adulto" secao="Cadastros (Gestão) — Tipo de Serviço" />
   )
+}
+
+export function TipoServicoUtiPediatricaPage() {
+  return (
+    <EmDesenvolvimentoPlaceholder
+      titulo="UTI Pediátrica"
+      secao="Cadastros (Gestão) — Tipo de Serviço"
+    />
+  )
+}
+
+export function TipoServicoPage() {
+  return <TipoServicoScihPage />
 }
 
 export function UtilizadorCoordenadorGestaoPage() {

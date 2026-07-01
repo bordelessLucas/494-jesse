@@ -1,33 +1,45 @@
-import { format } from 'date-fns'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Loader2, Printer, RefreshCw } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
 import { useCatalogoLocaisSetores } from '../../hooks/useCatalogoLocaisSetores'
 import { useContaMembro } from '../../hooks/useContaMembro'
 import {
   invalidarCacheRelatoriosGerenciais,
+  useRelatorioCandidaturas,
   useRelatorioEscala,
-  useRelatorioPagamentos,
+  useRelatorioFaltas,
+  useRelatorioLocaisSetores,
+  useRelatorioPagamentosDetalhado,
+  useRelatorioPlantoesListagem,
+  useRelatorioTrocasPassagens,
+  type FiltroRelatorioPeriodo,
 } from '../../hooks/useRelatoriosGerenciais'
 import { cn } from '../../lib/cn'
+import { fmtDataHoraGeracao } from '../../lib/relatorios/formatoPegaPlantao'
 import { capturarPreviewComoPdf } from '../../lib/relatorios/capturarPreviewComoPdf'
 import { useThemeBranding } from '../../theme/ThemeBrandingProvider'
+import { RelatorioCandidaturasFolha } from './components/RelatorioCandidaturasFolha'
 import { RelatorioEscalaFolha } from './components/RelatorioEscalaFolha'
+import { RelatorioFaltasFolha } from './components/RelatorioFaltasFolha'
+import { RelatorioLocaisSetoresFolha } from './components/RelatorioLocaisSetoresFolha'
 import { RelatorioPagamentosFolha } from './components/RelatorioPagamentosFolha'
+import { RelatorioPlantoesListagemFolha } from './components/RelatorioPlantoesListagemFolha'
+import { RelatorioTrocasPassagensFolha } from './components/RelatorioTrocasPassagensFolha'
 import {
   competenciaDeData,
-  GRUPOS_OPCOES,
   intervaloPorPreset,
   periodoPadraoMesAtual,
   type FiltroRelatorioEscala,
   type PeriodoRelatorioPreset,
   type TipoRelatorioGerador,
+  TITULOS_RELATORIO_GERENCIAL,
+  RELATORIOS_COM_PERIODO,
 } from './relatoriosGerenciaisTypes'
 
 type FiltrosGerador = {
   tipoRelatorio: TipoRelatorioGerador
-  listarTelefone: boolean
   localId: string
   setorIds: string[]
   grupo: string
@@ -49,11 +61,19 @@ const SELECT = INPUT
 const TODOS_LOCAIS = ''
 const TODOS_SETORES = '__todos__'
 
-function filtrosIniciais(): FiltrosGerador {
+const TIPOS_VALIDOS = Object.keys(TITULOS_RELATORIO_GERENCIAL) as TipoRelatorioGerador[]
+
+function tipoValido(valor: string | null): TipoRelatorioGerador {
+  if (valor && TIPOS_VALIDOS.includes(valor as TipoRelatorioGerador)) {
+    return valor as TipoRelatorioGerador
+  }
+  return 'pagamentos'
+}
+
+function filtrosIniciais(tipo: TipoRelatorioGerador): FiltrosGerador {
   const { inicio, fim } = periodoPadraoMesAtual()
   return {
-    tipoRelatorio: 'pagamentos',
-    listarTelefone: false,
+    tipoRelatorio: tipo,
     localId: TODOS_LOCAIS,
     setorIds: [],
     grupo: 'Todos',
@@ -62,7 +82,7 @@ function filtrosIniciais(): FiltrosGerador {
     dataFim: fim,
     tipo: 'Todos',
     setoresDesabilitados: 'nao',
-    identificarProfissional: 'Nome completo',
+    identificarProfissional: 'Nome abreviado',
     tipoEscala: 'Mensal',
   }
 }
@@ -103,19 +123,43 @@ function mapFiltroEscala(f: FiltrosGerador): FiltroRelatorioEscala {
   }
 }
 
-export function RelatoriosPage() {
+function mapFiltroPeriodo(f: FiltrosGerador): FiltroRelatorioPeriodo {
+  return {
+    dataInicio: f.dataInicio,
+    dataFim: f.dataFim,
+    localId: f.localId || undefined,
+    setorIds: f.setorIds.length > 0 ? f.setorIds : undefined,
+    incluirSetoresInativos: f.setoresDesabilitados === 'sim',
+  }
+}
+
+function orientacaoPdf(tipo: TipoRelatorioGerador): 'portrait' | 'landscape' {
+  return tipo === 'escala' || tipo === 'locais_setores' ? 'landscape' : 'portrait'
+}
+
+type RelatoriosPageProps = {
+  tipoInicial?: TipoRelatorioGerador
+}
+
+export function RelatoriosPage({ tipoInicial }: RelatoriosPageProps = {}) {
+  const [searchParams] = useSearchParams()
+  const tipoUrl = tipoInicial ?? tipoValido(searchParams.get('tipo'))
+
   const { empresa } = useContaMembro()
   const { logoUrl } = useThemeBranding()
   const { locais, setoresPorLocalId } = useCatalogoLocaisSetores()
   const nomeEmpresa = empresa?.nome?.trim() || 'PlantaoCheck'
   const previewRef = useRef<HTMLElement>(null)
 
-  const [filtros, setFiltros] = useState<FiltrosGerador>(filtrosIniciais)
+  const [filtros, setFiltros] = useState<FiltrosGerador>(() => filtrosIniciais(tipoUrl))
   const [filtrosGerados, setFiltrosGerados] = useState<FiltrosGerador | null>(null)
   const [dataGeracao, setDataGeracao] = useState('')
-  const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
   const [exportandoXls, setExportandoXls] = useState(false)
   const [exportandoPdf, setExportandoPdf] = useState(false)
+
+  useEffect(() => {
+    setFiltros((p) => ({ ...p, tipoRelatorio: tipoUrl }))
+  }, [tipoUrl])
 
   const setoresDisponiveis = useMemo(() => {
     if (!filtros.localId) {
@@ -124,59 +168,92 @@ export function RelatoriosPage() {
     return setoresPorLocalId[filtros.localId] ?? []
   }, [filtros.localId, locais, setoresPorLocalId])
 
+  const nomeLocalFiltro = useMemo(() => {
+    if (!filtrosGerados?.localId) return undefined
+    const local = locais.find((l) => l.id === filtrosGerados.localId)
+    if (!local) return undefined
+    if (filtrosGerados.setorIds.length === 1) {
+      const setor = setoresDisponiveis.find((s) => s.id === filtrosGerados.setorIds[0])
+      return setor ? `${local.nome} - ${setor.nome}` : local.nome
+    }
+    return local.nome
+  }, [filtrosGerados, locais, setoresDisponiveis])
+
   const filtroEscala = useMemo(
     () => (filtrosGerados ? mapFiltroEscala(filtrosGerados) : null),
     [filtrosGerados],
   )
 
-  const filtroPagamentos = useMemo(
-    () =>
-      filtrosGerados
-        ? {
-            dataInicio: filtrosGerados.dataInicio,
-            dataFim: filtrosGerados.dataFim,
-            localId: filtrosGerados.localId || undefined,
-            listarTelefone: filtrosGerados.listarTelefone,
-          }
-        : null,
+  const filtroPeriodo = useMemo(
+    () => (filtrosGerados ? mapFiltroPeriodo(filtrosGerados) : null),
     [filtrosGerados],
   )
 
   const relatorioAtivo = filtrosGerados !== null
-  const isEscala = filtrosGerados?.tipoRelatorio === 'escala'
+  const tipoAtivo = filtrosGerados?.tipoRelatorio ?? filtros.tipoRelatorio
+  const usaPeriodo = RELATORIOS_COM_PERIODO.includes(tipoAtivo)
 
-  const escalaQuery = useRelatorioEscala(
-    filtroEscala,
-    relatorioAtivo && isEscala,
+  const escalaQuery = useRelatorioEscala(filtroEscala, relatorioAtivo && tipoAtivo === 'escala')
+  const pagamentosQuery = useRelatorioPagamentosDetalhado(
+    filtroPeriodo,
+    relatorioAtivo && tipoAtivo === 'pagamentos',
   )
-  const pagamentosQuery = useRelatorioPagamentos(
-    filtroPagamentos,
-    relatorioAtivo && !isEscala,
+  const plantoesQuery = useRelatorioPlantoesListagem(
+    filtroPeriodo,
+    relatorioAtivo && tipoAtivo === 'plantoes',
+  )
+  const trocasQuery = useRelatorioTrocasPassagens(
+    filtroPeriodo,
+    relatorioAtivo && tipoAtivo === 'trocas_passagens',
+  )
+  const faltasQuery = useRelatorioFaltas(filtroPeriodo, relatorioAtivo && tipoAtivo === 'faltas')
+  const candidaturasQuery = useRelatorioCandidaturas(
+    filtroPeriodo,
+    relatorioAtivo && tipoAtivo === 'candidaturas',
+  )
+  const locaisQuery = useRelatorioLocaisSetores(
+    filtrosGerados?.setoresDesabilitados === 'sim',
+    relatorioAtivo && tipoAtivo === 'locais_setores',
   )
 
-  const queryAtiva = isEscala ? escalaQuery : pagamentosQuery
+  const queryAtiva = useMemo(() => {
+    switch (tipoAtivo) {
+      case 'escala':
+        return escalaQuery
+      case 'pagamentos':
+        return pagamentosQuery
+      case 'plantoes':
+        return plantoesQuery
+      case 'trocas_passagens':
+        return trocasQuery
+      case 'faltas':
+        return faltasQuery
+      case 'candidaturas':
+        return candidaturasQuery
+      case 'locais_setores':
+        return locaisQuery
+      default:
+        return pagamentosQuery
+    }
+  }, [
+    tipoAtivo,
+    escalaQuery,
+    pagamentosQuery,
+    plantoesQuery,
+    trocasQuery,
+    faltasQuery,
+    candidaturasQuery,
+    locaisQuery,
+  ])
+
   const isLoading = queryAtiva.isLoading
   const error = queryAtiva.error
 
   useEffect(() => {
-    if (error) {
-      toast.error(error)
-    }
+    if (error) toast.error(error)
   }, [error])
 
-  const alternarSelecao = useCallback((id: string) => {
-    setSelecionados((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
-
-  function patchFiltros<K extends keyof FiltrosGerador>(
-    campo: K,
-    valor: FiltrosGerador[K],
-  ) {
+  function patchFiltros<K extends keyof FiltrosGerador>(campo: K, valor: FiltrosGerador[K]) {
     setFiltros((p) => ({ ...p, [campo]: valor }))
   }
 
@@ -199,22 +276,19 @@ export function RelatoriosPage() {
       const tem = p.setorIds.includes(setorId)
       return {
         ...p,
-        setorIds: tem
-          ? p.setorIds.filter((s) => s !== setorId)
-          : [...p.setorIds, setorId],
+        setorIds: tem ? p.setorIds.filter((s) => s !== setorId) : [...p.setorIds, setorId],
       }
     })
   }
 
   function gerarRelatorio() {
-    if (filtros.dataInicio > filtros.dataFim) {
+    if (usaPeriodo && filtros.dataInicio > filtros.dataFim) {
       toast.error('A data de início deve ser anterior à data final.')
       return
     }
     invalidarCacheRelatoriosGerenciais()
     setFiltrosGerados({ ...filtros })
-    setDataGeracao(format(new Date(), 'dd/MM/yyyy HH:mm'))
-    setSelecionados(new Set())
+    setDataGeracao(fmtDataHoraGeracao())
   }
 
   function tentarNovamente() {
@@ -227,7 +301,6 @@ export function RelatoriosPage() {
       toast.error('Gere o relatório antes de exportar.')
       return
     }
-
     setExportandoXls(true)
     try {
       const { exportarRelatorioGerencialParaXlsx } = await import(
@@ -241,11 +314,12 @@ export function RelatoriosPage() {
         dataInicio: filtrosGerados.dataInicio,
         dataFim: filtrosGerados.dataFim,
         dataGeracao,
-        listarTelefone: filtrosGerados.listarTelefone,
-        linhasPagamentos:
-          filtrosGerados.tipoRelatorio === 'pagamentos'
-            ? pagamentosQuery.data
-            : undefined,
+        semanasEscala:
+          filtrosGerados.tipoRelatorio === 'escala' ? escalaQuery.data.semanasPega : undefined,
+        gruposPagamentos:
+          filtrosGerados.tipoRelatorio === 'pagamentos' ? pagamentosQuery.data : undefined,
+        linhasPlantoes:
+          filtrosGerados.tipoRelatorio === 'plantoes' ? plantoesQuery.data : undefined,
       })
       toast.success('Planilha exportada com sucesso.')
     } catch {
@@ -263,17 +337,15 @@ export function RelatoriosPage() {
 
     setExportandoPdf(true)
     try {
+      const orientacao = orientacaoPdf(filtrosGerados.tipoRelatorio)
       const bytes = await capturarPreviewComoPdf(previewRef.current, {
-        orientacao: 'landscape',
+        orientacao,
         seletorPagina: '.relatorio-gerencial-folha',
       })
       const blob = new Blob([Uint8Array.from(bytes)], { type: 'application/pdf' })
       const url = URL.createObjectURL(blob)
-      const slug =
-        filtrosGerados.tipoRelatorio === 'pagamentos'
-          ? 'pagamentos-plantoes'
-          : 'escala-plantoes'
-      const nomeArquivo = `relatorio-gerencial-${slug}.pdf`
+      const slug = filtrosGerados.tipoRelatorio.replace(/_/g, '-')
+      const nomeArquivo = `relatorio-${slug}.pdf`
 
       const linkDownload = document.createElement('a')
       linkDownload.href = url
@@ -285,7 +357,7 @@ export function RelatoriosPage() {
 
       window.open(url, '_blank', 'noopener,noreferrer')
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
-      toast.success('PDF gerado. Use o visualizador para imprimir em paisagem.')
+      toast.success('PDF gerado com sucesso.')
     } catch {
       toast.error('Não foi possível gerar o PDF.')
     } finally {
@@ -297,11 +369,113 @@ export function RelatoriosPage() {
   const nomeSetor = (id: string) =>
     setoresDisponiveis.find((s) => s.id === id)?.nome ?? id
 
+  const previewConteudo = useMemo(() => {
+    if (!filtrosGerados) return null
+
+    const propsComuns = {
+      nomeEmpresa,
+      dataGeracao,
+      dataInicio: filtrosGerados.dataInicio,
+      dataFim: filtrosGerados.dataFim,
+      rotuloLocal: nomeLocalFiltro,
+    }
+
+    switch (filtrosGerados.tipoRelatorio) {
+      case 'escala':
+        return (
+          <RelatorioEscalaFolha
+            {...propsComuns}
+            semanas={escalaQuery.data.semanasPega}
+            isLoading={escalaQuery.isFetching}
+          />
+        )
+      case 'pagamentos':
+        return (
+          <RelatorioPagamentosFolha
+            {...propsComuns}
+            grupos={pagamentosQuery.data}
+            isLoading={pagamentosQuery.isFetching}
+          />
+        )
+      case 'plantoes':
+        return (
+          <RelatorioPlantoesListagemFolha
+            {...propsComuns}
+            linhas={plantoesQuery.data}
+            isLoading={plantoesQuery.isFetching}
+          />
+        )
+      case 'trocas_passagens':
+        return (
+          <RelatorioTrocasPassagensFolha
+            nomeEmpresa={nomeEmpresa}
+            dataGeracao={dataGeracao}
+            dataInicio={filtrosGerados.dataInicio}
+            dataFim={filtrosGerados.dataFim}
+            linhas={trocasQuery.data}
+            isLoading={trocasQuery.isFetching}
+          />
+        )
+      case 'faltas':
+        return (
+          <RelatorioFaltasFolha
+            nomeEmpresa={nomeEmpresa}
+            dataGeracao={dataGeracao}
+            dataInicio={filtrosGerados.dataInicio}
+            dataFim={filtrosGerados.dataFim}
+            linhas={faltasQuery.data}
+            isLoading={faltasQuery.isFetching}
+          />
+        )
+      case 'candidaturas':
+        return (
+          <RelatorioCandidaturasFolha
+            nomeEmpresa={nomeEmpresa}
+            dataGeracao={dataGeracao}
+            dataInicio={filtrosGerados.dataInicio}
+            dataFim={filtrosGerados.dataFim}
+            linhas={candidaturasQuery.data}
+            isLoading={candidaturasQuery.isFetching}
+          />
+        )
+      case 'locais_setores':
+        return (
+          <RelatorioLocaisSetoresFolha
+            nomeEmpresa={nomeEmpresa}
+            dataGeracao={dataGeracao}
+            linhas={locaisQuery.data}
+            isLoading={locaisQuery.isFetching}
+          />
+        )
+      default:
+        return null
+    }
+  }, [
+    filtrosGerados,
+    nomeEmpresa,
+    dataGeracao,
+    nomeLocalFiltro,
+    escalaQuery.data.semanasPega,
+    escalaQuery.isFetching,
+    pagamentosQuery.data,
+    pagamentosQuery.isFetching,
+    plantoesQuery.data,
+    plantoesQuery.isFetching,
+    trocasQuery.data,
+    trocasQuery.isFetching,
+    faltasQuery.data,
+    faltasQuery.isFetching,
+    candidaturasQuery.data,
+    candidaturasQuery.isFetching,
+    locaisQuery.data,
+    locaisQuery.isFetching,
+  ])
+
   return (
     <div className="relative -mx-4 -mt-4 min-h-[calc(100dvh-4rem)] bg-slate-100 md:-mx-8 md:-mt-8">
       <div className="no-print border-b border-gray-200 bg-white p-3">
         <div className="flex flex-wrap items-end gap-x-2 gap-y-2">
-          <CampoFiltro label="Relatório" htmlFor="filtro-relatorio" className="min-w-[140px]">
+          <CampoFiltro label="Relatório" htmlFor="filtro-relatorio" className="min-w-[160px]">
             <select
               id="filtro-relatorio"
               className={SELECT}
@@ -310,144 +484,147 @@ export function RelatoriosPage() {
                 patchFiltros('tipoRelatorio', e.target.value as TipoRelatorioGerador)
               }
             >
-              <option value="escala">Escala de Plantões</option>
-              <option value="pagamentos">Pagamentos para Plantões</option>
-            </select>
-          </CampoFiltro>
-
-          <CampoFiltro label="Local" htmlFor="filtro-local" className="min-w-[120px]">
-            <select
-              id="filtro-local"
-              className={SELECT}
-              value={filtros.localId}
-              onChange={(e) => {
-                patchFiltros('localId', e.target.value)
-                patchFiltros('setorIds', [])
-              }}
-            >
-              <option value={TODOS_LOCAIS}>Todos os locais</option>
-              {locais.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.nome}
+              {TIPOS_VALIDOS.map((tipo) => (
+                <option key={tipo} value={tipo}>
+                  {TITULOS_RELATORIO_GERENCIAL[tipo]}
                 </option>
               ))}
             </select>
           </CampoFiltro>
 
-          <CampoFiltro label="Período" htmlFor="filtro-periodo" className="min-w-[100px]">
-            <select
-              id="filtro-periodo"
-              className={SELECT}
-              value={filtros.presetPeriodo}
-              onChange={(e) =>
-                aplicarPresetPeriodo(e.target.value as PeriodoRelatorioPreset)
-              }
-            >
-              <option value="semana">Semana</option>
-              <option value="mes">Mês</option>
-              <option value="trimestre">Trimestre</option>
-              <option value="ano">Ano</option>
-              <option value="ytd">YTD</option>
-              <option value="personalizado">Personalizado</option>
-            </select>
-          </CampoFiltro>
-
-          <div className="flex min-w-[180px] items-end pb-0.5">
-            <label className="flex cursor-pointer items-center gap-1.5 text-[10px] text-gray-700">
-              <input
-                type="checkbox"
-                checked={filtros.listarTelefone}
-                onChange={(e) => patchFiltros('listarTelefone', e.target.checked)}
-                className="h-3 w-3 rounded border-gray-300 text-primary focus:ring-primary/30"
-              />
-              <span className="font-medium leading-tight">
-                Listar telefone dos profissionais de plantão
-              </span>
-            </label>
-          </div>
-
-          <CampoFiltro label="Setor(es)" className="min-w-[120px]">
-            <div className="flex items-center gap-1">
+          {filtros.tipoRelatorio !== 'locais_setores' ? (
+            <CampoFiltro label="Local" htmlFor="filtro-local" className="min-w-[120px]">
               <select
-                className={cn(SELECT, 'flex-1')}
-                value=""
+                id="filtro-local"
+                className={SELECT}
+                value={filtros.localId}
                 onChange={(e) => {
-                  if (e.target.value && e.target.value !== TODOS_SETORES) {
-                    alternarSetor(e.target.value)
-                  }
-                  e.target.value = ''
+                  patchFiltros('localId', e.target.value)
+                  patchFiltros('setorIds', [])
                 }}
               >
-                <option value="">Selecionar…</option>
-                {setoresDisponiveis.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {filtros.setorIds.includes(s.id) ? '✓ ' : ''}
-                    {s.nome}
+                <option value={TODOS_LOCAIS}>Todos os locais</option>
+                {locais.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.nome}
                   </option>
                 ))}
               </select>
-              {filtros.setorIds.length > 0 ? (
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white">
-                  {filtros.setorIds.length}
-                </span>
-              ) : null}
-            </div>
-          </CampoFiltro>
+            </CampoFiltro>
+          ) : null}
 
-          <CampoFiltro label="Grupo(s)" htmlFor="filtro-grupo" className="min-w-[100px]">
-            <select
-              id="filtro-grupo"
-              className={SELECT}
-              value={filtros.grupo}
-              onChange={(e) => patchFiltros('grupo', e.target.value)}
-            >
-              {GRUPOS_OPCOES.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
-          </CampoFiltro>
+          {usaPeriodo ? (
+            <>
+              <CampoFiltro label="Período" htmlFor="filtro-periodo" className="min-w-[100px]">
+                <select
+                  id="filtro-periodo"
+                  className={SELECT}
+                  value={filtros.presetPeriodo}
+                  onChange={(e) =>
+                    aplicarPresetPeriodo(e.target.value as PeriodoRelatorioPreset)
+                  }
+                >
+                  <option value="semana">Semana</option>
+                  <option value="mes">Mês</option>
+                  <option value="trimestre">Trimestre</option>
+                  <option value="ano">Ano</option>
+                  <option value="ytd">YTD</option>
+                  <option value="personalizado">Personalizado</option>
+                </select>
+              </CampoFiltro>
 
-          <CampoFiltro label="Data de Início" htmlFor="filtro-inicio" className="min-w-[108px]">
-            <input
-              id="filtro-inicio"
-              type="date"
-              className={INPUT}
-              value={filtros.dataInicio}
-              onChange={(e) => {
-                patchFiltros('dataInicio', e.target.value)
-                patchFiltros('presetPeriodo', 'personalizado')
-              }}
-            />
-          </CampoFiltro>
+              <CampoFiltro label="Data de Início" htmlFor="filtro-inicio" className="min-w-[108px]">
+                <input
+                  id="filtro-inicio"
+                  type="date"
+                  className={INPUT}
+                  value={filtros.dataInicio}
+                  onChange={(e) => {
+                    patchFiltros('dataInicio', e.target.value)
+                    patchFiltros('presetPeriodo', 'personalizado')
+                  }}
+                />
+              </CampoFiltro>
 
-          <CampoFiltro label="Data Final" htmlFor="filtro-fim" className="min-w-[108px]">
-            <input
-              id="filtro-fim"
-              type="date"
-              className={INPUT}
-              value={filtros.dataFim}
-              onChange={(e) => {
-                patchFiltros('dataFim', e.target.value)
-                patchFiltros('presetPeriodo', 'personalizado')
-              }}
-            />
-          </CampoFiltro>
+              <CampoFiltro label="Data Final" htmlFor="filtro-fim" className="min-w-[108px]">
+                <input
+                  id="filtro-fim"
+                  type="date"
+                  className={INPUT}
+                  value={filtros.dataFim}
+                  onChange={(e) => {
+                    patchFiltros('dataFim', e.target.value)
+                    patchFiltros('presetPeriodo', 'personalizado')
+                  }}
+                />
+              </CampoFiltro>
+            </>
+          ) : null}
 
-          <CampoFiltro label="Tipo" htmlFor="filtro-tipo" className="min-w-[80px]">
-            <select
-              id="filtro-tipo"
-              className={SELECT}
-              value={filtros.tipo}
-              onChange={(e) => patchFiltros('tipo', e.target.value)}
-            >
-              <option value="Todos">Todos</option>
-              <option value="Diurno">Diurno</option>
-              <option value="Noturno">Noturno</option>
-              <option value="24h">24h</option>
-            </select>
-          </CampoFiltro>
+          {filtros.tipoRelatorio !== 'locais_setores' ? (
+            <CampoFiltro label="Setor(es)" className="min-w-[120px]">
+              <div className="flex items-center gap-1">
+                <select
+                  className={cn(SELECT, 'flex-1')}
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value && e.target.value !== TODOS_SETORES) {
+                      alternarSetor(e.target.value)
+                    }
+                    e.target.value = ''
+                  }}
+                >
+                  <option value="">Selecionar…</option>
+                  {setoresDisponiveis.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {filtros.setorIds.includes(s.id) ? '✓ ' : ''}
+                      {s.nome}
+                    </option>
+                  ))}
+                </select>
+                {filtros.setorIds.length > 0 ? (
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white">
+                    {filtros.setorIds.length}
+                  </span>
+                ) : null}
+              </div>
+            </CampoFiltro>
+          ) : null}
+
+          {filtros.tipoRelatorio === 'escala' ? (
+            <>
+              <CampoFiltro label="Tipo" htmlFor="filtro-tipo" className="min-w-[80px]">
+                <select
+                  id="filtro-tipo"
+                  className={SELECT}
+                  value={filtros.tipo}
+                  onChange={(e) => patchFiltros('tipo', e.target.value)}
+                >
+                  <option value="Todos">Todos</option>
+                  <option value="Diurno">Diurno</option>
+                  <option value="Noturno">Noturno</option>
+                  <option value="24h">24h</option>
+                </select>
+              </CampoFiltro>
+
+              <CampoFiltro
+                label="Identificar Profissional"
+                htmlFor="filtro-ident"
+                className="min-w-[120px]"
+              >
+                <select
+                  id="filtro-ident"
+                  className={SELECT}
+                  value={filtros.identificarProfissional}
+                  onChange={(e) => patchFiltros('identificarProfissional', e.target.value)}
+                >
+                  <option value="Nome completo">Nome completo</option>
+                  <option value="Nome abreviado">Nome abreviado</option>
+                  <option value="CRM">CRM</option>
+                </select>
+              </CampoFiltro>
+            </>
+          ) : null}
 
           <CampoFiltro
             label="Setores Desabilitados"
@@ -464,40 +641,6 @@ export function RelatoriosPage() {
             >
               <option value="nao">Não</option>
               <option value="sim">Sim</option>
-            </select>
-          </CampoFiltro>
-
-          <CampoFiltro
-            label="Identificar Profissional"
-            htmlFor="filtro-ident"
-            className="min-w-[120px]"
-          >
-            <select
-              id="filtro-ident"
-              className={SELECT}
-              value={filtros.identificarProfissional}
-              onChange={(e) => patchFiltros('identificarProfissional', e.target.value)}
-            >
-              <option value="Nome completo">Nome completo</option>
-              <option value="Nome abreviado">Nome abreviado</option>
-              <option value="CRM">CRM</option>
-            </select>
-          </CampoFiltro>
-
-          <CampoFiltro
-            label="Tipo de Escala"
-            htmlFor="filtro-tipo-escala"
-            className="min-w-[100px]"
-          >
-            <select
-              id="filtro-tipo-escala"
-              className={SELECT}
-              value={filtros.tipoEscala}
-              onChange={(e) => patchFiltros('tipoEscala', e.target.value)}
-            >
-              <option value="Mensal">Mensal</option>
-              <option value="Semanal">Semanal</option>
-              <option value="Quinzenal">Quinzenal</option>
             </select>
           </CampoFiltro>
 
@@ -555,11 +698,7 @@ export function RelatoriosPage() {
           <div className="mx-auto max-w-6xl rounded-lg border border-gray-200 bg-white p-8 shadow-md">
             <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
               <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden />
-              A carregar dados do Supabase…
-            </div>
-            <div className="mt-6 animate-pulse space-y-3">
-              <div className="h-6 w-1/3 rounded bg-gray-200" />
-              <div className="h-40 rounded bg-gray-100" />
+              A carregar dados…
             </div>
           </div>
         ) : relatorioAtivo && error ? (
@@ -579,36 +718,21 @@ export function RelatoriosPage() {
           <article
             ref={previewRef}
             className={cn(
-              'pagina-a4 relatorio-gerencial-folha mx-auto max-w-6xl bg-white text-sm text-black shadow-md',
-              'min-h-[297mm] px-8 py-6',
+              'relatorio-gerencial-folha mx-auto max-w-6xl bg-white text-sm text-black shadow-md',
+              'min-h-[297mm] px-6 py-5',
               'print:m-0 print:max-w-none print:min-h-0 print:p-0 print:shadow-none',
+              orientacaoPdf(tipoAtivo) === 'landscape' && 'max-w-[340mm]',
             )}
           >
             {!filtrosGerados ? (
-              <div className="flex min-h-[240px] items-center justify-center text-sm text-gray-400">
-                Configure os filtros e clique em Gerar para visualizar o relatório.
+              <div className="flex min-h-[240px] flex-col items-center justify-center gap-2 text-sm text-gray-400">
+                <p>Configure os filtros e clique em Gerar para visualizar o relatório.</p>
+                <p className="text-xs">
+                  Formato compatível com os modelos Pega Plantão enviados pelo cliente.
+                </p>
               </div>
-            ) : filtrosGerados.tipoRelatorio === 'pagamentos' ? (
-              <RelatorioPagamentosFolha
-                linhas={pagamentosQuery.data}
-                dataInicio={filtrosGerados.dataInicio}
-                dataFim={filtrosGerados.dataFim}
-                dataGeracao={dataGeracao}
-                nomeEmpresa={nomeEmpresa}
-                selecionados={selecionados}
-                onAlternarSelecao={alternarSelecao}
-                listarTelefone={filtrosGerados.listarTelefone}
-                isLoading={pagamentosQuery.isFetching}
-              />
             ) : (
-              <RelatorioEscalaFolha
-                dataInicio={filtrosGerados.dataInicio}
-                dataFim={filtrosGerados.dataFim}
-                dataGeracao={dataGeracao}
-                nomeEmpresa={nomeEmpresa}
-                semanas={escalaQuery.data.grade}
-                isLoading={escalaQuery.isFetching}
-              />
+              previewConteudo
             )}
           </article>
         )}

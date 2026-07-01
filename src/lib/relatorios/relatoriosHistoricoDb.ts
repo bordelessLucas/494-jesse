@@ -1,5 +1,5 @@
 import { supabase } from '../supabase'
-import type { Json } from '../../types/database.types'
+import type { Database, Json } from '../../types/database.types'
 
 export type TipoRelatorioHistorico =
   | 'FrequenciaSetor'
@@ -149,7 +149,7 @@ export async function atualizarStatusWorkflowRelatorio(
   historicoId: string,
   input: AtualizarStatusWorkflowInput,
 ): Promise<RelatorioHistoricoRow> {
-  const patch: Record<string, unknown> = {
+  const patch: Database['public']['Tables']['relatorios_historico']['Update'] = {
     status_workflow: input.status_workflow,
   }
 

@@ -1,27 +1,22 @@
 import {
   ArrowLeftRight,
-  Baby,
   Banknote,
-  Briefcase,
+  BarChart3,
   Calendar,
   CalendarCheck,
   CalendarClock,
   CalendarDays,
-  CalendarRange,
+  ClipboardList,
   Clock,
   Copy,
-  Eye,
   FileBarChart,
-  FileOutput,
+  FilePenLine,
   FileText,
-  FolderCog,
-  HeartPulse,
+  Folder,
   LayoutDashboard,
   LayoutGrid,
   MapPin,
-  Receipt,
   Settings2,
-  Shield,
   UserCog,
   Users,
   UserX,
@@ -34,17 +29,24 @@ export type NavigationSubItem = {
   icon?: ComponentType<{ className?: string }>
 }
 
+export type NavigationSubGroup = {
+  heading?: string
+  items: NavigationSubItem[]
+}
+
 export type NavigationItem = {
   /** Prefixo da rota: mantém o item ativo para todas as URLs que começam com `to` ou `to/`. */
   to: string
   label: string
   icon: ComponentType<{ className?: string }>
   subItems?: NavigationSubItem[]
+  subGroups?: NavigationSubGroup[]
 }
 
 export type NavigationSection = {
   id: 'operacao' | 'gestao'
   label: string
+  icon?: ComponentType<{ className?: string }>
   items: NavigationItem[]
 }
 
@@ -86,8 +88,10 @@ const operacaoItems: NavigationItem[] = [
       { to: '/painel/relatorios', label: 'Financeiros', icon: Banknote },
       { to: '/relatorios-plantao/faltas', label: 'Faltas / Absenteísmo', icon: UserX },
       { to: '/relatorios-plantao/escalas', label: 'Escalas', icon: CalendarCheck },
-      { to: '/relatorios-plantao/profissionais', label: 'Profissionais', icon: Users },
-      { to: '/relatorios-plantao/coordenadores', label: 'Coordenadores', icon: UserCog },
+      { to: '/relatorios-plantao/profissionais', label: 'Plantões', icon: Users },
+      { to: '/relatorios-plantao/coordenadores', label: 'Trocas / Candidaturas', icon: UserCog },
+      { to: '/painel/relatorios?tipo=candidaturas', label: 'Candidaturas', icon: FileBarChart },
+      { to: '/painel/relatorios?tipo=locais_setores', label: 'Locais e Setores', icon: MapPin },
       { to: '/painel/carga-horaria', label: 'Carga Horária', icon: Clock },
     ],
   },
@@ -97,43 +101,49 @@ const gestaoItems: NavigationItem[] = [
   {
     to: '/gestao/emissao',
     label: 'Emissão de Relatórios',
-    icon: FileOutput,
-    subItems: [
-      { to: '/relatorios/emissao', label: 'SCIH', icon: Shield },
-      { to: '/gestao/emissao/uti-adulto', label: 'UTI Adulto', icon: HeartPulse },
-      { to: '/gestao/emissao/uti-pediatrica', label: 'UTI Pediátrica', icon: Baby },
+    icon: FilePenLine,
+    subGroups: [
+      {
+        heading: 'Tipos de Relatórios:',
+        items: [
+          { to: '/relatorios/emissao', label: 'Relatório SCIH' },
+          { to: '/gestao/emissao/uti-adulto', label: 'Relatório UTI Adulto' },
+          { to: '/gestao/emissao/uti-pediatrica', label: 'Relatório UTI Pediátrica' },
+        ],
+      },
     ],
   },
   {
     to: '/gestao/frequencia',
     label: 'Modelos de Frequência',
-    icon: CalendarRange,
+    icon: ClipboardList,
     subItems: [
-      { to: '/gestao/frequencia/quinzenal', label: 'Quinzenal', icon: CalendarRange },
-      { to: '/gestao/frequencia/mensal', label: 'Mensal', icon: Calendar },
-      { to: '/gestao/frequencia/semanal', label: 'Semanal', icon: CalendarDays },
+      { to: '/gestao/frequencia/quinzenal', label: 'Frequência Quinzenal' },
+      { to: '/gestao/frequencia/mensal', label: 'Frequência Mensal' },
+      { to: '/gestao/frequencia/semanal', label: 'Frequência Semanal' },
+      { to: '/gestao/frequencia/producao', label: 'Produção de Frequência' },
     ],
   },
   {
     to: '/gestao/cadastros',
     label: 'Cadastros (Gestão)',
-    icon: FolderCog,
-    subItems: [
-      { to: '/gestao/cadastros/tipo-servico', label: 'Tipo de Serviço', icon: Briefcase },
+    icon: Folder,
+    subGroups: [
       {
-        to: '/gestao/cadastros/utilizadores/coordenador',
-        label: 'Utilizadores — Coordenador',
-        icon: UserCog,
+        heading: 'Tipo de Serviço:',
+        items: [
+          { to: '/gestao/cadastros/tipo-servico/scih', label: 'SCIH' },
+          { to: '/gestao/cadastros/tipo-servico/uti-adulto', label: 'UTI Adulto' },
+          { to: '/gestao/cadastros/tipo-servico/uti-pediatrica', label: 'UTI Pediátrica' },
+        ],
       },
       {
-        to: '/gestao/cadastros/utilizadores/auditor',
-        label: 'Utilizadores — Auditor',
-        icon: Eye,
-      },
-      {
-        to: '/gestao/cadastros/utilizadores/faturista',
-        label: 'Utilizadores — Faturista',
-        icon: Receipt,
+        heading: 'Cadastro de Usuários:',
+        items: [
+          { to: '/gestao/cadastros/utilizadores/coordenador', label: 'Coordenador' },
+          { to: '/gestao/cadastros/utilizadores/auditor', label: 'Auditor' },
+          { to: '/gestao/cadastros/utilizadores/faturista', label: 'Faturista / Financeiro' },
+        ],
       },
     ],
   },
@@ -141,7 +151,12 @@ const gestaoItems: NavigationItem[] = [
 
 export const navigationSections: NavigationSection[] = [
   { id: 'operacao', label: 'Operação', items: operacaoItems },
-  { id: 'gestao', label: 'Relatórios de Gestão', items: gestaoItems },
+  {
+    id: 'gestao',
+    label: 'Relatórios de Gestão',
+    icon: BarChart3,
+    items: gestaoItems,
+  },
 ]
 
 /** Lista plana de todos os itens de menu (compatibilidade). */

@@ -897,6 +897,99 @@ export type Database = {
           },
         ]
       }
+      plantoes_historico_eventos: {
+        Row: {
+          id: string
+          tenant_user_id: string
+          plantao_id: string
+          plantao_destino_id: string | null
+          solicitacao_id: string | null
+          evento_par_id: string | null
+          tipo_evento: string
+          situacao_rotulo: string
+          profissional_fixo_id: string | null
+          profissional_responsavel_id: string | null
+          justificativa: string | null
+          observacao_interna: string | null
+          origem: string
+          realizado_em: string
+          registrado_por_auth_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_user_id: string
+          plantao_id: string
+          plantao_destino_id?: string | null
+          solicitacao_id?: string | null
+          evento_par_id?: string | null
+          tipo_evento: string
+          situacao_rotulo?: string
+          profissional_fixo_id?: string | null
+          profissional_responsavel_id?: string | null
+          justificativa?: string | null
+          observacao_interna?: string | null
+          origem?: string
+          realizado_em?: string
+          registrado_por_auth_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_user_id?: string
+          plantao_id?: string
+          plantao_destino_id?: string | null
+          solicitacao_id?: string | null
+          evento_par_id?: string | null
+          tipo_evento?: string
+          situacao_rotulo?: string
+          profissional_fixo_id?: string | null
+          profissional_responsavel_id?: string | null
+          justificativa?: string | null
+          observacao_interna?: string | null
+          origem?: string
+          realizado_em?: string
+          registrado_por_auth_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'plantoes_historico_eventos_plantao_id_fkey'
+            columns: ['plantao_id']
+            isOneToOne: false
+            referencedRelation: 'plantoes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'plantoes_historico_eventos_plantao_destino_id_fkey'
+            columns: ['plantao_destino_id']
+            isOneToOne: false
+            referencedRelation: 'plantoes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'plantoes_historico_eventos_solicitacao_id_fkey'
+            columns: ['solicitacao_id']
+            isOneToOne: false
+            referencedRelation: 'plantoes_trocas_solicitacoes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'plantoes_historico_eventos_profissional_fixo_id_fkey'
+            columns: ['profissional_fixo_id']
+            isOneToOne: false
+            referencedRelation: 'profissionais'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'plantoes_historico_eventos_profissional_responsavel_id_fkey'
+            columns: ['profissional_responsavel_id']
+            isOneToOne: false
+            referencedRelation: 'profissionais'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       plantoes_trocas_solicitacoes: {
         Row: {
           id: string
