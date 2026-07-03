@@ -1,4 +1,5 @@
 import { supabase } from '../supabase'
+import { EMBED_ESCALA_CONFIRMACOES_MASTER } from './plantoesDb'
 import type { StatusConfirmacaoEscala } from './confirmacaoEscalaTypes'
 
 export type PlantaoConfirmacaoPendente = {
@@ -136,12 +137,7 @@ export async function buscarPlantoesConfirmacaoMaster(params: {
       profissionais ( nome ),
       locais ( nome_fantasia ),
       setores ( nome ),
-      escala_confirmacoes (
-        status,
-        motivo_recusa,
-        confirmado_em,
-        profissional_id
-      )
+      ${EMBED_ESCALA_CONFIRMACOES_MASTER}
     `,
     )
     .eq('user_id', params.tenantUserId)
@@ -175,6 +171,11 @@ export async function buscarPlantoesConfirmacaoMaster(params: {
       | null
 
     const conf = Array.isArray(confArr) ? confArr[0] : confArr
+    const confirmadoProfissional = Boolean(row.confirmado_profissional)
+    const motivoPlantao = (row.motivo_recusa as string | null) ?? null
+    const profissionalId = (row.profissional_id as string | null) ?? null
+    const dataConfirmacao =
+      (row.data_confirmacao_profissional as string | null) ?? null
 
     const prof = row.profissionais as { nome: string } | null
     const loc = row.locais as { nome_fantasia: string } | null
@@ -187,20 +188,27 @@ export async function buscarPlantoesConfirmacaoMaster(params: {
       hora_fim: String(row.hora_fim),
       status: String(row.status),
       valor_plantao: Number(row.valor_plantao ?? 0),
-      confirmado_profissional: Boolean(row.confirmado_profissional),
-      data_confirmacao_profissional:
-        (row.data_confirmacao_profissional as string | null) ?? null,
-      motivo_recusa: (row.motivo_recusa as string | null) ?? null,
-      profissional_id: (row.profissional_id as string | null) ?? null,
+      confirmado_profissional: confirmadoProfissional,
+      data_confirmacao_profissional: dataConfirmacao,
+      motivo_recusa: motivoPlantao,
+      profissional_id: profissionalId,
       profissional_nome: prof?.nome ?? null,
       local_id: String(row.local_id),
       local_nome: loc?.nome_fantasia ?? '—',
       setor_id: String(row.setor_id),
       setor_nome: set?.nome ?? '—',
-      confirmacao_status: conf?.status ?? null,
-      confirmacao_motivo: conf?.motivo_recusa ?? null,
-      confirmacao_em: conf?.confirmado_em ?? null,
-      confirmacao_profissional_id: conf?.profissional_id ?? null,
+      confirmacao_status:
+        conf?.status ??
+        (confirmadoProfissional
+          ? 'confirmado'
+          : motivoPlantao?.trim()
+            ? 'recusado'
+            : profissionalId
+              ? 'pendente'
+              : null),
+      confirmacao_motivo: conf?.motivo_recusa ?? motivoPlantao,
+      confirmacao_em: conf?.confirmado_em ?? dataConfirmacao,
+      confirmacao_profissional_id: conf?.profissional_id ?? profissionalId,
     } satisfies PlantaoConfirmacaoMasterRow
   })
 

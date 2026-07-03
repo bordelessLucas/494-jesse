@@ -1,7 +1,7 @@
 import { endOfMonth, format, startOfMonth } from 'date-fns'
 
 import { supabase } from './supabase'
-import type { PlantaoRowDb } from './escalas/plantoesDb'
+import { EMBED_ESCALA_CONFIRMACOES, type PlantaoRowDb } from './escalas/plantoesDb'
 
 export async function buscarPlantoesMensais(
   mes: number,
@@ -43,7 +43,7 @@ export async function buscarPlantoesMensais(
       confirmado_profissional,
       data_confirmacao_profissional,
       motivo_recusa,
-      escala_confirmacoes ( status, motivo_recusa, confirmado_em ),
+      ${EMBED_ESCALA_CONFIRMACOES},
       profissionais ( id, nome )
     `,
     )

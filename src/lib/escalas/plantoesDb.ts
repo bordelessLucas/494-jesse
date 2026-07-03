@@ -6,6 +6,14 @@ import type { PlantaoCartao, StatusPlantaoEscala, TomCartao } from './escalaType
 
 import type { StatusConfirmacaoEscala } from './confirmacaoEscalaTypes'
 
+/** Embed PostgREST: FK `escala_confirmacoes.plantao_id` → `plantoes.id`. */
+export const EMBED_ESCALA_CONFIRMACOES =
+  'escala_confirmacoes!escala_confirmacoes_plantao_id_fkey ( status, motivo_recusa, confirmado_em )'
+
+/** Embed PostgREST (visão master): inclui profissional que confirmou/recusou. */
+export const EMBED_ESCALA_CONFIRMACOES_MASTER =
+  'escala_confirmacoes!escala_confirmacoes_plantao_id_fkey ( status, motivo_recusa, confirmado_em, profissional_id )'
+
 type ProfissionalJoin = { id: string; nome: string } | null
 
 type EscalaConfirmacaoJoin = {
@@ -69,9 +77,14 @@ export function confirmacaoStatusDeRow(
   row: PlantaoRowDb,
 ): StatusConfirmacaoEscala | null {
   const c = row.escala_confirmacoes
-  if (!c) return null
-  if (Array.isArray(c)) return c[0]?.status ?? null
-  return c.status ?? null
+  if (c) {
+    if (Array.isArray(c)) return c[0]?.status ?? null
+    return c.status ?? null
+  }
+  if (row.confirmado_profissional) return 'confirmado'
+  if (row.motivo_recusa?.trim()) return 'recusado'
+  if (row.profissional_id) return 'pendente'
+  return null
 }
 
 export function plantaoAguardaConfirmacaoProfissional(row: PlantaoRowDb): boolean {
@@ -126,7 +139,7 @@ export async function buscarPlantoesIntervalo(
       confirmado_profissional,
       data_confirmacao_profissional,
       motivo_recusa,
-      escala_confirmacoes ( status, motivo_recusa, confirmado_em ),
+      ${EMBED_ESCALA_CONFIRMACOES},
       profissionais ( id, nome )
     `,
     )
