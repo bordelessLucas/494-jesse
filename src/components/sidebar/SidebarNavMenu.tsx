@@ -22,7 +22,7 @@ function classesSubItem(variant: SidebarNavVariant, isSubItemActive: boolean) {
     variant === 'operacao' && 'text-current/85 hover:bg-white/10 hover:text-current',
     variant === 'operacao' &&
       isSubItemActive &&
-      'bg-blue-400 font-medium text-white hover:bg-blue-400',
+      'bg-white/20 font-medium text-current hover:bg-white/25',
     variant === 'gestao' && 'text-current/85 hover:bg-black/15 hover:text-current',
     variant === 'gestao' && isSubItemActive && 'bg-black/25 text-current',
   )
@@ -149,7 +149,7 @@ function NavMenuItem({
     variant === 'operacao' &&
       isActive &&
       !temSubmenu &&
-      'bg-blue-400 text-white hover:bg-blue-400',
+      'bg-white/20 text-current hover:bg-white/25',
     isActive && isGestao && 'text-current',
   )
 

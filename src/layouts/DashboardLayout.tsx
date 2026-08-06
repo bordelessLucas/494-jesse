@@ -29,7 +29,7 @@ export function DashboardLayout() {
     <ContaMembroProvider>
       <PreloadCatalogoLocaisSetores />
       <DashboardRealtimeListeners />
-      <div className="flex min-h-dvh bg-slate-50 print:block print:min-h-0 print:bg-white">
+      <div className="flex min-h-dvh bg-ug-bg print:block print:min-h-0 print:bg-white">
         <Sidebar />
         <MobileNavDrawer aberto={mobileNavAberto} onFechar={fecharMobileNav} />
 

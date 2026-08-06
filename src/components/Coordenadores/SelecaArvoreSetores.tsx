@@ -5,7 +5,7 @@ import { cn } from '../../lib/cn'
 import type { LocalComSetoresArvore } from '../Profissionais/ProfissionalDetalhesModal'
 
 const inputEditavel =
-  'w-full cursor-text rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition-colors placeholder:text-slate-400 hover:border-slate-300 focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20'
+  'w-full cursor-text rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition-colors placeholder:text-slate-400 hover:border-slate-300 focus:border-primary-600 focus:ring-2 focus:ring-primary-600/20'
 
 function filtrarArvoreGrupos(
   arvore: LocalComSetoresArvore[],

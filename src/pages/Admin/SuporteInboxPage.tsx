@@ -101,7 +101,7 @@ export function SuporteInboxPage() {
       </div>
 
       <div className="grid min-h-[28rem] grid-cols-1 gap-4 lg:grid-cols-[minmax(0,280px)_1fr]">
-        <aside className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <aside className="ug-card shadow-sm">
           <div className="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-800">
             Conversas
           </div>
@@ -143,7 +143,7 @@ export function SuporteInboxPage() {
           )}
         </aside>
 
-        <section className="flex min-h-[28rem] flex-col rounded-xl border border-slate-200 bg-white shadow-sm">
+        <section className="flex min-h-[28rem] flex-col ug-card shadow-sm">
           {!inbox.selecionadaId ? (
             <div className="flex flex-1 flex-col items-center justify-center text-slate-500">
               <MessageCircle className="mb-3 h-12 w-12 text-slate-300" aria-hidden />

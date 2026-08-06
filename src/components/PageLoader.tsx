@@ -1,11 +1,16 @@
 import { Loader2 } from 'lucide-react'
 
+import { BrandLogo } from './branding/BrandLogo'
+
 export function PageLoader() {
   return (
     <div className="grid min-h-[40vh] place-items-center px-4">
-      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-700 shadow-sm">
-        <Loader2 className="h-5 w-5 animate-spin text-primary-600" aria-hidden />
-        Carregando página…
+      <div className="ug-card flex flex-col items-center gap-4 px-8 py-7 text-sm text-ug-celestial">
+        <BrandLogo variant="symbol" surface="light" tone="color" size={40} decorative />
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin text-primary-600" aria-hidden />
+          Carregando…
+        </div>
       </div>
     </div>
   )

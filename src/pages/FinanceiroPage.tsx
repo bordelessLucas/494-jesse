@@ -102,7 +102,7 @@ export function FinanceiroPage() {
   const statusExtratos = useMemo(() => contarPorStatus(periodos), [periodos])
 
   const linkCardClass =
-    'group flex items-start gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-primary-300 hover:bg-primary-50/40'
+    'group flex items-start gap-4 ug-card p-5 shadow-sm transition-colors hover:border-primary-300 hover:bg-primary-50/40'
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8 pb-12">
@@ -152,7 +152,7 @@ export function FinanceiroPage() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="ug-card p-4 shadow-sm">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                 Plantões no extrato
               </p>
@@ -161,7 +161,7 @@ export function FinanceiroPage() {
               </p>
               <p className="mt-1 text-xs text-slate-500">{intervalo.rotulo}</p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="ug-card p-4 shadow-sm">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                 Total bruto
               </p>
@@ -169,7 +169,7 @@ export function FinanceiroPage() {
                 {fmtBRL(totais?.totalBruto ?? 0)}
               </p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="ug-card p-4 shadow-sm">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                 Descontos / glosas
               </p>

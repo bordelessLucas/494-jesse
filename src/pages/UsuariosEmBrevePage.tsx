@@ -73,7 +73,7 @@ export function DocumentosUsuarioPage() {
           </p>
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <ul className="divide-y divide-slate-100 overflow-hidden ug-card shadow-sm">
           {documentos.map((doc) => (
             <li key={doc.id} className="flex flex-wrap items-center gap-3 px-5 py-4">
               <Clock3 className="h-5 w-5 shrink-0 text-amber-500" aria-hidden />

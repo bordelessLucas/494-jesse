@@ -40,7 +40,7 @@ export function NotificacoesPage() {
               const isUnread = !notificacao.lida
               const containerClassName = [
                 'px-5 py-4 transition-colors',
-                isUnread ? 'bg-blue-50' : 'bg-white',
+                isUnread ? 'bg-primary-50' : 'bg-white',
               ].join(' ')
 
               const content = (

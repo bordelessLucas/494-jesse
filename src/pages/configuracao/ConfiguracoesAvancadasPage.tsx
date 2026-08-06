@@ -338,7 +338,7 @@ export function ConfiguracoesAvancadasPage() {
         </div>
       ) : (
         <>
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-hidden ug-card shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 sm:px-6">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">Tipos de plantão</h2>
@@ -481,7 +481,7 @@ export function ConfiguracoesAvancadasPage() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-hidden ug-card shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 sm:px-6">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">Acréscimos</h2>
@@ -662,7 +662,7 @@ export function ConfiguracoesAvancadasPage() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-hidden ug-card shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 sm:px-6">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">

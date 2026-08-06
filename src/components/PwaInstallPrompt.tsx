@@ -22,20 +22,20 @@ function mostrarToastInstalacao(
       <div
         className={`${
           t.visible ? 'animate-enter' : 'animate-leave'
-        } pointer-events-auto w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-4 shadow-xl shadow-slate-300/30 ring-1 ring-black/5`}
+        } pointer-events-auto w-full max-w-sm ug-card p-4 shadow-xl shadow-slate-300/30 ring-1 ring-black/5`}
       >
         <div className="flex items-start gap-3">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary-600 text-white">
             <Download className="h-5 w-5" aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-900">Instale o PlantaoCheck</p>
-            <p className="mt-1 text-xs leading-relaxed text-slate-600">
+            <p className="text-sm font-semibold text-ug-petrol">Instale o Unique Gestor</p>
+            <p className="mt-1 text-xs leading-relaxed text-ug-muted">
               {deferredPrompt
                 ? 'Adicione o app à tela inicial para acesso rápido, mesmo offline.'
                 : isIos
                   ? 'Toque em Compartilhar e depois em "Adicionar à Tela de Início".'
-                  : 'Adicione o app à tela inicial para acesso rápido ao PlantaoCheck.'}
+                  : 'Adicione o app à tela inicial para acesso rápido ao Unique Gestor.'}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {deferredPrompt ? (

@@ -1,13 +1,18 @@
+import { Link } from 'react-router-dom'
+
+import { BrandLogo } from '../components/branding/BrandLogo'
+
 export function NotFoundPage() {
   return (
-    <div className="mx-auto w-full max-w-5xl">
-      <div className="rounded-xl border border-slate-200 bg-white p-6">
-        <h1 className="text-lg font-semibold text-slate-900">Não encontrado</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          A rota acessada não existe ou foi movida.
-        </p>
-      </div>
+    <div className="mx-auto flex min-h-[50vh] w-full max-w-lg flex-col items-center justify-center px-4 text-center">
+      <BrandLogo variant="symbol" surface="light" tone="color" size={56} decorative />
+      <h1 className="ug-page-title mt-6">Página não encontrada</h1>
+      <p className="ug-page-subtitle max-w-sm">
+        A rota acessada não existe ou foi movida. Verifique o endereço ou volte ao painel.
+      </p>
+      <Link to="/" className="ug-btn-primary mt-8 px-6">
+        Ir para o início
+      </Link>
     </div>
   )
 }
-

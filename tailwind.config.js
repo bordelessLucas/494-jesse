@@ -5,20 +5,34 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
       colors: {
+        ug: {
+          celestial: 'var(--ug-celestial)',
+          cyan: 'var(--ug-cyan)',
+          porcelain: 'var(--ug-porcelain)',
+          petrol: 'var(--ug-petrol)',
+          bg: 'var(--ug-bg)',
+          surface: 'var(--ug-surface)',
+          muted: 'var(--ug-muted)',
+          border: 'var(--ug-border)',
+        },
         primary: {
-          DEFAULT: 'var(--pc-800, #1e40af)',
-          50: 'var(--pc-50, #eff6ff)',
-          100: 'var(--pc-100, #dbeafe)',
-          200: 'var(--pc-200, #bfdbfe)',
-          300: 'var(--pc-300, #93c5fd)',
-          400: 'var(--pc-400, #60a5fa)',
-          500: 'var(--pc-500, #3b82f6)',
-          600: 'var(--pc-600, #2563eb)',
-          700: 'var(--pc-700, #1d4ed8)',
-          800: 'var(--pc-800, #1e40af)',
-          900: 'var(--pc-900, #1e3a8a)',
-          950: 'var(--pc-950, #172554)',
+          DEFAULT: 'var(--pc-800, #0d5f66)',
+          50: 'var(--pc-50, #f5f9fa)',
+          100: 'var(--pc-100, #e6f3f4)',
+          200: 'var(--pc-200, #caeaed)',
+          300: 'var(--pc-300, #9ce2e8)',
+          400: 'var(--pc-400, #63dfe9)',
+          500: 'var(--pc-500, #2cdfec)',
+          600: 'var(--pc-600, #0a939d)',
+          700: 'var(--pc-700, #087a82)',
+          800: 'var(--pc-800, #0d5f66)',
+          900: 'var(--pc-900, #116d74)',
+          950: 'var(--pc-950, #10484c)',
         },
         success: {
           DEFAULT: '#10B981',
@@ -63,8 +77,20 @@ export default {
           950: '#450a0a',
         },
         background: {
-          DEFAULT: '#f8fafc',
+          DEFAULT: 'var(--ug-bg, #f4f7fa)',
         },
+      },
+      borderRadius: {
+        ug: 'var(--ug-radius-md)',
+        'ug-lg': 'var(--ug-radius-lg)',
+      },
+      boxShadow: {
+        ug: 'var(--ug-shadow-sm)',
+        'ug-md': 'var(--ug-shadow-md)',
+        'ug-lg': 'var(--ug-shadow-lg)',
+      },
+      transitionDuration: {
+        ug: 'var(--ug-duration)',
       },
     },
   },

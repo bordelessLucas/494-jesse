@@ -40,7 +40,7 @@ export function ModalDevolverRelatorio({
         role="dialog"
         aria-modal
         aria-labelledby="modal-devolver-titulo"
-        className="relative w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl"
+        className="relative w-full max-w-md ug-card p-6 shadow-xl"
       >
         <div className="flex items-start justify-between gap-3">
           <div>

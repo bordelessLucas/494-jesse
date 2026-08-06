@@ -1,8 +1,11 @@
-/** Cor primária padrão da plataforma (Tailwind primary-600 original). */
-export const DEFAULT_PRIMARY_HEX = '#2563eb'
+/** Cor primária padrão Unique Gestor (Ciano Escuro do manual). */
+export const DEFAULT_PRIMARY_HEX = '#0a939d'
 
 /** Chave usada no `index.html` e aqui para pintar a marca antes do React (evita FOUT). */
 export const THEME_COLOR_STORAGE_KEY = 'plantaoCheck_themeColor'
+
+/** Nome institucional exibido no chrome da aplicação. */
+export const PRODUCT_DISPLAY_NAME = 'Unique Gestor'
 
 export function persistThemeColorForEarlyPaint(hex: string) {
   try {
@@ -237,11 +240,11 @@ type BrandForeground = {
  */
 export function getReadableForeground(baseHex: string): BrandForeground {
   const normalized = normalizeBrandHex(baseHex) ?? DEFAULT_PRIMARY_HEX
-  const rgb = hexToRgb(normalized) ?? [37, 99, 235]
+  const rgb = hexToRgb(normalized) ?? [10, 147, 157]
   const isLightBrand = relativeLuminance(rgb) > 0.55
   return isLightBrand
-    ? { color: '#0f172a', rgb: [15, 23, 42], isLightBrand: true }
-    : { color: '#ffffff', rgb: [255, 255, 255], isLightBrand: false }
+    ? { color: '#070b13', rgb: [7, 11, 19], isLightBrand: true }
+    : { color: '#f4f7fa', rgb: [244, 247, 250], isLightBrand: false }
 }
 
 export function applyPrimaryCssVariables(baseHex: string, root: HTMLElement = document.documentElement) {

@@ -152,36 +152,34 @@ export function Topbar({ onAbrirMenuMobile }: TopbarProps) {
   }
 
   return (
-    <header className="no-print sticky top-0 z-20 border-b border-gray-200 bg-white shadow-sm print:hidden pt-[env(safe-area-inset-top)]">
+    <header className="no-print sticky top-0 z-20 border-b border-ug-border/80 bg-ug-surface/95 shadow-ug backdrop-blur-md print:hidden pt-[env(safe-area-inset-top)]">
       <div className="flex h-14 items-center justify-between gap-2 px-4 sm:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
           {onAbrirMenuMobile ? (
             <button
               type="button"
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 md:hidden"
-              aria-label="Abrir menu de navegacao"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-ug-celestial transition-colors hover:bg-ug-bg hover:text-ug-petrol md:hidden"
+              aria-label="Abrir menu de navegação"
               onClick={onAbrirMenuMobile}
             >
               <Menu className="h-5 w-5" aria-hidden />
             </button>
           ) : null}
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2 md:hidden">
             <BrandedLogoOrInitial
-              className="h-8 w-8 rounded-lg"
+              className="h-8 w-8"
               surface="light"
               alt=""
+              fallbackVariant="symbol"
             />
-            <p className="truncate text-sm font-semibold text-slate-900">
-              PlantaoCheck
-            </p>
           </div>
 
           <div className="relative hidden w-full max-w-md sm:block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ug-muted" />
             <input
               type="search"
               placeholder="Pesquisar…"
-              className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-primary-300 focus:ring-2 focus:ring-primary-100"
+              className="h-10 w-full rounded-ug border border-ug-border bg-ug-bg pl-10 pr-3 text-sm text-ug-text placeholder:text-ug-muted outline-none transition focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
             />
           </div>
         </div>
@@ -263,7 +261,7 @@ export function Topbar({ onAbrirMenuMobile }: TopbarProps) {
 
                       const itemClassName = [
                         'block w-full rounded-xl border border-transparent px-3 py-2 text-left outline-none transition-colors',
-                        isUnread ? 'bg-blue-50 hover:bg-blue-100/60' : 'bg-white hover:bg-slate-50',
+                        isUnread ? 'bg-primary-50 hover:bg-primary-100/60' : 'bg-white hover:bg-slate-50',
                         'focus-visible:border-primary-200 focus-visible:ring-2 focus-visible:ring-primary-100',
                       ].join(' ')
 

@@ -25,10 +25,10 @@ export function PwaUpdatePrompt() {
 
   return (
     <div className="no-print fixed inset-x-0 bottom-0 z-[70] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] print:hidden md:left-auto md:right-4 md:max-w-sm md:p-0 md:pb-4">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xl shadow-slate-300/40 ring-1 ring-black/5">
-        <p className="text-sm font-semibold text-slate-900">Nova versao disponivel</p>
-        <p className="mt-1 text-xs text-slate-600">
-          Atualize o PlantaoCheck para obter as ultimas melhorias.
+      <div className="ug-card p-4 shadow-xl shadow-slate-300/40 ring-1 ring-black/5">
+        <p className="text-sm font-semibold text-ug-petrol">Nova versão disponível</p>
+        <p className="mt-1 text-xs text-ug-muted">
+          Atualize o Unique Gestor para obter as últimas melhorias.
         </p>
         <div className="mt-3 flex gap-2">
           <button

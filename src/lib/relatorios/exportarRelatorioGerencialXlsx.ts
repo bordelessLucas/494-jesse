@@ -19,7 +19,7 @@ const COR_SUBTITULO = 'FF334155'
 const COR_CABECALHO_FUNDO = 'FFE2E8F0'
 const COR_BORDA = 'FFCBD5E1'
 const COR_BORDA_FORTE = 'FF94A3B8'
-const NOME_PLATAFORMA_PADRAO = 'PlantaoCheck'
+const NOME_PLATAFORMA_PADRAO = 'Unique Gestor'
 
 const BORDA_FINA: Partial<ExcelJS.Borders> = {
   top: { style: 'thin', color: { argb: COR_BORDA } },

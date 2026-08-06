@@ -78,7 +78,7 @@ function SectionCard({
   children: ReactNode
 }) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <section className="ug-card p-5 shadow-sm sm:p-6">
       <div className="mb-5 border-b border-slate-100 pb-4">
         <h3 className="text-base font-semibold text-slate-900">{title}</h3>
         {description ? (

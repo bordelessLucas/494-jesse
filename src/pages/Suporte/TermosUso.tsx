@@ -2,19 +2,19 @@ import { Link } from 'react-router-dom'
 
 export function TermosUsoPage() {
   return (
-    <article className="prose prose-slate mx-auto max-w-4xl rounded-xl bg-white p-8 shadow-sm">
-      <p className="text-sm font-medium text-slate-500 not-prose">PlantaoCheck · Suporte Legal</p>
+    <article className="prose prose-slate mx-auto max-w-4xl ug-card p-8">
+      <p className="text-sm font-semibold text-ug-muted not-prose">Unique Gestor · Suporte Legal</p>
       <h1>Termos de Uso</h1>
       <p className="lead">
-        Última atualização: 1 de julho de 2026. Ao aceder ou utilizar a PlantaoCheck, você concorda
+        Última atualização: 1 de julho de 2026. Ao aceder ou utilizar a Unique Gestor, você concorda
         com estes Termos de Uso.
       </p>
 
       <h2>1. Objeto</h2>
       <p>
-        A PlantaoCheck é uma plataforma de gestão de plantões, escalas, ponto eletrônico e
+        A Unique Gestor é uma plataforma de gestão de plantões, escalas, ponto eletrônico e
         relatórios para organizações de saúde. O acesso é concedido mediante contrato entre a
-        PlantaoCheck e a empresa contratante (tenant MASTER).
+        Unique Gestor e a empresa contratante (tenant MASTER).
       </p>
 
       <h2>2. Contas e responsabilidades</h2>
@@ -53,7 +53,7 @@ export function TermosUsoPage() {
 
       <h2>5. Propriedade intelectual</h2>
       <p>
-        A marca, interface, código e documentação da PlantaoCheck são protegidos. Os dados
+        A marca, interface, código e documentação da Unique Gestor são protegidos. Os dados
         inseridos pelo cliente permanecem de propriedade da organização contratante.
       </p>
 
@@ -66,7 +66,7 @@ export function TermosUsoPage() {
 
       <h2>7. Limitação de responsabilidade</h2>
       <p>
-        A PlantaoCheck não substitui decisões clínicas ou jurídicas da organização. Na extensão
+        A Unique Gestor não substitui decisões clínicas ou jurídicas da organização. Na extensão
         permitida pela lei, não respondemos por danos indiretos decorrentes de uso indevido ou
         indisponibilidade temporária, salvo dolo ou culpa grave.
       </p>

@@ -70,9 +70,9 @@ export function CadastroPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-slate-900">Criar conta</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Você será o <strong className="font-medium text-slate-700">MASTER</strong> da sua
+        <h1 className="ug-page-title text-xl">Criar conta</h1>
+        <p className="ug-page-subtitle">
+          Você será o <strong className="font-semibold text-ug-celestial">MASTER</strong> da sua
           empresa: define marca, convida funcionários e todos os dados ficam isolados por
           empresa.
         </p>
@@ -195,7 +195,7 @@ export function CadastroPage() {
 
         <button
           type="submit"
-          className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-60"
+          className="ug-btn-primary w-full"
           disabled={!canSubmit}
         >
           {isSubmitting ? 'Criando conta...' : 'Criar conta'}

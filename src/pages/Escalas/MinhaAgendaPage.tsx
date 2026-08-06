@@ -764,7 +764,7 @@ export function MinhaAgendaPage() {
                     return (
                       <article
                         key={plantao.id}
-                        className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+                        className="ug-card p-4 shadow-sm transition-shadow hover:shadow-md"
                       >
                         <div className="grid gap-4 lg:grid-cols-[8rem_minmax(0,1fr)_14rem] lg:items-center">
                           <div className="rounded-xl bg-slate-50 p-4 text-center">
@@ -857,7 +857,7 @@ export function MinhaAgendaPage() {
       </div>
 
       {diasNoMes > 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm">
+        <div className="ug-card p-4 text-sm text-slate-600 shadow-sm">
           {diasNoMes} dias no mês exibido.
         </div>
       ) : null}

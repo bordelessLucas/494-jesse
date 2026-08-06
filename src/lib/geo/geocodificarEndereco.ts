@@ -58,7 +58,7 @@ export async function geocodificarEndereco(
     headers: {
       Accept: 'application/json',
       'Accept-Language': 'pt-BR',
-      'User-Agent': 'PlantaoCheck/1.0 (cadastro-locais)',
+      'User-Agent': 'Unique Gestor/1.0 (cadastro-locais)',
     },
   })
 

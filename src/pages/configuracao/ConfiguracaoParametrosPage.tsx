@@ -39,7 +39,7 @@ export function ConfiguracaoParametrosPage() {
         </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto ug-card shadow-sm">
         <nav
           className="flex min-w-max gap-0 border-b border-slate-200 px-2 pt-2"
           aria-label="Secções de parametrização"
@@ -52,7 +52,7 @@ export function ConfiguracaoParametrosPage() {
                 cn(
                   'whitespace-nowrap rounded-t-lg px-4 py-2.5 text-sm font-medium transition-colors',
                   isActive
-                    ? 'border border-b-white border-slate-200 bg-white text-blue-700'
+                    ? 'border border-b-white border-slate-200 bg-white text-primary-700'
                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
                 )
               }

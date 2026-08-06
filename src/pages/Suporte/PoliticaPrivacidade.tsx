@@ -2,18 +2,18 @@ import { Link } from 'react-router-dom'
 
 export function PoliticaPrivacidadePage() {
   return (
-    <article className="prose prose-slate mx-auto max-w-4xl rounded-xl bg-white p-8 shadow-sm">
-      <p className="text-sm font-medium text-slate-500 not-prose">PlantaoCheck · Suporte Legal</p>
+    <article className="prose prose-slate mx-auto max-w-4xl ug-card p-8">
+      <p className="text-sm font-semibold text-ug-muted not-prose">Unique Gestor · Suporte Legal</p>
       <h1>Política de Privacidade</h1>
       <p className="lead">
-        Última atualização: 1 de julho de 2026. Esta política descreve como a PlantaoCheck trata
+        Última atualização: 1 de julho de 2026. Esta política descreve como a Unique Gestor trata
         dados pessoais em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº
         13.709/2018).
       </p>
 
       <h2>1. Controlador e finalidade</h2>
       <p>
-        A PlantaoCheck atua como operadora de plataforma SaaS contratada pela sua organização
+        A Unique Gestor atua como operadora de plataforma SaaS contratada pela sua organização
         (controladora dos dados dos profissionais e pacientes vinculados à operação). Processamos
         dados para gestão de escalas, plantões, ponto eletrônico, documentos profissionais e
         relatórios gerenciais.
@@ -70,7 +70,7 @@ export function PoliticaPrivacidadePage() {
       <p>
         Você pode solicitar confirmação de tratamento, acesso, correção, portabilidade,
         anonimização, eliminação ou revogação de consentimento contactando o DPO da sua
-        organização ou o suporte PlantaoCheck em{' '}
+        organização ou o suporte Unique Gestor em{' '}
         <a href="mailto:privacidade@plantaocheck.com.br">privacidade@plantaocheck.com.br</a>.
       </p>
 

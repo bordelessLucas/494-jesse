@@ -209,7 +209,7 @@ export function PontoPage() {
   if (!isMembroProfissional || !profissionalId) {
     return (
       <section className="mx-auto w-full max-w-lg px-1">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="ug-card p-6 shadow-sm">
           <h1 className="text-lg font-semibold text-slate-900">Ponto eletrónico</h1>
           <p className="mt-2 text-sm text-slate-600">
             {isTitular
@@ -349,7 +349,7 @@ export function PontoPage() {
               Ainda não há pontos registados.
             </div>
           ) : (
-            <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <ul className="divide-y divide-slate-100 overflow-hidden ug-card shadow-sm">
               {historico.map((reg) => (
                 <li key={reg.id} className="px-4 py-3.5">
                   <div className="flex items-start justify-between gap-3">

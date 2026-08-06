@@ -120,12 +120,10 @@ export function MarcaPlataformaPage() {
           <ChevronLeft className="h-4 w-4" aria-hidden />
           Voltar para configuração
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          Marca da plataforma
-        </h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Defina a cor principal e o logotipo exibidos na barra lateral e no topo.
-          As alterações são salvas na sua conta.
+        <h1 className="ug-page-title text-2xl">Marca da plataforma</h1>
+        <p className="ug-page-subtitle">
+          Personalize a cor principal e o logotipo do seu tenant. Sem logo customizado, a
+          identidade institucional Unique Gestor é usada automaticamente.
         </p>
       </div>
 
@@ -140,7 +138,7 @@ export function MarcaPlataformaPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="space-y-8 rounded-xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8"
+        className="space-y-8 ug-card p-6 sm:p-8"
       >
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
           <div className="flex flex-col gap-4 sm:w-48">
@@ -199,7 +197,7 @@ export function MarcaPlataformaPage() {
                   type="text"
                   value={colorInput}
                   onChange={(e) => setColorInput(e.target.value)}
-                  placeholder="#2563eb"
+                  placeholder="#0a939d"
                   spellCheck={false}
                   className="min-w-32 flex-1 rounded-md border border-slate-200 px-3 py-2 font-mono text-sm text-slate-900 shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                   autoComplete="off"

@@ -110,7 +110,7 @@ export function EscalasPage() {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8 pb-10">
       <header className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 px-6 py-8 text-white shadow-xl md:px-10 md:py-10">
-        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-blue-500/20 blur-3xl" />
+        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-primary-500/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 left-1/3 h-56 w-56 rounded-full bg-indigo-400/10 blur-3xl" />
         <div className="relative">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur-sm">
@@ -213,7 +213,7 @@ export function EscalasPage() {
                       ) : null}
                     </div>
                   </div>
-                  <span className="text-xs font-medium text-blue-700 group-hover:underline">
+                  <span className="text-xs font-medium text-primary-700 group-hover:underline">
                     Abrir →
                   </span>
                 </div>

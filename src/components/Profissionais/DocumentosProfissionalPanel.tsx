@@ -326,7 +326,7 @@ export function DocumentosProfissionalPanel({
             <p className="mt-2 text-sm text-slate-600">Nenhum documento enviado ainda.</p>
           </div>
         ) : (
-          <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
+          <ul className="divide-y divide-slate-100 ug-card">
             {documentos.map((doc) => (
               <li
                 key={doc.id}

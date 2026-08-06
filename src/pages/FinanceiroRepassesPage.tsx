@@ -234,7 +234,7 @@ export function FinanceiroRepassesPage() {
         <p className="text-xs text-slate-500">{intervalo.rotulo}</p>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden ug-card shadow-sm">
         {carregando ? (
           <div className="flex items-center justify-center gap-2 py-16 text-slate-600">
             <Loader2 className="h-6 w-6 animate-spin text-primary-600" aria-hidden />

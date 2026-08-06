@@ -227,7 +227,7 @@ export function CargaHorariaPage() {
         </div>
       ) : null}
 
-      <header className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
+      <header className="ug-card p-5 sm:p-6">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
@@ -318,7 +318,7 @@ export function CargaHorariaPage() {
               <li key={p.id}>
                 <article
                   className={cn(
-                    'h-full rounded-xl border border-slate-100 bg-white p-5 shadow-sm',
+                    'h-full ug-card p-5',
                     status === 'danger' && 'ring-1 ring-danger-200',
                   )}
                 >

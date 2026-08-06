@@ -149,7 +149,7 @@ export function ConfirmacoesPainelPage() {
         </p>
       </header>
 
-      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-end gap-3 ug-card p-4">
         <div className="min-w-[12rem]">
           <label className="mb-1 block text-xs font-medium text-slate-600">Local</label>
           <select
@@ -220,7 +220,7 @@ export function ConfirmacoesPainelPage() {
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden ug-card shadow-sm">
         {carregando ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-500">
             <Loader2 className="h-5 w-5 animate-spin" />

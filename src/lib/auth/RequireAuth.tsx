@@ -13,7 +13,7 @@ export function RequireAuth({ children }: AuthGateProps) {
   if (isLoading) {
     return (
       <div className="grid min-h-dvh place-items-center bg-slate-50 px-4">
-        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-700 shadow-sm">
+        <div className="ug-card px-5 py-4 text-sm text-slate-700 shadow-sm">
           Carregando sessão...
         </div>
       </div>

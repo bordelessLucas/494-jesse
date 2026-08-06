@@ -244,7 +244,7 @@ export function HistoricoRelatoriosPage() {
             </p>
           ) : null}
 
-          <div className="no-print overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="no-print overflow-hidden ug-card shadow-sm">
             {carregando ? (
               <div className="flex items-center justify-center gap-2 px-4 py-16 text-sm text-slate-600">
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
@@ -342,7 +342,7 @@ export function HistoricoRelatoriosPage() {
           </div>
 
           {selecionado && previewDados && tenantUserId ? (
-            <section className="no-print mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <section className="no-print mt-6 overflow-hidden ug-card shadow-sm">
               <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">

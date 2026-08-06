@@ -805,7 +805,7 @@ export function ModelosEscalaPage() {
         </div>
       ) : null}
 
-      <div className="no-print flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:flex-wrap lg:items-end">
+      <div className="no-print flex flex-col gap-4 ug-card p-4 shadow-sm lg:flex-row lg:flex-wrap lg:items-end">
         <SeletorLocalSetor
           className="lg:flex-1"
           localId={localId}
@@ -995,7 +995,7 @@ export function ModelosEscalaPage() {
             ) : null}
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm print:border-slate-400 print:shadow-none">
+          <div className="overflow-x-auto ug-card shadow-sm print:border-slate-400 print:shadow-none">
             <table className="w-full min-w-[840px] table-fixed border-collapse text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">

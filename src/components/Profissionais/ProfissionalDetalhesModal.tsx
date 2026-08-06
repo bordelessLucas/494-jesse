@@ -296,7 +296,7 @@ function iniciaisNome(nome: string) {
 }
 
 const inputEditavel =
-  'w-full cursor-text rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition-colors placeholder:text-slate-400 hover:border-slate-300 focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20'
+  'w-full cursor-text rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition-colors placeholder:text-slate-400 hover:border-slate-300 focus:border-primary-600 focus:ring-2 focus:ring-primary-600/20'
 
 function FormLabel({ children, htmlFor }: { children: ReactNode; htmlFor: string }) {
   return (
@@ -354,7 +354,7 @@ function DadosBancariosAba({
   const labelDb =
     'mb-1 block text-sm font-medium text-slate-600'
   const campoDb =
-    'w-full max-w-md rounded border border-[#DDDDDD] bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition-colors focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20'
+    'w-full max-w-md rounded border border-[#DDDDDD] bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition-colors focus:border-primary-600 focus:ring-2 focus:ring-primary-600/20'
 
   const indiceTransacao = form.contasBancarias.length + 1
 
@@ -413,7 +413,7 @@ function DadosBancariosAba({
           <h3 className="text-sm font-bold text-slate-900">1. Dados antigos</h3>
           <button
             type="button"
-            className="inline-flex w-fit shrink-0 items-center justify-center gap-2 rounded-md border border-[#2563eb] bg-white px-3 py-2 text-sm font-medium text-[#2563eb] shadow-sm transition-colors hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb]"
+            className="inline-flex w-fit shrink-0 items-center justify-center gap-2 rounded-md border border-primary-600 bg-white px-3 py-2 text-sm font-medium text-primary-600 shadow-sm transition-colors hover:bg-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
           >
             <Shuffle className="h-4 w-4 shrink-0" aria-hidden />
             Migrar dados
@@ -513,7 +513,7 @@ function DadosBancariosAba({
         ) : null}
 
         {formularioAberto ? (
-          <div className="rounded-xl border-2 border-[#2563eb] bg-slate-50/90 p-4 shadow-sm sm:p-5">
+          <div className="rounded-xl border-2 border-primary-600 bg-slate-50/90 p-4 shadow-sm sm:p-5">
             <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h4 className="text-base font-bold text-[#1e3a8a]">
                 {indiceTransacao}. Transação
@@ -555,7 +555,7 @@ function DadosBancariosAba({
             <div className="max-w-md space-y-4">
               <div>
                 <label htmlFor="db-tipo-trans" className={labelDb}>
-                  Tipo <span className="font-semibold text-[#2563eb]">*</span>
+                  Tipo <span className="font-semibold text-primary-600">*</span>
                 </label>
                 <select
                   id="db-tipo-trans"
@@ -605,7 +605,7 @@ function DadosBancariosAba({
           <button
             type="button"
             onClick={abrirFormulario}
-            className="flex w-full items-center justify-center rounded-xl border-2 border-[#2563eb] bg-white py-14 px-6 text-sm font-medium text-[#2563eb] shadow-sm transition-colors hover:bg-blue-50/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb]"
+            className="flex w-full items-center justify-center rounded-xl border-2 border-primary-600 bg-white py-14 px-6 text-sm font-medium text-primary-600 shadow-sm transition-colors hover:bg-primary-50/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
           >
             <span className="inline-flex items-center gap-2">
               <Plus className="h-5 w-5 shrink-0" aria-hidden />
@@ -731,7 +731,7 @@ function ContratacaoFormulario({
     'mb-1 block text-xs font-medium text-[#666666]'
 
   const campoContr =
-    'w-full min-w-0 rounded border border-[#DDDDDD] bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition-colors placeholder:text-slate-400 hover:border-slate-300 focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20'
+    'w-full min-w-0 rounded border border-[#DDDDDD] bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition-colors placeholder:text-slate-400 hover:border-slate-300 focus:border-primary-600 focus:ring-2 focus:ring-primary-600/20'
 
   function abrirRascunho() {
     setRascunho({
@@ -796,7 +796,7 @@ function ContratacaoFormulario({
         Adicione os períodos de contratação para o profissional.
       </p>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden ug-card shadow-sm">
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-3 bg-slate-100 px-4 py-3 sm:px-5">
           <span className="text-sm font-bold text-slate-700">Tipo</span>
           <span className="text-center text-sm font-bold text-slate-700">Período</span>
@@ -846,7 +846,7 @@ function ContratacaoFormulario({
               <div className="w-full shrink-0 sm:max-w-[11rem]">
                 <label htmlFor="ct-ras-tipo" className={labelContr}>
                   Tipo
-                  <span className="font-semibold text-[#2563eb]"> *</span>
+                  <span className="font-semibold text-primary-600"> *</span>
                 </label>
                 <select
                   id="ct-ras-tipo"
@@ -864,7 +864,7 @@ function ContratacaoFormulario({
               <div className="w-full shrink-0 sm:max-w-[11rem]">
                 <label htmlFor="ct-ras-inicio" className={labelContr}>
                   Início
-                  <span className="font-semibold text-[#2563eb]"> *</span>
+                  <span className="font-semibold text-primary-600"> *</span>
                 </label>
                 <input
                   id="ct-ras-inicio"
@@ -917,7 +917,7 @@ function ContratacaoFormulario({
                 <button
                   type="button"
                   onClick={confirmarRascunho}
-                  className="inline-flex items-center gap-2 text-sm font-bold text-[#2563eb] transition-colors hover:text-[#1d4ed8]"
+                  className="inline-flex items-center gap-2 text-sm font-bold text-primary-600 transition-colors hover:text-primary-700"
                 >
                   Adicionar
                   <span
@@ -937,7 +937,7 @@ function ContratacaoFormulario({
             <button
               type="button"
               onClick={abrirRascunho}
-              className="flex w-full items-center justify-center rounded-xl border-2 border-[#2563eb] bg-white py-14 px-6 text-sm font-medium text-[#2563eb] shadow-sm transition-colors hover:bg-blue-50/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb]"
+              className="flex w-full items-center justify-center rounded-xl border-2 border-primary-600 bg-white py-14 px-6 text-sm font-medium text-primary-600 shadow-sm transition-colors hover:bg-primary-50/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
             >
               <span className="inline-flex items-center gap-2">
                 <Plus className="h-5 w-5 shrink-0" aria-hidden />
@@ -1031,7 +1031,7 @@ function AfastamentosFormulario({
 
   const lista = form.afastamentos
   const campoData =
-    'w-full min-w-0 rounded border border-[#DDDDDD] bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition-colors placeholder:text-slate-400 hover:border-slate-300 focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20'
+    'w-full min-w-0 rounded border border-[#DDDDDD] bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition-colors placeholder:text-slate-400 hover:border-slate-300 focus:border-primary-600 focus:ring-2 focus:ring-primary-600/20'
 
   return (
     <div className="space-y-5">
@@ -1039,7 +1039,7 @@ function AfastamentosFormulario({
         Gerencie os períodos de afastamento para o profissional.
       </p>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden ug-card shadow-sm">
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-3 bg-slate-100 px-4 py-3 sm:px-5">
           <span className="text-sm font-bold text-slate-700">Período</span>
           <span className="text-center text-sm font-bold text-slate-700">Tipo</span>
@@ -1163,7 +1163,7 @@ function AfastamentosFormulario({
                 <button
                   type="button"
                   onClick={confirmarRascunho}
-                  className="inline-flex items-center gap-2 text-sm font-medium text-[#2563eb] transition-colors hover:text-[#1d4ed8]"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 transition-colors hover:text-primary-700"
                 >
                   Adicionar
                   <CheckCircle2
@@ -1182,7 +1182,7 @@ function AfastamentosFormulario({
             <button
               type="button"
               onClick={abrirNovoRascunho}
-              className="flex w-full items-center justify-center rounded-xl border-2 border-[#2563eb] bg-white py-14 px-6 text-sm font-medium text-[#2563eb] shadow-sm transition-colors hover:bg-blue-50/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb]"
+              className="flex w-full items-center justify-center rounded-xl border-2 border-primary-600 bg-white py-14 px-6 text-sm font-medium text-primary-600 shadow-sm transition-colors hover:bg-primary-50/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
             >
               <span className="inline-flex items-center gap-2">
                 <Plus className="h-5 w-5 shrink-0" aria-hidden />
@@ -1248,7 +1248,7 @@ function HabilidadesFormulario({
         <button
           type="button"
           onClick={adicionar}
-          className="inline-flex w-fit shrink-0 items-center justify-center gap-2 rounded-md bg-[#2563eb] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#1d4ed8]"
+          className="inline-flex w-fit shrink-0 items-center justify-center gap-2 rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700"
         >
           <Plus className="h-4 w-4 shrink-0" aria-hidden />
           Adicionar
@@ -1396,7 +1396,7 @@ function AnexosFormulario({
       <button
         type="button"
         onClick={adicionarLinha}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[#2563eb]/60 bg-blue-50/40 py-4 text-sm font-medium text-[#2563eb] hover:bg-blue-50"
+        className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary-600/60 bg-primary-50/40 py-4 text-sm font-medium text-primary-600 hover:bg-primary-50"
       >
         <Plus className="h-4 w-4 shrink-0" aria-hidden />
         Adicionar registro de anexo
@@ -2010,7 +2010,7 @@ function InformacoesFormulario({
         </div>
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-md border border-[#2563eb] bg-white px-4 py-2 text-sm font-medium text-[#2563eb] shadow-sm transition-colors hover:bg-blue-50"
+          className="inline-flex items-center gap-2 rounded-md border border-primary-600 bg-white px-4 py-2 text-sm font-medium text-primary-600 shadow-sm transition-colors hover:bg-primary-50"
         >
           <Search className="h-4 w-4 shrink-0" aria-hidden />
           Buscar no CFM
@@ -2354,7 +2354,7 @@ export function ProfissionalDetalhesModal({
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs font-semibold uppercase text-[#2563eb]">
+                  <div className="flex h-full w-full items-center justify-center text-xs font-semibold uppercase text-primary-600">
                     {iniciaisNome(profissionalAtual.nome)}
                   </div>
                 )}
@@ -2362,7 +2362,7 @@ export function ProfissionalDetalhesModal({
               <div className="min-w-0">
                 <h2
                   id="profissional-modal-title"
-                  className="truncate text-base font-semibold text-[#2563eb] lg:text-lg"
+                  className="truncate text-base font-semibold text-primary-600 lg:text-lg"
                 >
                   {profissionalAtual.nome}
                 </h2>
@@ -2435,7 +2435,7 @@ export function ProfissionalDetalhesModal({
               disabled={salvando}
               className={cn(
                 'inline-flex h-10 min-w-[158px] items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold text-white shadow-sm',
-                salvando ? 'bg-sky-400' : 'bg-[#2563eb] hover:bg-[#1d4ed8]',
+                salvando ? 'bg-sky-400' : 'bg-primary-600 hover:bg-primary-700',
                 'disabled:cursor-not-allowed',
               )}
             >
@@ -2469,14 +2469,14 @@ export function ProfissionalDetalhesModal({
                 className={cn(
                   'flex min-w-fit shrink-0 items-center gap-3 border-b-4 border-transparent px-3 py-2.5 text-left text-sm font-medium transition-colors md:w-full md:border-b-0 md:border-l-4 md:border-l-transparent md:px-4',
                   id === aba
-                    ? 'border-b-[#2563eb] bg-blue-50/60 text-[#2563eb] md:border-b-transparent md:border-l-[#2563eb]'
+                    ? 'border-b-primary-600 bg-primary-50/60 text-primary-600 md:border-b-transparent md:border-l-primary-600'
                     : 'text-slate-600 hover:bg-slate-50',
                 )}
               >
                 <Icon
                   className={cn(
                     'h-4 w-4 shrink-0',
-                    id === aba ? 'text-[#2563eb]' : 'text-slate-400',
+                    id === aba ? 'text-primary-600' : 'text-slate-400',
                   )}
                   aria-hidden
                 />

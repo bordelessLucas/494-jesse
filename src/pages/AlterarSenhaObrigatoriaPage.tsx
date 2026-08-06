@@ -60,10 +60,10 @@ export function AlterarSenhaObrigatoriaPage() {
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md items-center px-4">
-      <div className="w-full rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">Alterar senha</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Por segurança, defina uma nova senha antes de continuar a usar a plataforma.
+      <div className="ug-card w-full p-6 sm:p-8">
+        <h1 className="ug-page-title text-xl">Alterar senha</h1>
+        <p className="ug-page-subtitle">
+          Por segurança, defina uma nova senha antes de continuar a usar a Unique Gestor.
         </p>
 
         <form className="mt-6 space-y-4" onSubmit={(e) => void aoSalvar(e)}>
@@ -98,7 +98,7 @@ export function AlterarSenhaObrigatoriaPage() {
           <button
             type="submit"
             disabled={salvando}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60"
+            className="ug-btn-primary w-full"
           >
             {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Guardar e continuar

@@ -154,7 +154,7 @@ export function VisualizadoresPage() {
         <button
           type="button"
           onClick={abrirCriar}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
         >
           <UserPlus className="h-4 w-4" />
           Criar acesso
@@ -199,7 +199,7 @@ export function VisualizadoresPage() {
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden ug-card shadow-sm">
         {carregando ? (
           <div className="flex min-h-[200px] items-center justify-center text-slate-500">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -330,7 +330,7 @@ export function VisualizadoresPage() {
                 type="button"
                 disabled={salvando}
                 onClick={() => void (modalCriar ? confirmarCriar() : confirmarEditar())}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-60"
               >
                 {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                 {modalCriar ? 'Criar acesso' : 'Guardar permissões'}

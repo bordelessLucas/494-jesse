@@ -485,14 +485,14 @@ export function ProfissionaisPage() {
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-md border border-[#007bff]/40 bg-white px-3 py-2 text-sm font-medium text-[#007bff] transition-colors hover:bg-blue-50"
+              className="inline-flex items-center gap-2 rounded-md border border-[#007bff]/40 bg-white px-3 py-2 text-sm font-medium text-[#007bff] transition-colors hover:bg-primary-50"
             >
               <UserMinus className="h-4 w-4 shrink-0" aria-hidden />
               Remover Selecionados de um Grupo
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-md border border-[#007bff]/40 bg-white px-3 py-2 text-sm font-medium text-[#007bff] transition-colors hover:bg-blue-50"
+              className="inline-flex items-center gap-2 rounded-md border border-[#007bff]/40 bg-white px-3 py-2 text-sm font-medium text-[#007bff] transition-colors hover:bg-primary-50"
             >
               <UserPlus className="h-4 w-4 shrink-0" aria-hidden />
               Adicionar Selecionados a um Grupo

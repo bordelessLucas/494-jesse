@@ -115,7 +115,7 @@ export function EspecialidadesPage() {
         <button
           type="button"
           onClick={() => setLinhas((prev) => [...prev, novaLinha()])}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
         >
           <Plus className="h-4 w-4" />
           Nova especialidade
@@ -128,7 +128,7 @@ export function EspecialidadesPage() {
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden ug-card shadow-sm">
         {carregando ? (
           <div className="flex min-h-[200px] items-center justify-center text-slate-500">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -227,7 +227,7 @@ export function EspecialidadesPage() {
                             onClick={() => void salvar(row)}
                             disabled={row.saving}
                             className={cn(
-                              'rounded-lg p-2 text-blue-600 hover:bg-blue-50',
+                              'rounded-lg p-2 text-blue-600 hover:bg-primary-50',
                               row.saving && 'opacity-60',
                             )}
                             title="Guardar"

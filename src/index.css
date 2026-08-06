@@ -2,25 +2,64 @@
 /* Tailwind v4: carrega cores `primary` e demais extends do tailwind.config.js */
 @config "../tailwind.config.js";
 
-/* Paleta primary padrão (white label sobrescreve via ThemeBrandingProvider). */
+/*
+  Design System Unique Gestor
+  Manual de Marca v.1 | 2026 — fonte de verdade cromática e tipográfica.
+  White-label sobrescreve --pc-* via ThemeBrandingProvider.
+*/
 :root {
-  --pc-50: #eff6ff;
-  --pc-100: #dbeafe;
-  --pc-200: #bfdbfe;
-  --pc-300: #93c5fd;
-  --pc-400: #60a5fa;
-  --pc-500: #3b82f6;
-  --pc-600: #2563eb;
-  --pc-700: #1d4ed8;
-  --pc-800: #1e40af;
-  --pc-900: #1e3a8a;
-  --pc-950: #172554;
+  /* Institucionais (manual) */
+  --ug-celestial: #134d65;
+  --ug-cyan: #0a939d;
+  --ug-porcelain: #f4f7fa;
+  --ug-petrol: #070b13;
 
-  /* Cor escolhida pelo usuário aplicada de forma exata em superfícies de marca
-     (ex.: barra lateral), sem passar pela escala 50→950. */
-  --pc-brand: #2563eb;
-  --pc-brand-foreground: #ffffff;
-  --pc-brand-foreground-rgb: 255 255 255;
+  /* Superfícies sistema claro (produto) */
+  --ug-bg: #f4f7fa;
+  --ug-surface: #ffffff;
+  --ug-surface-muted: #eef2f6;
+  --ug-border: #d5dee7;
+  --ug-border-subtle: #e4ebf1;
+  --ug-text: #070b13;
+  --ug-text-secondary: #3d4f5c;
+  --ug-muted: #6b7c89;
+  --ug-focus-ring: color-mix(in srgb, var(--pc-600) 35%, transparent);
+
+  /* Elevação */
+  --ug-shadow-sm: 0 1px 2px rgb(7 11 19 / 0.05);
+  --ug-shadow-md: 0 8px 24px -12px rgb(7 11 19 / 0.18);
+  --ug-shadow-lg: 0 20px 40px -18px rgb(7 11 19 / 0.28);
+
+  /* Radius / motion */
+  --ug-radius-sm: 0.5rem;
+  --ug-radius-md: 0.75rem;
+  --ug-radius-lg: 1rem;
+  --ug-radius-xl: 1.25rem;
+  --ug-duration: 160ms;
+  --ug-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Escala primary default ancorada no Ciano Escuro (#0A939D = 600) */
+  --pc-50: #f5f9fa;
+  --pc-100: #e6f3f4;
+  --pc-200: #caeaed;
+  --pc-300: #9ce2e8;
+  --pc-400: #63dfe9;
+  --pc-500: #2cdfec;
+  --pc-600: #0a939d;
+  --pc-700: #087a82;
+  --pc-800: #0d5f66;
+  --pc-900: #116d74;
+  --pc-950: #10484c;
+
+  --pc-brand: #0a939d;
+  --pc-brand-foreground: #f4f7fa;
+  --pc-brand-foreground-rgb: 244 247 250;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ug-duration: 0ms;
+  }
 }
 
 @layer base {
@@ -33,7 +72,11 @@
   body {
     min-height: 100%;
     min-height: 100dvh;
-    @apply bg-slate-50 text-slate-900 antialiased;
+    font-family: Manrope, ui-sans-serif, system-ui, sans-serif;
+    background-color: var(--ug-bg);
+    color: var(--ug-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
     overscroll-behavior-y: none;
@@ -49,6 +92,110 @@
   select,
   textarea {
     touch-action: manipulation;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--pc-600);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .ug-card {
+    border-radius: var(--ug-radius-lg);
+    border: 1px solid var(--ug-border-subtle);
+    background: var(--ug-surface);
+    box-shadow: var(--ug-shadow-sm);
+  }
+
+  .ug-input {
+    height: 2.75rem;
+    width: 100%;
+    border-radius: var(--ug-radius-md);
+    border: 1px solid var(--ug-border);
+    background: var(--ug-surface);
+    padding-inline: 0.875rem;
+    font-size: 0.875rem;
+    color: var(--ug-text);
+    box-shadow: var(--ug-shadow-sm);
+    outline: none;
+    transition:
+      border-color var(--ug-duration) var(--ug-ease),
+      box-shadow var(--ug-duration) var(--ug-ease);
+  }
+
+  .ug-input::placeholder {
+    color: var(--ug-muted);
+  }
+
+  .ug-input:hover {
+    border-color: color-mix(in srgb, var(--ug-celestial) 28%, var(--ug-border));
+  }
+
+  .ug-input:focus {
+    border-color: var(--pc-600);
+    box-shadow: 0 0 0 3px var(--ug-focus-ring);
+  }
+
+  .ug-btn-primary {
+    display: inline-flex;
+    height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--ug-radius-md);
+    background: var(--pc-600);
+    padding-inline: 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ffffff;
+    box-shadow: var(--ug-shadow-sm);
+    transition:
+      background-color var(--ug-duration) var(--ug-ease),
+      opacity var(--ug-duration) var(--ug-ease);
+  }
+
+  .ug-btn-primary:hover:not(:disabled) {
+    background: var(--pc-700);
+  }
+
+  .ug-btn-primary:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .ug-btn-secondary {
+    display: inline-flex;
+    height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--ug-radius-md);
+    border: 1px solid var(--ug-border);
+    background: var(--ug-surface);
+    padding-inline: 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--ug-celestial);
+    transition: background-color var(--ug-duration) var(--ug-ease);
+  }
+
+  .ug-btn-secondary:hover:not(:disabled) {
+    background: var(--ug-surface-muted);
+  }
+
+  .ug-page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ug-petrol);
+  }
+
+  .ug-page-subtitle {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--ug-muted);
   }
 }
 
@@ -158,6 +305,5 @@ body[data-somente-leitura='1'] .somente-leitura-conteudo textarea:not([readonly]
 body[data-somente-leitura='1'] .somente-leitura-conteudo select {
   pointer-events: none;
   opacity: 0.85;
-  background-color: rgb(248 250 252);
+  background-color: var(--ug-surface-muted);
 }
-

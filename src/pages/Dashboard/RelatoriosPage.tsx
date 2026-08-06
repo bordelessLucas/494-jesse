@@ -152,7 +152,7 @@ export function RelatoriosPage({ tipoInicial }: RelatoriosPageProps = {}) {
   const { empresa } = useContaMembro()
   const { logoUrl } = useThemeBranding()
   const { locais, setoresPorLocalId } = useCatalogoLocaisSetores()
-  const nomeEmpresa = empresa?.nome?.trim() || 'PlantaoCheck'
+  const nomeEmpresa = empresa?.nome?.trim() || 'Unique Gestor'
   const previewRef = useRef<HTMLElement>(null)
 
   const [filtros, setFiltros] = useState<FiltrosGerador>(() => filtrosIniciais(tipoUrl))
@@ -317,7 +317,7 @@ export function RelatoriosPage({ tipoInicial }: RelatoriosPageProps = {}) {
       )
       await exportarRelatorioGerencialParaXlsx({
         tipoRelatorio: filtrosGerados.tipoRelatorio,
-        nomePlataforma: 'PlantaoCheck',
+        nomePlataforma: 'Unique Gestor',
         nomeEmpresa,
         logoUrl,
         dataInicio: filtrosGerados.dataInicio,

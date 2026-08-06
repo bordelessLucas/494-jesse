@@ -457,7 +457,7 @@ export function ExtratoFinanceiroPage() {
       ) : null}
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="ug-card p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
             Total bruto
           </p>
@@ -465,7 +465,7 @@ export function ExtratoFinanceiroPage() {
             {fmtBRL(totais.totalBruto)}
           </p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="ug-card p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
             Total descontos / glosas
           </p>
@@ -521,7 +521,7 @@ export function ExtratoFinanceiroPage() {
             !user
           }
           onClick={() => void confirmarFechamento()}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white shadow hover:bg-[#1d4ed8] disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-primary-700 disabled:opacity-50"
         >
           {fechando ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -547,7 +547,7 @@ export function ExtratoFinanceiroPage() {
         ) : null}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden ug-card shadow-sm">
         {carregando ? (
           <div className="flex items-center justify-center gap-2 py-16 text-slate-600">
             <Loader2 className="h-6 w-6 animate-spin" /> A carregar plantões…
@@ -637,7 +637,7 @@ export function ExtratoFinanceiroPage() {
                             }}
                             onBlur={() => void persistirLinhaPlantao(L.plantaoId)}
                             className={cn(
-                              'w-28 rounded-md border px-2 py-1.5 text-right tabular-nums outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20',
+                              'w-28 rounded-md border px-2 py-1.5 text-right tabular-nums outline-none focus:border-primary-600 focus:ring-2 focus:ring-primary-600/20',
                               extratoBloqueado
                                 ? 'cursor-not-allowed border-slate-100 bg-slate-50 text-slate-500'
                                 : 'border-slate-200 bg-white',
@@ -660,7 +660,7 @@ export function ExtratoFinanceiroPage() {
                           onBlur={() => void persistirLinhaPlantao(L.plantaoId)}
                           placeholder="Motivo da glosa, nota…"
                           className={cn(
-                            'w-full min-w-[12rem] max-w-md rounded-md border px-2 py-1.5 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20',
+                            'w-full min-w-[12rem] max-w-md rounded-md border px-2 py-1.5 text-sm outline-none focus:border-primary-600 focus:ring-2 focus:ring-primary-600/20',
                             extratoBloqueado
                               ? 'cursor-not-allowed border-slate-100 bg-slate-50 text-slate-500'
                               : 'border-slate-200 bg-white',

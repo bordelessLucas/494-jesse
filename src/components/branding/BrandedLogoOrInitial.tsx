@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 
 import { cn } from '../../lib/cn'
 import { useThemeBranding } from '../../theme/ThemeBrandingProvider'
+import { BrandLogo, type BrandLogoSurface } from './BrandLogo'
 
-/** Onde o logo aparece: define contraste do fallback com iniciais. */
-export type BrandLogoSurface = 'light' | 'dark'
+export type { BrandLogoSurface }
 
 type BrandedLogoOrInitialProps = {
   /** Classes no contêiner (tamanho, cantos). */
   className?: string
+  /** @deprecated Mantido por compatibilidade; fallback usa BrandLogo oficial. */
   initial?: string
   alt?: string
   /**
@@ -17,18 +18,20 @@ type BrandedLogoOrInitialProps = {
    */
   logoSrc?: string | null
   /**
-   * `light`: topbar / fundo claro — iniciais em pastilha primary.
-   * `dark`: sidebar — iniciais em vidro sobre fundo escuro (sem caixa colorida no logo).
+   * `light`: topbar / fundo claro.
+   * `dark`: sidebar / fundo escuro ou cor de marca.
    */
   surface?: BrandLogoSurface
+  /** Variante do fallback institucional quando não há logo do tenant. */
+  fallbackVariant?: 'symbol' | 'horizontal' | 'horizontal2l'
 }
 
 export function BrandedLogoOrInitial({
   className,
-  initial = 'P',
   alt = 'Logotipo',
   logoSrc: logoSrcProp,
   surface = 'light',
+  fallbackVariant = 'symbol',
 }: BrandedLogoOrInitialProps) {
   const { logoUrl } = useThemeBranding()
   const resolvedLogo = logoSrcProp !== undefined ? logoSrcProp : logoUrl
@@ -61,14 +64,19 @@ export function BrandedLogoOrInitial({
   return (
     <div
       className={cn(
-        'flex items-center justify-center overflow-hidden font-semibold leading-none text-white',
-        surface === 'dark'
-          ? 'bg-white/15 text-white ring-1 ring-inset ring-white/20'
-          : 'bg-primary-600 text-white shadow-sm',
+        'flex items-center justify-center overflow-hidden bg-transparent',
         className,
       )}
     >
-      <span className="text-sm">{initial}</span>
+      <BrandLogo
+        variant={fallbackVariant}
+        surface={surface}
+        tone={surface === 'dark' ? 'mono' : 'color'}
+        size="md"
+        alt={alt}
+        className="max-h-full max-w-full"
+        decorative={alt === ''}
+      />
     </div>
   )
 }

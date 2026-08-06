@@ -130,7 +130,7 @@ function CardShell({
   filtrosAtivos?: boolean
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-xl border border-slate-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
+    <div className="flex h-full min-h-0 flex-col ug-card shadow-ug transition-shadow duration-200 hover:shadow-md">
       <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
         <div className="min-w-0">{titulo}</div>
         {acaoTopo ??
@@ -213,7 +213,7 @@ function BotaoFiltrosPopover({
           id={painelId}
           role="dialog"
           aria-label="Filtros do painel"
-          className="absolute right-0 z-30 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-xl shadow-slate-300/30 ring-1 ring-black/5"
+          className="absolute right-0 z-30 mt-2 w-72 ug-card p-4 shadow-xl shadow-slate-300/30 ring-1 ring-black/5"
         >
           {children}
         </div>
@@ -293,7 +293,7 @@ function DonutTiposPlantao({
   const corHexPorClasse: Record<string, string> = {
     'bg-slate-300': '#cbd5e1',
     'bg-warning-500': '#f97316',
-    'bg-primary-600': '#2563eb',
+    'bg-primary-600': 'var(--pc-600)',
   }
 
   let acum = 0
@@ -506,7 +506,7 @@ function CardMetricaBi({
   destaqueClass: string
 }) {
   return (
-    <article className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+    <article className="ug-card p-5 transition-shadow hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -778,7 +778,7 @@ function ListaCandidaturas48h({
         return (
           <li
             key={c.id}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"
+            className="ug-card px-3 py-3 shadow-sm"
           >
             <p className="font-semibold text-slate-900">{c.candidatoNome}</p>
             <p className="mt-0.5 text-xs text-slate-500">
@@ -1152,7 +1152,7 @@ export function ResumoPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 bg-slate-50">
+    <div className="mx-auto w-full max-w-7xl space-y-6 bg-ug-bg">
       {erro ? (
         <div
           className="rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-800"
@@ -1168,7 +1168,7 @@ export function ResumoPage() {
             <p className="text-xs font-semibold uppercase tracking-wider text-primary-700">
               Painel de controle
             </p>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            <h1 className="ug-page-title text-2xl">
               Resumo
             </h1>
           </div>

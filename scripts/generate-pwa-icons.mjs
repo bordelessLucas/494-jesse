@@ -1,10 +1,16 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { spawnSync } from 'node:child_process'
 import sharp from 'sharp'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const publicDir = join(__dirname, '..', 'public')
+
+const writeUg = spawnSync(process.execPath, [join(__dirname, 'write-ug-pwa-icons.mjs')], {
+  stdio: 'inherit',
+})
+if (writeUg.status !== 0) process.exit(writeUg.status ?? 1)
 
 const targets = [
   { input: 'pwa-icon.svg', output: 'pwa-192x192.png', size: 192 },

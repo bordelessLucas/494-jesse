@@ -257,7 +257,7 @@ export function TipoServicoGestaoPage({ slug }: TipoServicoGestaoPageProps) {
         </div>
       ) : null}
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="ug-card p-5 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">Configuração geral</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <label className="block text-sm">
@@ -292,7 +292,7 @@ export function TipoServicoGestaoPage({ slug }: TipoServicoGestaoPageProps) {
             type="button"
             onClick={() => void salvarGeral()}
             disabled={salvandoGeral}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-60"
           >
             {salvandoGeral ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Guardar
@@ -300,7 +300,7 @@ export function TipoServicoGestaoPage({ slug }: TipoServicoGestaoPageProps) {
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="ug-card p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-slate-900">Acréscimos por especialidade</h2>
           <button
@@ -414,7 +414,7 @@ export function TipoServicoGestaoPage({ slug }: TipoServicoGestaoPageProps) {
                           type="button"
                           onClick={() => void salvarAcrescimo(row)}
                           disabled={row.saving}
-                          className="rounded p-1.5 text-blue-600 hover:bg-blue-50"
+                          className="rounded p-1.5 text-blue-600 hover:bg-primary-50"
                           title="Guardar"
                         >
                           {row.saving ? (
@@ -441,7 +441,7 @@ export function TipoServicoGestaoPage({ slug }: TipoServicoGestaoPageProps) {
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="ug-card p-5 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">Setores hospitalares vinculados</h2>
         <div className="mt-4 flex flex-wrap items-end gap-2">
           <label className="block min-w-[240px] flex-1 text-sm">

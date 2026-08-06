@@ -168,11 +168,11 @@ export function MuralTrocasPage() {
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {carregando ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
+          <div className="ug-card p-6 text-sm text-slate-600 shadow-sm">
             Carregando plantões…
           </div>
         ) : itens.length === 0 ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
+          <div className="ug-card p-6 text-sm text-slate-600 shadow-sm">
             Nenhum plantão anunciado no momento.
           </div>
         ) : (
@@ -186,7 +186,7 @@ export function MuralTrocasPage() {
             return (
               <article
                 key={plantao.id}
-                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+                className="ug-card p-5 shadow-sm transition-shadow hover:shadow-md"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
